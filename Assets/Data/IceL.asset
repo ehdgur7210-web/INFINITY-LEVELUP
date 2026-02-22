@@ -1,0 +1,37 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 03147f7fe80fbc54584aa4d4fbd642f3, type: 3}
+  m_Name: IceL
+  m_EditorClassIdentifier: 
+  skillID: 9
+  skillName: "\uC544\uC774\uC2A4L"
+  skillDescription: 
+  skillIcon: {fileID: -113691429, guid: 4c9c876f2b23b3d42a0ca3d405297bda, type: 3}
+  skillType: 0
+  targetType: 1
+  effectType: 0
+  attackStyle: 2
+  requiredLevel: 1
+  requiredSkillPoints: 1
+  maxLevel: 5
+  baseValue: 10
+  valuePerLevel: 20
+  duration: 0
+  cooldown: 5
+  manaCost: 1
+  castTime: 1
+  range: 5
+  areaRadius: 10
+  prerequisiteSkills: []
+  effectPrefab: {fileID: 0}
+  skillSound: {fileID: 0}
+  attackEffectPrefab: {fileID: 262432761472199216, guid: 84fb062d3dd11f7448e93a1171363efb, type: 3}
