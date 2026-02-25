@@ -36,7 +36,7 @@ public class TutorialManager : MonoBehaviour
 
     [Header("¼³Á¤")]
     public float typingSpeed = 0.03f;
-    public Color overlayColor = new Color(0, 0, 0, 0.7f);
+    public Color overlayColor = new Color(0, 0, 0, 1f);
 
     private int currentStep = 0;
     private bool isTyping = false;
