@@ -56,6 +56,10 @@ PrefabInstance:
       propertyPath: explosionEffectPrefab
       value: 
       objectReference: {fileID: 100008, guid: 9c001e713c3ebd34b9a93ba39ccdb2c7, type: 3}
+    - target: {fileID: 6106768073404634367, guid: c9eaede3c83885440b44a8e58c73384c, type: 3}
+      propertyPath: maxScale
+      value: 5
+      objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []

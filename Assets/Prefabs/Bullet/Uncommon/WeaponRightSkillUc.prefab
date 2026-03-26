@@ -8,6 +8,10 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 0}
     m_Modifications:
+    - target: {fileID: -8695562044387992697, guid: 295753ca954175c418e1c9eee15958e4, type: 3}
+      propertyPath: maxScale
+      value: 5
+      objectReference: {fileID: 0}
     - target: {fileID: 1913192803519607949, guid: 295753ca954175c418e1c9eee15958e4, type: 3}
       propertyPath: explosionEffectPrefab
       value: 

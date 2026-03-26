@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: TutorialStep 34
   m_EditorClassIdentifier: 
   tipMessage: "\"\uC6B0\uD3B8\uD568 \uBC84\uD2BC\uC744 \uD074\uB9AD\uD558\uC138\uC694!\""
-  focusTargetName: Menutoggle
+  focusTargetName: "\uC6B0\uD3B8"
   focusPadding: {x: 40, y: 40}
   advanceType: 0
   requiredAction: OpenMail
