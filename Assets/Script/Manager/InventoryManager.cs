@@ -715,6 +715,7 @@ public class InventoryManager : MonoBehaviour
 
     public void ToggleInventory()
     {
+        if (TutorialManager.Instance != null && TutorialManager.Instance.ShouldBlockNonFocusButtons) return;
         if (panelRect == null)
         {
             if (inventoryPanel != null)

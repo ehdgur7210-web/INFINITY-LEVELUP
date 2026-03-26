@@ -170,16 +170,44 @@ public class GachaResultUI : MonoBehaviour
         if (sr != null)
             sr.horizontalNormalizedPosition = 0f;
 
-        // ★ 대량 뽑기 최적화: 50개 이상이면 간격 줄이고 배치 생성
+        // ★ 중복 아이템 그룹핑 (이름+등급 기준)
+        var grouped = new List<System.Tuple<EquipmentData, int>>();
+        var countMap = new Dictionary<string, int>();
+        var dataMap = new Dictionary<string, EquipmentData>();
+        var orderList = new List<string>();
+
+        foreach (var data in results)
+        {
+            if (data == null) continue;
+            string key = $"{data.itemName}_{data.rarity}";
+            if (countMap.ContainsKey(key))
+            {
+                countMap[key]++;
+            }
+            else
+            {
+                countMap[key] = 1;
+                dataMap[key] = data;
+                orderList.Add(key);
+            }
+        }
+
+        foreach (var key in orderList)
+            grouped.Add(new System.Tuple<EquipmentData, int>(dataMap[key], countMap[key]));
+
+        if (debugMode)
+            Debug.Log($"[GachaResultUI] 그룹핑: {results.Count}개 → {grouped.Count}종류");
+
+        // ★ 대량 뽑기 최적화
         float interval = slotRevealInterval;
         int batchSize = 1;
-        if (results.Count >= 100) { interval = 0f; batchSize = 10; }      // 100개: 10개씩 즉시
-        else if (results.Count >= 50) { interval = 0.02f; batchSize = 5; } // 50개: 5개씩 빠르게
+        if (grouped.Count >= 50) { interval = 0f; batchSize = 10; }
+        else if (grouped.Count >= 20) { interval = 0.02f; batchSize = 5; }
 
-        for (int i = 0; i < results.Count; i++)
+        for (int i = 0; i < grouped.Count; i++)
         {
-            EquipmentData data = results[i];
-            if (data == null) continue;
+            EquipmentData data = grouped[i].Item1;
+            int count = grouped[i].Item2;
 
             if (slotPrefab == null || scrollContent == null) break;
 
@@ -193,31 +221,25 @@ public class GachaResultUI : MonoBehaviour
                 AutoBindSlotComponents(slotUI, slotGO);
             }
 
-            slotUI.Setup(data, threshold, 0f);
+            slotUI.Setup(data, threshold, 0f, count);
             activeSlots.Add(slotUI);
 
-            // ★ 배치 단위로 대기 (100개: 10개마다 1프레임)
+            // ★ 배치 단위로 대기
             if ((i + 1) % batchSize == 0)
             {
                 if (interval > 0f)
                     yield return new WaitForSeconds(interval);
                 else
-                    yield return null; // 1프레임 양보 (프리징 방지)
+                    yield return null;
             }
         }
 
         // ★ 대량 뽑기 시 효과음 1회만
-        if (results.Count <= 10)
-        {
-            // 10개 이하는 개별 효과음 (이미 위에서 처리)
-        }
-        else
-        {
+        if (results.Count > 10)
             PlaySlotSound(ItemRarity.Rare, threshold);
-        }
 
         if (debugMode)
-            Debug.Log($"[GachaResultUI] 슬롯 생성 완료: {activeSlots.Count}개");
+            Debug.Log($"[GachaResultUI] 슬롯 생성 완료: {activeSlots.Count}개 (원본 {results.Count}개)");
     }
 
     // ════════════════════════════════════════════════════════════

@@ -175,11 +175,10 @@ public class CompanionGachaManager : MonoBehaviour
 
     public void OpenGachaPanel()
     {
+        // ★ 동시 클릭 방지 (VIP 버튼과 겹침 대응)
+        if (UIClickGuard.IsBlocked) return;
+        UIClickGuard.Consume();
         if (companionGachaPanel == null) return;
-
-        // 장비 가챠 패널이 열려있으면 닫기
-        if (GachaManager.Instance != null && GachaManager.Instance.gachaPanel != null)
-            GachaManager.Instance.gachaPanel.SetActive(false);
 
         companionGachaPanel.SetActive(true);
         RefreshTicketUI();
@@ -571,17 +570,42 @@ public class CompanionGachaManager : MonoBehaviour
         foreach (Transform child in resultGrid)
             Destroy(child.gameObject);
 
-        float staggerDelay = 0.08f;
-        for (int i = 0; i < results.Count; i++)
+        // ★ 중복 동료 그룹핑 (이름 기준)
+        var countMap = new Dictionary<string, int>();
+        var dataMap = new Dictionary<string, CompanionData>();
+        var orderList = new List<string>();
+
+        foreach (var companion in results)
         {
-            var companion = results[i];
-            if (companion == null || resultItemPrefab == null) continue;
+            if (companion == null) continue;
+            string key = companion.companionName;
+            if (countMap.ContainsKey(key))
+            {
+                countMap[key]++;
+            }
+            else
+            {
+                countMap[key] = 1;
+                dataMap[key] = companion;
+                orderList.Add(key);
+            }
+        }
+
+        Debug.Log($"[CompanionGacha] 그룹핑: {results.Count}개 → {orderList.Count}종류");
+
+        float staggerDelay = 0.08f;
+        for (int i = 0; i < orderList.Count; i++)
+        {
+            string key = orderList[i];
+            var companion = dataMap[key];
+            int count = countMap[key];
+            if (resultItemPrefab == null) continue;
 
             GameObject go = Instantiate(resultItemPrefab, resultGrid, false);
             go.SetActive(true);
             CompanionResultItem item = go.GetComponent<CompanionResultItem>()
                                       ?? go.AddComponent<CompanionResultItem>();
-            item.Setup(companion, this, staggerDelay * i);
+            item.Setup(companion, this, staggerDelay * i, count);
         }
 
         // resultGrid에 GridLayoutGroup 없으면 자동 추가

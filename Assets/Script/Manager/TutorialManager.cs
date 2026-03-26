@@ -45,6 +45,21 @@ public class TutorialManager : MonoBehaviour
     public bool IsTutorialActive => _isTutorialActive;
     public int CurrentPhase => _currentPhase;
 
+    /// <summary>
+    /// 현재 튜토리얼이 ClickFocusTarget 단계인지 확인.
+    /// true이면 포커스 대상 외 버튼을 차단해야 함.
+    /// WaitForAction/ClickAnywhere/AutoAdvance 단계에서는 false → 자유 조작 허용.
+    /// </summary>
+    public bool ShouldBlockNonFocusButtons
+    {
+        get
+        {
+            if (!_isTutorialActive || _activeSteps == null || _currentStep >= _activeSteps.Count)
+                return false;
+            return _activeSteps[_currentStep].advanceType == TutorialAdvanceType.ClickFocusTarget;
+        }
+    }
+
     void Awake()
     {
         if (Instance == null)
@@ -738,6 +753,20 @@ public class TutorialManager : MonoBehaviour
     // ════════════════════════════════════════
     //  유틸
     // ════════════════════════════════════════
+
+    /// <summary>
+    /// 주어진 GameObject가 현재 튜토리얼 스텝의 포커스 대상인지 확인.
+    /// TopMenuManager 등에서 튜토리얼 중 포커스 외 버튼 차단에 사용.
+    /// </summary>
+    public bool IsCurrentFocusTarget(GameObject go)
+    {
+        if (!_isTutorialActive || _activeSteps == null || _currentStep >= _activeSteps.Count)
+            return false;
+        TutorialStepData step = _activeSteps[_currentStep];
+        if (string.IsNullOrEmpty(step.focusTargetName) || go == null)
+            return false;
+        return go.name == step.focusTargetName;
+    }
 
     private List<TutorialStepData> GetPhaseSteps(int phase)
     {

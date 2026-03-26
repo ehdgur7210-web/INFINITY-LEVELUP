@@ -81,6 +81,19 @@ public class PlayerController : MonoBehaviour
     // ★ 씬별 이동 모드 (false = 방치형/키네틱, true = 농장씬 이동 가능)
     private bool isMovementEnabled = false;
 
+    // ★ 씬 전환 중 전투 비활성화 플래그
+    private bool _combatEnabled = true;
+
+    /// <summary>씬 전환 시 전투를 비활성화/활성화</summary>
+    public void SetCombatEnabled(bool enabled)
+    {
+        _combatEnabled = enabled;
+        if (!enabled)
+        {
+            currentTarget = null; // 타겟 초기화
+        }
+    }
+
     void Awake()
     {
         // ★ 플레이어는 씬 간 유지 (DontDestroyOnLoad)
@@ -242,6 +255,13 @@ public class PlayerController : MonoBehaviour
     {
         if (playerStats != null && playerStats.IsDead)
             return;
+
+        // ★ 씬 전환 중이면 전투/조준 전부 스킵
+        if (!_combatEnabled)
+        {
+            UpdateAnimation();
+            return;
+        }
 
         if (isMovementEnabled)
         {

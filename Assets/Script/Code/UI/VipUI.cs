@@ -176,6 +176,14 @@ public class VipUI : MonoBehaviour
     /// </summary>
     public void OpenPanel()
     {
+        // ★ 튜토리얼 ClickFocusTarget 단계에서 VIP 패널 열기 차단
+        if (TutorialManager.Instance != null && TutorialManager.Instance.ShouldBlockNonFocusButtons)
+            return;
+
+        // ★ 동시 클릭 방지 (동료 버튼과 VIP 버튼 겹침 대응)
+        if (UIClickGuard.IsBlocked) return;
+        UIClickGuard.Consume();
+
         Debug.Log("[VipUI] OpenPanel 호출");
 
         if (vipPanel == null) return;

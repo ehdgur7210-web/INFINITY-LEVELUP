@@ -50,10 +50,19 @@ public class GachaResultSlotUI : MonoBehaviour
     /// <param name="data">표시할 장비 데이터</param>
     /// <param name="effectThreshold">이 등급 이상이면 이펙트 재생</param>
     /// <param name="delay">나타나기까지 대기 시간 (초)</param>
+    /// <summary>이 슬롯에 표시할 수량 (중복 그룹핑 시 사용)</summary>
+    private int displayCount = 1;
+
     public void Setup(EquipmentData data, ItemRarity effectThreshold, float delay)
+    {
+        Setup(data, effectThreshold, delay, 1);
+    }
+
+    public void Setup(EquipmentData data, ItemRarity effectThreshold, float delay, int count)
     {
         equip = data;
         revealDelay = delay;
+        displayCount = count;
         hasEffect = (data.rarity >= effectThreshold); // 기준 등급 이상이면 이펙트
 
         // 시작 시 크기를 0으로 (팝업 애니 전에 안 보이게)
@@ -77,9 +86,9 @@ public class GachaResultSlotUI : MonoBehaviour
             iconImage.color = Color.white;
         }
 
-        // 아이템 이름
+        // 아이템 이름 + 수량 (2개 이상이면 x수량 표시)
         if (itemNameText != null)
-            itemNameText.text = data.itemName;
+            itemNameText.text = displayCount > 1 ? $"{data.itemName} x{displayCount}" : data.itemName;
 
         // 등급 텍스트 + 색상
         if (rarityText != null)

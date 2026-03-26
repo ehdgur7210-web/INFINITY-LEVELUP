@@ -536,7 +536,8 @@ public class FarmPlantModePanel : MonoBehaviour
         // ★ 튜토리얼 중: 물/비료를 아직 안 줬으면 수확 불가능으로 간주
         //   → 물주기→비료→수확 순서를 자연스럽게 안내
         bool effectiveReady = isReady;
-        if (isReady && TutorialManager.Instance != null && TutorialManager.Instance.IsTutorialActive)
+        bool isTutorial = TutorialManager.Instance != null && TutorialManager.Instance.IsTutorialActive;
+        if (isReady && isTutorial)
         {
             if (!plot.isWatered || !plot.isFertilized)
                 effectiveReady = false; // 물/비료 먼저
@@ -550,9 +551,27 @@ public class FarmPlantModePanel : MonoBehaviour
         //   빠른수확   → 성장 중(수확 가능 아닐 때)
         SetActive(plantButton, false);
         SetActive(waterButton, !effectiveReady && !plot.isWatered);
-        SetActive(fertilizeButton, !effectiveReady && !plot.isFertilized);
         SetActive(harvestButton, effectiveReady);
-        SetActive(instantFinishButton, !effectiveReady); // ★ 성장 중이면 항상 표시
+
+        // ★ 튜토리얼 중: 물 선택 단계에서 비료/빠른수확 비활성, 비료 단계에서 빠른수확 비활성
+        if (isTutorial && !plot.isWatered)
+        {
+            // 물주기 단계 → 비료, 빠른수확 모두 숨김
+            SetActive(fertilizeButton, false);
+            SetActive(instantFinishButton, false);
+        }
+        else if (isTutorial && !plot.isFertilized)
+        {
+            // 비료주기 단계 → 비료만 표시, 빠른수확 숨김
+            SetActive(fertilizeButton, true);
+            SetActive(instantFinishButton, false);
+        }
+        else
+        {
+            // 일반 상태
+            SetActive(fertilizeButton, !effectiveReady && !plot.isFertilized);
+            SetActive(instantFinishButton, !effectiveReady); // 성장 중이면 항상 표시
+        }
     }
 
     // ═══ 버튼 아이콘 갱신 ════════════════════════════════════════

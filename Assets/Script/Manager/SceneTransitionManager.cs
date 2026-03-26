@@ -131,6 +131,9 @@ public class SceneTransitionManager : MonoBehaviour
             PlayerController pc = persistentPlayer.GetComponent<PlayerController>();
             if (pc != null)
             {
+                // ★ 씬 전환 완료 → 전투 다시 활성화
+                pc.SetCombatEnabled(true);
+
                 if (sceneName == SCENE_FARM)
                 {
                     pc.SetMovementMode(true);
@@ -314,6 +317,13 @@ public class SceneTransitionManager : MonoBehaviour
     {
         // ★ 씬 이동 전 채팅 채널 퇴장
         BackendChatManager.Instance?.LeaveAllChannels();
+
+        // ★ 씬 전환 시 플레이어 전투 비활성화
+        if (persistentPlayer != null)
+        {
+            PlayerController pc = persistentPlayer.GetComponent<PlayerController>();
+            if (pc != null) pc.SetCombatEnabled(false);
+        }
 
         // 씬 이동 전 정리
         CleanupBeforeSceneLoad();

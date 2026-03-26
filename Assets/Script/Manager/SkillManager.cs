@@ -373,6 +373,10 @@ public class SkillManager : MonoBehaviour
 
     public void ToggleSkillTree()
     {
+        // ★ 튜토리얼 ClickFocusTarget 단계에서 포커스 대상이 아니면 차단
+        if (TutorialManager.Instance != null && TutorialManager.Instance.ShouldBlockNonFocusButtons)
+            return;
+
         if (skillTreePanel == null)
         {
             Debug.LogError("[SkillManager] skillTreePanel이 NULL!");

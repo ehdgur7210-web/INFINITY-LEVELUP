@@ -77,6 +77,27 @@ public class TopMenuManager : MonoBehaviour
     private bool isAnimating = false;
     private bool menuInitialized = false; // 초기화 완료 플래그
 
+    /// <summary>전역 UIClickGuard를 사용하여 동시 입력 방지</summary>
+    private bool IsButtonOnCooldown()
+    {
+        return !UIClickGuard.Consume();
+    }
+
+    /// <summary>
+    /// 튜토리얼 중 포커스 대상이 아닌 버튼 클릭 차단.
+    /// buttonName = 이 버튼의 GameObject 이름 (Inspector에서 설정된 이름)
+    /// </summary>
+    private bool IsBlockedByTutorial(Button btn)
+    {
+        if (TutorialManager.Instance == null || !TutorialManager.Instance.ShouldBlockNonFocusButtons)
+            return false;
+        // 튜토리얼 포커스 대상 버튼이면 허용
+        if (btn != null && TutorialManager.Instance.IsCurrentFocusTarget(btn.gameObject))
+            return false;
+        // ClickFocusTarget 단계에서 포커스 대상이 아닌 버튼은 차단
+        return true;
+    }
+
     // ─────────────────────────────────────────────────────────
     void Awake()
     {
@@ -260,31 +281,39 @@ public class TopMenuManager : MonoBehaviour
 
     private void OnInventoryButtonClicked()
     {
+        if (IsButtonOnCooldown()) return;
+        if (IsBlockedByTutorial(inventoryButton)) return;
         InventoryManager.Instance?.ToggleInventory();
         if (inventoryBadge != null) inventoryBadge.SetActive(false);
         PlayButtonSound();
     }
     private void OnShopButtonClicked()
     {
+        if (IsButtonOnCooldown()) return;
+        if (IsBlockedByTutorial(shopButton)) return;
         ShopManager.Instance?.ToggleShop();
         if (shopBadge != null) shopBadge.SetActive(false);
         PlayButtonSound();
     }
-    private void OnAuctionButtonClicked() { FindObjectOfType<AuctionUI>()?.ToggleAuction(); PlayButtonSound(); }
-    private void OnAchieveButtonClicked() { AchievementSystem.Instance?.ToggleAchievementUI(); PlayButtonSound(); }
+    private void OnAuctionButtonClicked() { if (IsButtonOnCooldown()) return; if (IsBlockedByTutorial(auctionButton)) return; FindObjectOfType<AuctionUI>()?.ToggleAuction(); PlayButtonSound(); }
+    private void OnAchieveButtonClicked() { if (IsButtonOnCooldown()) return; if (IsBlockedByTutorial(achieveButton)) return; AchievementSystem.Instance?.ToggleAchievementUI(); PlayButtonSound(); }
     private void OnEquipmentButtonClicked()
     {
+        if (IsButtonOnCooldown()) return;
+        if (IsBlockedByTutorial(equipmentButton)) return;
         if (equipmentPanel != null) equipmentPanel.SetActive(!equipmentPanel.activeSelf);
         if (questBadge != null) questBadge.SetActive(false);
         PlayButtonSound();
     }
-    private void OnSkillButtonClicked() { SkillManager.Instance?.ToggleSkillTree(); PlayButtonSound(); }
-    private void OnmailButtonClicked() { MailUI.Instance?.OpenMailPanel(); PlayButtonSound(); }
-    private void OnSettingsButtonClicked() { OptionUI.Instance?.ToggleOptionPanel(); PlayButtonSound(); }
-    private void OnCraftButtonClicked() { CraftingManager.Instance?.ToggleCraftingUI(); PlayButtonSound(); }
-    private void OnenhancementButtonClicked() { EnhancementSystem.Instance?.ToggleEnhancementUI(); PlayButtonSound(); }
+    private void OnSkillButtonClicked() { if (IsButtonOnCooldown()) return; if (IsBlockedByTutorial(skillButton)) return; SkillManager.Instance?.ToggleSkillTree(); PlayButtonSound(); }
+    private void OnmailButtonClicked() { if (IsButtonOnCooldown()) return; if (IsBlockedByTutorial(mailButton)) return; MailUI.Instance?.OpenMailPanel(); PlayButtonSound(); }
+    private void OnSettingsButtonClicked() { if (IsButtonOnCooldown()) return; if (IsBlockedByTutorial(settingsButton)) return; OptionUI.Instance?.ToggleOptionPanel(); PlayButtonSound(); }
+    private void OnCraftButtonClicked() { if (IsButtonOnCooldown()) return; if (IsBlockedByTutorial(craftButton)) return; CraftingManager.Instance?.ToggleCraftingUI(); PlayButtonSound(); }
+    private void OnenhancementButtonClicked() { if (IsButtonOnCooldown()) return; if (IsBlockedByTutorial(enhancementButton)) return; EnhancementSystem.Instance?.ToggleEnhancementUI(); PlayButtonSound(); }
     private void OnRankingButtonClicked()
     {
+        if (IsButtonOnCooldown()) return;
+        if (IsBlockedByTutorial(rankingButton)) return;
         if (RankingManager.Instance != null)
         {
             RankingManager.Instance.OpenPanel();

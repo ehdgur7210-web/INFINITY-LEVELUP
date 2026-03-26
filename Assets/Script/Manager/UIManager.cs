@@ -565,13 +565,16 @@ public class UIManager : MonoBehaviour
         // ★ 다이얼로그를 최상위로 올려서 다른 캔버스에 가려지지 않게
         confirmDialogPanel.transform.SetAsLastSibling();
 
-        // ★ 부모 Canvas의 sortingOrder를 최상위로 설정
-        Canvas parentCanvas = confirmDialogPanel.GetComponentInParent<Canvas>();
-        if (parentCanvas != null)
-        {
-            parentCanvas.overrideSorting = true;
-            parentCanvas.sortingOrder = 9999;
-        }
+        // ★ 확인 팝업 전용 Canvas 보장 — VIP 등 다른 패널 위에 표시
+        Canvas dialogCanvas = confirmDialogPanel.GetComponent<Canvas>();
+        if (dialogCanvas == null)
+            dialogCanvas = confirmDialogPanel.AddComponent<Canvas>();
+        dialogCanvas.overrideSorting = true;
+        dialogCanvas.sortingOrder = 10000; // 최상위
+
+        // GraphicRaycaster 보장 (없으면 버튼 클릭 불가)
+        if (confirmDialogPanel.GetComponent<UnityEngine.UI.GraphicRaycaster>() == null)
+            confirmDialogPanel.AddComponent<UnityEngine.UI.GraphicRaycaster>();
     }
 
     private void OnConfirmButtonClicked()
@@ -590,10 +593,10 @@ public class UIManager : MonoBehaviour
     {
         if (confirmDialogPanel != null)
         {
-            // ★ sortingOrder 복원
-            Canvas parentCanvas = confirmDialogPanel.GetComponentInParent<Canvas>();
-            if (parentCanvas != null)
-                parentCanvas.overrideSorting = false;
+            // ★ 전용 Canvas sortingOrder 복원
+            Canvas dialogCanvas = confirmDialogPanel.GetComponent<Canvas>();
+            if (dialogCanvas != null)
+                dialogCanvas.overrideSorting = false;
 
             confirmDialogPanel.SetActive(false);
         }

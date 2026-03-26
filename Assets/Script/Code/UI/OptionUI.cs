@@ -269,6 +269,7 @@ public class OptionUI : MonoBehaviour
     /// </summary>
     public void ToggleOptionPanel()
     {
+        if (TutorialManager.Instance != null && TutorialManager.Instance.ShouldBlockNonFocusButtons) return;
         if (optionPanel == null) return;
 
         if (optionPanel.activeSelf)

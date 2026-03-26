@@ -67,6 +67,7 @@ public class CraftingManager : MonoBehaviour
 
     public void ToggleCraftingUI()
     {
+        if (TutorialManager.Instance != null && TutorialManager.Instance.ShouldBlockNonFocusButtons) return;
         if (craftingPanel != null)
         {
             bool isActive = craftingPanel.activeSelf;

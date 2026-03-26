@@ -7215,6 +7215,7 @@ GameObject:
   - component: {fileID: 149465445}
   - component: {fileID: 149465447}
   - component: {fileID: 149465446}
+  - component: {fileID: 149465448}
   m_Layer: 5
   m_Name: MailPanel
   m_TagString: Untagged
@@ -7283,6 +7284,40 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 149465444}
   m_CullTransparentMesh: 1
+--- !u!114 &149465448
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 149465444}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a0107189e49fd654e9aec64f6ed4f8ec, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  mailPanel: {fileID: 149465444}
+  mailListPanel: {fileID: 1772152517}
+  mailListContent: {fileID: 1235090352}
+  mailSlotPrefab: {fileID: 6776234777631716912, guid: 091398518ce064a42976af6f4225d043, type: 3}
+  mailDetailPanel: {fileID: 1208911567}
+  detailTitle: {fileID: 929210876}
+  detailContent: {fileID: 1708137390}
+  detailDate: {fileID: 927240343}
+  rewardListContent: {fileID: 1723828447}
+  rewardSlotPrefab: {fileID: 8162974088971272788, guid: b9f4b5871598f854da7e22e063b1f23a, type: 3}
+  claimButton: {fileID: 1692422133}
+  deleteButton: {fileID: 949935439}
+  backButton: {fileID: 615601615}
+  couponPanel: {fileID: 1288258093}
+  couponInput: {fileID: 698571912}
+  couponSubmitButton: {fileID: 1973647141}
+  couponCloseButton: {fileID: 1386553429}
+  openCouponButton: {fileID: 1006609728}
+  closeMailButton: {fileID: 1699807176}
+  claimAllButton: {fileID: 130218145}
+  notificationBadge: {fileID: 1656068778}
+  badgeText: {fileID: 687499432}
 --- !u!1 &149620044
 GameObject:
   m_ObjectHideFlags: 0
@@ -30210,8 +30245,8 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: -427, y: -95}
-  m_SizeDelta: {x: 100, y: 100}
+  m_AnchoredPosition: {x: -431, y: -125}
+  m_SizeDelta: {x: 150, y: 150}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &615488090
 MonoBehaviour:
@@ -30289,7 +30324,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Sprite: {fileID: -1891891329, guid: 003798f68ba24a64a926137faeaacabb, type: 3}
+  m_Sprite: {fileID: 43112321, guid: dde54483b40551d4a966a48c7821860c, type: 3}
   m_Type: 0
   m_PreserveAspect: 0
   m_FillCenter: 1
@@ -39487,9 +39522,9 @@ RectTransform:
   m_Father: {fileID: 909670342}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
-  m_AnchorMax: {x: 0, y: 0}
+  m_AnchorMax: {x: 1, y: 1}
   m_AnchoredPosition: {x: 0, y: 0}
-  m_SizeDelta: {x: 0, y: 0}
+  m_SizeDelta: {x: -17, y: 0}
   m_Pivot: {x: 0, y: 1}
 --- !u!114 &780716576
 MonoBehaviour:
@@ -41036,7 +41071,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!224 &811370829
 RectTransform:
   m_ObjectHideFlags: 0
@@ -77422,7 +77457,7 @@ RectTransform:
   m_Father: {fileID: 260851893}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
-  m_AnchorMax: {x: 0, y: 0}
+  m_AnchorMax: {x: 1, y: 1}
   m_AnchoredPosition: {x: 0, y: 0}
   m_SizeDelta: {x: 20, y: 20}
   m_Pivot: {x: 0.5, y: 0.5}
@@ -79607,72 +79642,6 @@ RectTransform:
   m_AnchoredPosition: {x: 0, y: 0.000040884148}
   m_SizeDelta: {x: 0, y: 300}
   m_Pivot: {x: 0, y: 1}
---- !u!1 &1632517099
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 1632517100}
-  - component: {fileID: 1632517101}
-  m_Layer: 0
-  m_Name: MailUI
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!4 &1632517100
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1632517099}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 2003906050}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &1632517101
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1632517099}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: a0107189e49fd654e9aec64f6ed4f8ec, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  mailPanel: {fileID: 149465444}
-  mailListPanel: {fileID: 1772152517}
-  mailListContent: {fileID: 1235090352}
-  mailSlotPrefab: {fileID: 6776234777631716912, guid: 091398518ce064a42976af6f4225d043, type: 3}
-  mailDetailPanel: {fileID: 1208911567}
-  detailTitle: {fileID: 929210876}
-  detailContent: {fileID: 1708137390}
-  detailDate: {fileID: 927240343}
-  rewardListContent: {fileID: 1723828447}
-  rewardSlotPrefab: {fileID: 8162974088971272788, guid: b9f4b5871598f854da7e22e063b1f23a, type: 3}
-  claimButton: {fileID: 1692422133}
-  deleteButton: {fileID: 949935439}
-  backButton: {fileID: 615601615}
-  couponPanel: {fileID: 1288258093}
-  couponInput: {fileID: 698571912}
-  couponSubmitButton: {fileID: 1973647141}
-  couponCloseButton: {fileID: 1386553429}
-  openCouponButton: {fileID: 1006609728}
-  closeMailButton: {fileID: 1699807176}
-  claimAllButton: {fileID: 130218145}
-  notificationBadge: {fileID: 1656068778}
-  badgeText: {fileID: 687499432}
 --- !u!1 &1633791938
 GameObject:
   m_ObjectHideFlags: 0
@@ -99963,7 +99932,6 @@ Transform:
   - {fileID: 689056382}
   - {fileID: 134876748}
   - {fileID: 903194631}
-  - {fileID: 1632517100}
   - {fileID: 1643364959}
   - {fileID: 1783776584}
   - {fileID: 1166757184}

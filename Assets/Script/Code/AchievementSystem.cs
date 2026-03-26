@@ -106,6 +106,7 @@ public class AchievementSystem : MonoBehaviour
     /// </summary>
     public void ToggleAchievementUI()
     {
+        if (TutorialManager.Instance != null && TutorialManager.Instance.ShouldBlockNonFocusButtons) return;
         if (achievementPanel != null)
         {
             bool isActive = achievementPanel.activeSelf;

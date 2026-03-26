@@ -475,6 +475,7 @@ public class ShopManager : MonoBehaviour
     /// </summary>
     public void ToggleShop()
     {
+        if (TutorialManager.Instance != null && TutorialManager.Instance.ShouldBlockNonFocusButtons) return;
         if (shopPanel != null)
         {
             bool isActive = shopPanel.activeSelf;

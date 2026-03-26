@@ -96,6 +96,7 @@ public class EnhancementSystem : MonoBehaviour
 
     public void ToggleEnhancementUI()
     {
+        if (TutorialManager.Instance != null && TutorialManager.Instance.ShouldBlockNonFocusButtons) return;
         if (enhancementPanel == null) return;
         bool isActive = enhancementPanel.activeSelf;
         enhancementPanel.SetActive(!isActive);

@@ -250,6 +250,7 @@ public class RankingManager : MonoBehaviour
 
     public void OpenPanel()
     {
+        if (TutorialManager.Instance != null && TutorialManager.Instance.ShouldBlockNonFocusButtons) return;
         if (rankingPanel == null)
         {
             Debug.LogError("[RankingManager] rankingPanel이 null! Inspector에서 연결 확인 필요");

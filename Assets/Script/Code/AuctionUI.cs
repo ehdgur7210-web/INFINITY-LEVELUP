@@ -858,6 +858,7 @@ public class AuctionUI : MonoBehaviour
 
     public void ToggleAuction()
     {
+        if (TutorialManager.Instance != null && TutorialManager.Instance.ShouldBlockNonFocusButtons) return;
         if (auctionPanel != null)
         {
             if (auctionPanel.activeSelf) CloseAuction();

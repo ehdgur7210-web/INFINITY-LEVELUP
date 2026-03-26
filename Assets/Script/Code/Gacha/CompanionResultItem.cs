@@ -49,16 +49,24 @@ public class CompanionResultItem : MonoBehaviour
     //  초기화
     // ═══════════════════════════════════════════════════════════════
 
+    private int displayCount = 1;
+
     public void Setup(CompanionData cd, CompanionGachaManager mgr)
     {
-        Setup(cd, mgr, 0f);
+        Setup(cd, mgr, 0f, 1);
     }
 
     public void Setup(CompanionData cd, CompanionGachaManager mgr, float delay)
     {
+        Setup(cd, mgr, delay, 1);
+    }
+
+    public void Setup(CompanionData cd, CompanionGachaManager mgr, float delay, int count)
+    {
         data = cd;
         manager = mgr;
         revealDelay = delay;
+        displayCount = count;
 
         if (portaitImage != null) portaitImage.sprite = cd.portrait;
 
@@ -66,7 +74,7 @@ public class CompanionResultItem : MonoBehaviour
         Color rc = ri < rarityColors.Length ? rarityColors[ri] : Color.white;
 
         if (borderImage != null) borderImage.color = rc;
-        if (nameText != null) nameText.text = cd.companionName;
+        if (nameText != null) nameText.text = displayCount > 1 ? $"{cd.companionName} x{displayCount}" : cd.companionName;
         if (rarityText != null)
         {
             rarityText.text = ri < rarityNames.Length ? rarityNames[ri] : "";
