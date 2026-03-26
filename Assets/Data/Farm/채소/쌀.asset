@@ -28,10 +28,10 @@ MonoBehaviour:
   seedCostGem: 0
   harvestRewards:
   - item: {fileID: 11400000, guid: 5988898c85d399f4c9fece89f5e720a5, type: 2}
-    minAmount: 0
-    maxAmount: 0
-    goldReward: 1000
-    gemReward: 1000
+    minAmount: 2
+    maxAmount: 5
+    goldReward: 10000
+    gemReward: 100
   cropPointReward: 500
   requiredPlayerLevel: 1
   requiredGreenhouseLevel: 0
