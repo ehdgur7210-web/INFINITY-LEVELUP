@@ -1,0 +1,38 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 578dbf70cf8a90b458fbb77aea929bfd, type: 3}
+  m_Name: "\uBC00"
+  m_EditorClassIdentifier: 
+  cropID: 0
+  cropName: "\uBC00\uC528\uC557"
+  description: 
+  seedIcon: {fileID: 453166054, guid: d32684a0a53ca534a8d67ce30412c17f, type: 3}
+  harvestIcon: {fileID: -1621016067, guid: d32684a0a53ca534a8d67ce30412c17f, type: 3}
+  growthSprites:
+  - {fileID: 1358305158, guid: d32684a0a53ca534a8d67ce30412c17f, type: 3}
+  - {fileID: -581384503, guid: d32684a0a53ca534a8d67ce30412c17f, type: 3}
+  - {fileID: -1621016067, guid: d32684a0a53ca534a8d67ce30412c17f, type: 3}
+  growthTimeSeconds: 100
+  waterSpeedBonus: 0.3
+  waterCostGem: 1
+  seedCostGold: 50
+  seedCostGem: 0
+  harvestRewards:
+  - item: {fileID: 11400000, guid: 11c8982d4c3b85a428df76c9cdc185f2, type: 2}
+    minAmount: 2
+    maxAmount: 2
+    goldReward: 10000
+    gemReward: 10000
+  cropPointReward: 1000
+  requiredPlayerLevel: 1
+  requiredGreenhouseLevel: 0
+  cropType: 0

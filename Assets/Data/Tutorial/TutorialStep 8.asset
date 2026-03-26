@@ -1,0 +1,31 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ff3502ee1a5e23a4296b247472417649, type: 3}
+  m_Name: TutorialStep 8
+  m_EditorClassIdentifier: 
+  tipMessage: "\"\uC774\uC81C \uB18D\uC7A5\uC5D0 \uAC00\uBCFC\uAE4C\uC694?\n\uB18D\uC7A5
+    \uC785\uAD6C\uB97C \uD130\uCE58\uD558\uC138\uC694!\""
+  focusTargetName: "\uB18D\uC7A5Button"
+  focusPadding: {x: 40, y: 40}
+  advanceType: 1
+  requiredAction: 
+  autoAdvanceDelay: 1
+  tipPosition: 0
+  isSceneTransitionStep: 1
+  delayBeforeShow: 0
+  rewards:
+  - rewardType: 0
+    amount: 5000
+    item: {fileID: 0}
+  - rewardType: 1
+    amount: 100
+    item: {fileID: 0}

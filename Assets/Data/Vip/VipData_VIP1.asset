@@ -1,0 +1,55 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 48dca2a85d5fc1949bc551a1908931ff, type: 3}
+  m_Name: VipData_VIP1
+  m_EditorClassIdentifier: Assembly-CSharp::VipData
+  vipLevel: 1
+  requiredVipExp: 100
+  displayName: VIP1
+  gradeColor: {r: 1, g: 1, b: 1, a: 1}
+  badgeSprite: {fileID: 34735933, guid: 2808dddc89ff0a84989e4c5161989a6f, type: 3}
+  buttonIcon: {fileID: -395076482, guid: 4589e5d170afc514491fe5efeb40dc59, type: 3}
+  benefits:
+  - description: "\uACBD\uD5D8\uCE58\uC99D\uAC00"
+    value: 5
+    benefitType: 4
+  giftInfo:
+    freeGiftIcon: {fileID: -441013828, guid: 4c9c876f2b23b3d42a0ca3d405297bda, type: 3}
+    freeGiftDescription: "\uCD08\uBCF4\uC790 \uC120\uBB3C"
+    freeRewards:
+    - rewardType: 0
+      amount: 50000
+      item: {fileID: 0}
+    - rewardType: 1
+      amount: 1000
+      item: {fileID: 0}
+    - rewardType: 2
+      amount: 20
+      item: {fileID: 0}
+    paidGiftIcon: {fileID: 134223104, guid: 4c9c876f2b23b3d42a0ca3d405297bda, type: 3}
+    paidGiftPrice: 100
+    paidGiftOriginalValue: 10000
+    discountPercent: 900%
+    paidRewards:
+    - rewardType: 0
+      amount: 200000
+      item: {fileID: 0}
+    - rewardType: 1
+      amount: 3000
+      item: {fileID: 0}
+    - rewardType: 2
+      amount: 40
+      item: {fileID: 0}
+    - rewardType: 3
+      amount: 20
+      item: {fileID: 0}
+  defaultDurationDays: 30

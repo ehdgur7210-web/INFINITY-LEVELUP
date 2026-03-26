@@ -1,0 +1,42 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3a9173cbeef5c0344a842122bd913967, type: 3}
+  m_Name: "\uC804\uC0AC2"
+  m_EditorClassIdentifier: 
+  companionID: 007
+  companionName: "\uBE5B\uB808\uC804\uB4DC\uC804\uC0AC"
+  description: "\uADC0\uC5EC\uC6C0\uC774 \uC804\uC124"
+  rarity: 3
+  baseStars: 5
+  maxStars: 20
+  portrait: {fileID: 258930265, guid: 5da5ba6914ad18b449752911c8d6598b, type: 3}
+  worldPrefab: {fileID: 4350560982789109391, guid: 394ee2ee7f463dc42a57fe70e8e150af, type: 3}
+  maxHealth: 500
+  attackPower: 100
+  attackSpeed: 1
+  attackRange: 5
+  moveSpeed: 3.5
+  defense: 5
+  skills:
+  - skillID: Tree
+    skillName: "\uC138\uACC4\uC218"
+    description: 
+    icon: {fileID: -788349098, guid: 503ced27e527b7b4f9a8f217d1e6fb94, type: 3}
+    maxLevel: 5
+    unlockCompanionLevel: 1
+    baseCostGold: 10000
+    baseValue: 500
+    valuePerLevel: 100
+  spawnRadius: 10
+  summonCooldown: 30
+  probability: 2
+  legendaryVideoClip: {fileID: 32900000, guid: 476ee7c7fe642964fb4511356c8d49e7, type: 3}

@@ -1,0 +1,83 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!1001 &7529236144395696586
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 0}
+    m_Modifications:
+    - target: {fileID: -8695562044387992697, guid: 295753ca954175c418e1c9eee15958e4, type: 3}
+      propertyPath: maxScale
+      value: 5
+      objectReference: {fileID: 0}
+    - target: {fileID: 1913192803519607949, guid: 295753ca954175c418e1c9eee15958e4, type: 3}
+      propertyPath: explosionEffectPrefab
+      value: 
+      objectReference: {fileID: 4695098614234420828, guid: f85dced69bdbde04db90b3e73142865d, type: 3}
+    - target: {fileID: 1988534002535415859, guid: 295753ca954175c418e1c9eee15958e4, type: 3}
+      propertyPath: m_Sprite
+      value: 
+      objectReference: {fileID: -772789023, guid: 5bf9db852b82a9142a94c0bd9406c353, type: 3}
+    - target: {fileID: 5602633989274339562, guid: 295753ca954175c418e1c9eee15958e4, type: 3}
+      propertyPath: m_LocalScale.x
+      value: 0.2
+      objectReference: {fileID: 0}
+    - target: {fileID: 5602633989274339562, guid: 295753ca954175c418e1c9eee15958e4, type: 3}
+      propertyPath: m_LocalScale.y
+      value: 0.2
+      objectReference: {fileID: 0}
+    - target: {fileID: 5602633989274339562, guid: 295753ca954175c418e1c9eee15958e4, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: -143.13988
+      objectReference: {fileID: 0}
+    - target: {fileID: 5602633989274339562, guid: 295753ca954175c418e1c9eee15958e4, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 174.14497
+      objectReference: {fileID: 0}
+    - target: {fileID: 5602633989274339562, guid: 295753ca954175c418e1c9eee15958e4, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5602633989274339562, guid: 295753ca954175c418e1c9eee15958e4, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 5602633989274339562, guid: 295753ca954175c418e1c9eee15958e4, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5602633989274339562, guid: 295753ca954175c418e1c9eee15958e4, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5602633989274339562, guid: 295753ca954175c418e1c9eee15958e4, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5602633989274339562, guid: 295753ca954175c418e1c9eee15958e4, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5602633989274339562, guid: 295753ca954175c418e1c9eee15958e4, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5602633989274339562, guid: 295753ca954175c418e1c9eee15958e4, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8750605210062788038, guid: 295753ca954175c418e1c9eee15958e4, type: 3}
+      propertyPath: m_Name
+      value: WeaponRightSkill
+      objectReference: {fileID: 0}
+    - target: {fileID: 9050584024524817010, guid: 295753ca954175c418e1c9eee15958e4, type: 3}
+      propertyPath: m_IsTrigger
+      value: 1
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents: []
+  m_SourcePrefab: {fileID: 100100000, guid: 295753ca954175c418e1c9eee15958e4, type: 3}

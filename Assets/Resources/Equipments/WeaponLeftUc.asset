@@ -1,0 +1,70 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e3896afcf5922f343a014a9124fd4d2b, type: 3}
+  m_Name: WeaponLeftUc
+  m_EditorClassIdentifier: Assembly-CSharp::EquipmentVisualData
+  itemID: 2
+  itemName: "\uC67C\uAC80Uc"
+  itemDescription: 
+  itemType: 8
+  rarity: 1
+  itemIcon: {fileID: 471629660, guid: 46f4c2953c264e84fa71f8f907567aa6, type: 3}
+  background: {fileID: 0}
+  maxStack: 99
+  isConsumable: 0
+  sellPrice: 500
+  buyPrice: 1000
+  equipmentStats:
+    attack: 20
+    defense: 20
+    health: 40
+    mana: 0
+    criticalRate: 0
+    criticalDamage: 0
+    attackSpeed: 0
+    moveSpeed: 0
+  consumableEffect:
+    type: 0
+    value: 0
+    duration: 0
+  equipmentType: 0
+  attackBonus: 0
+  defenseBonus: 0
+  hpBonus: 0
+  speedBonus: 0
+  criticalBonus: 0
+  hasSpecialEffect: 0
+  specialEffectDescription: 
+  requiredLevel: 1
+  equipmentModel: {fileID: 0}
+  equipmentMaterial: {fileID: 0}
+  maxItemLevel: 10
+  levelUpGoldCost: f4010000e8030000d0070000a00f0000401f0000983a0000a8610000409c000060ea0000a0860100
+  levelUpStatMultiplier:
+  - 1
+  - 1.1
+  - 1.2
+  - 1.35
+  - 1.5
+  - 1.7
+  - 1.9
+  - 2.15
+  - 2.4
+  - 2.7
+  - 3
+  requiredMaterialCount: 01000000010000000200000002000000030000000300000004000000040000000500000005000000
+  equipmentSprite: {fileID: 21300000, guid: 97507ec8f61f49e449d5ca4b37cdc49d, type: 3}
+  spriteColor: {r: 1, g: 1, b: 1, a: 1}
+  localPosition: {x: 0, y: 0, z: 0}
+  localRotation: {x: 0, y: 0, z: 0}
+  localScale: {x: 1, y: 1, z: 1}
+  animatorOverride: {fileID: 0}

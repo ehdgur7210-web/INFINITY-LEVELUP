@@ -1,0 +1,42 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3a9173cbeef5c0344a842122bd913967, type: 3}
+  m_Name: "\uC804\uC0AC"
+  m_EditorClassIdentifier: 
+  companionID: 005
+  companionName: "\uBE59\uB808\uC804\uB4DC\uC804\uC0AC"
+  description: "\uADC0\uC5EC\uC6C0\uC774 \uC804\uC124"
+  rarity: 3
+  baseStars: 5
+  maxStars: 20
+  portrait: {fileID: -1394751975, guid: 2adfa066c5fb7f94988a416273674bd1, type: 3}
+  worldPrefab: {fileID: 4350560982789109391, guid: fb294e73649e42b48a079a2449fd7fae, type: 3}
+  maxHealth: 1000
+  attackPower: 200
+  attackSpeed: 1
+  attackRange: 5
+  moveSpeed: 3.5
+  defense: 5
+  skills:
+  - skillID: Ice
+    skillName: "\uC5BC\uC74C\uC138\uACC4"
+    description: 
+    icon: {fileID: 1718385617, guid: 503ced27e527b7b4f9a8f217d1e6fb94, type: 3}
+    maxLevel: 5
+    unlockCompanionLevel: 1
+    baseCostGold: 10000
+    baseValue: 500
+    valuePerLevel: 100
+  spawnRadius: 10
+  summonCooldown: 30
+  probability: 10
+  legendaryVideoClip: {fileID: 32900000, guid: d23b78f0f649bc94aa693d0df57c2bb8, type: 3}

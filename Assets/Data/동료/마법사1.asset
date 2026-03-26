@@ -1,0 +1,42 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3a9173cbeef5c0344a842122bd913967, type: 3}
+  m_Name: "\uB9C8\uBC95\uC0AC1"
+  m_EditorClassIdentifier: 
+  companionID: 002
+  companionName: "\uD63C\uB3C8\uC804\uC124\uB9C8\uBC95\uC0AC"
+  description: "\uADC0\uC5EC\uC6C0\uC774 \uC804\uC124"
+  rarity: 2
+  baseStars: 3
+  maxStars: 20
+  portrait: {fileID: -286690720, guid: 677a36a549aa0954b8b656f67825af14, type: 3}
+  worldPrefab: {fileID: 4350560982789109391, guid: 9138dde57e4fce9468a55346063ce282, type: 3}
+  maxHealth: 500
+  attackPower: 100
+  attackSpeed: 1
+  attackRange: 5
+  moveSpeed: 3.5
+  defense: 5
+  skills:
+  - skillID: Dark
+    skillName: "\uB2E4\uD06C"
+    description: 
+    icon: {fileID: 1411419005, guid: 1444431b77da9df4ab99433412f61a8f, type: 3}
+    maxLevel: 5
+    unlockCompanionLevel: 1
+    baseCostGold: 10000
+    baseValue: 500
+    valuePerLevel: 100
+  spawnRadius: 10
+  summonCooldown: 30
+  probability: 40
+  legendaryVideoClip: {fileID: 0}
