@@ -16,7 +16,7 @@ MonoBehaviour:
   cropName: 
   description: 
   seedIcon: {fileID: 261214459, guid: d347002cb1048da449188d89b7f6d017, type: 3}
-  harvestIcon: {fileID: -1648127733, guid: 9dc06cd59f3624e4a85d9f117b60a2b8, type: 3}
+  harvestIcon: {fileID: 209218215, guid: 5e1a73b0236112e42932b83577a45d52, type: 3}
   growthSprites:
   - {fileID: -2124573306, guid: 9dc06cd59f3624e4a85d9f117b60a2b8, type: 3}
   - {fileID: -1944129210, guid: 9dc06cd59f3624e4a85d9f117b60a2b8, type: 3}
