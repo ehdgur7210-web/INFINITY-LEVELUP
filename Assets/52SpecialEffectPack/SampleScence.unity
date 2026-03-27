@@ -367,6 +367,63 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1001 &535211882
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 0}
+    m_Modifications:
+    - target: {fileID: 100006, guid: 537a18d45863c794c97e81b7bc643e71, type: 3}
+      propertyPath: m_Name
+      value: DeadBall
+      objectReference: {fileID: 0}
+    - target: {fileID: 400006, guid: 537a18d45863c794c97e81b7bc643e71, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 400006, guid: 537a18d45863c794c97e81b7bc643e71, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 400006, guid: 537a18d45863c794c97e81b7bc643e71, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 12.520596
+      objectReference: {fileID: 0}
+    - target: {fileID: 400006, guid: 537a18d45863c794c97e81b7bc643e71, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 400006, guid: 537a18d45863c794c97e81b7bc643e71, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 400006, guid: 537a18d45863c794c97e81b7bc643e71, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 400006, guid: 537a18d45863c794c97e81b7bc643e71, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 400006, guid: 537a18d45863c794c97e81b7bc643e71, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 400006, guid: 537a18d45863c794c97e81b7bc643e71, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 400006, guid: 537a18d45863c794c97e81b7bc643e71, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents: []
+  m_SourcePrefab: {fileID: 100100000, guid: 537a18d45863c794c97e81b7bc643e71, type: 3}
 --- !u!1 &1539326937
 GameObject:
   m_ObjectHideFlags: 0
@@ -443,114 +500,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: db2b423fd18bfd344be6d0dfe175cd2b, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  EffectName:
-  - BlueBall
-  - DeadBall
-  - DeadExplode
-  - ElementalArrow
-  - ElementalArrow2
-  - ElementalBal
-  - ElementalBall2
-  - ElementalBall3
-  - ElementalBall4
-  - Explode
-  - Explode2
-  - Explode3
-  - Explode4
-  - Explode5
-  - Explode6
-  - Explode7
-  - Explode8
-  - Explode9
-  - Explode10
-  - Explode11
-  - FireBall
-  - FlameEmission
-  - Hole
-  - IceBall
-  - IceCloude
-  - Kunai
-  - Kunai2
-  - Kunai3
-  - Kunai4
-  - Kunai5
-  - LaserFire
-  - LaserFire2
-  - LightningArrow
-  - LightningBall
-  - LightningBall2
-  - LightningRotateBall
-  - MagicCircleExplode
-  - MagicCircleRelease
-  - MagicCube
-  - PoisonExplode
-  - Portal
-  - Portal2
-  - RainBowExplode
-  - RainBowExplode2
-  - RuneOfMagic
-  - StarCore
-  - StormCloud
-  - SwampBall
-  - SummonMagicCircle
-  - SummonMagicCircle2
-  - SummonMagicCircle3
-  - Swamp
-  Effect:
-  - {fileID: 400008, guid: 4248ba95366d5904686c308a47794818, type: 3}
-  - {fileID: 400006, guid: 537a18d45863c794c97e81b7bc643e71, type: 3}
-  - {fileID: 400006, guid: bf350f60afaca7e44b4533526bda51c2, type: 3}
-  - {fileID: 400012, guid: 45cba24a6a5389a4ab385f65964c554a, type: 3}
-  - {fileID: 400010, guid: a8d60f6853b51ee4ba75f1966f4f358f, type: 3}
-  - {fileID: 400012, guid: 9826389809c2e1e41a1125953a56a236, type: 3}
-  - {fileID: 400008, guid: 4231a198856fde244852dd542a0b0cf2, type: 3}
-  - {fileID: 400010, guid: 9a8672522358ff943a1a236cd32e1302, type: 3}
-  - {fileID: 400006, guid: 5da4c531ae0085f41b5f5c498270eeea, type: 3}
-  - {fileID: 400012, guid: a905d8e5159ffeb46baa8d2a7624717f, type: 3}
-  - {fileID: 400010, guid: bf6ce3cd3c47ff64cb9bcdfc16964bd6, type: 3}
-  - {fileID: 400006, guid: ae7c9521250779a428ff1ed3b23c9596, type: 3}
-  - {fileID: 400010, guid: c0a15d884e5e7a9468ab38bba8a32604, type: 3}
-  - {fileID: 400014, guid: 176c17a1cb4e96d4c918b4636a95b8c7, type: 3}
-  - {fileID: 400006, guid: 738d308a031b2664bb0f9ebcfefb2da9, type: 3}
-  - {fileID: 400014, guid: ba4d2d4d346b55a4da5ee8548c8c5609, type: 3}
-  - {fileID: 400008, guid: be7d9c7b953f9b143861af17cf32d4ca, type: 3}
-  - {fileID: 400006, guid: 450dff828997cdd4c864f611df7d62d5, type: 3}
-  - {fileID: 400008, guid: 4d69b7855b5ece04ab7c1a97402996fa, type: 3}
-  - {fileID: 400004, guid: 196ff0dbab9ba0d4697ff8df1cebaf6c, type: 3}
-  - {fileID: 400008, guid: 6ff1350c2a91520479532984ca642474, type: 3}
-  - {fileID: 400004, guid: aeae58bf37a687647adec1a709ea4bd4, type: 3}
-  - {fileID: 400010, guid: 7f4cd52014748b049b82f29f755c1278, type: 3}
-  - {fileID: 400006, guid: 4a208ba3b61f6e24595fe9f17926de8e, type: 3}
-  - {fileID: 400010, guid: b97184e0833ffba4ca32beb2bc860a7c, type: 3}
-  - {fileID: 400006, guid: 3fb31ce22fa348f49a27f87a5b0adcbe, type: 3}
-  - {fileID: 400012, guid: 4e354172ca9de2e45b3021f36963f995, type: 3}
-  - {fileID: 400004, guid: 48dfdee99b415924b9bc9473c8ab3be8, type: 3}
-  - {fileID: 400026, guid: 83847459a29ab814788d190f1fd96e68, type: 3}
-  - {fileID: 400006, guid: feb7745303eba0d48b6df0b5c664965d, type: 3}
-  - {fileID: 400012, guid: 2773c6c2c174c334890f7ce3d5f3d936, type: 3}
-  - {fileID: 400008, guid: e16ef38aa341c8b4d908e6589cde39b6, type: 3}
-  - {fileID: 400012, guid: f668eb933cc5b2b4385c78d3cf3c4f75, type: 3}
-  - {fileID: 400008, guid: 8bd82d4797b26664c85cbfa5b50a59c1, type: 3}
-  - {fileID: 400008, guid: c4b10940b2415844d94a5af346e92ad3, type: 3}
-  - {fileID: 400008, guid: 9c001e713c3ebd34b9a93ba39ccdb2c7, type: 3}
-  - {fileID: 400006, guid: ea4ce2b1817aec64f9a23ae028ffe62c, type: 3}
-  - {fileID: 400006, guid: fc90607984114ad4b82ab9cecd612f99, type: 3}
-  - {fileID: 400038, guid: 2c39fb930164bbd47b1b317081d8661d, type: 3}
-  - {fileID: 400008, guid: 9d9788338b7ea814dae35d23d4cdd819, type: 3}
-  - {fileID: 400010, guid: c98be9ff8d0b99c4f8857faf470634cf, type: 3}
-  - {fileID: 400010, guid: a8d006cd19a6a1b4b95ac07a6075d297, type: 3}
-  - {fileID: 400008, guid: 45a042ad00395204ca3f3561c3a05756, type: 3}
-  - {fileID: 400010, guid: 7da46ba1a42444c44a2260d4a1c9c848, type: 3}
-  - {fileID: 400008, guid: ab8125ffea4d43e4aa9439d5f8fff4c4, type: 3}
-  - {fileID: 400006, guid: 244b633c88d21fa43ac7a1b652c14793, type: 3}
-  - {fileID: 400008, guid: fbe02a07d24e2ce43b8e224ebcf00316, type: 3}
-  - {fileID: 400006, guid: bc015426619ef584fbdac5a0359c7a98, type: 3}
-  - {fileID: 400014, guid: 3aa143f52a2c20e45bf4bc03a7e127fd, type: 3}
-  - {fileID: 400010, guid: 2f18c32efccdebe42b56f6de27c8c92e, type: 3}
-  - {fileID: 400010, guid: bf73c6d90c4e0634ba969c77df2d9b63, type: 3}
-  - {fileID: 400006, guid: 1fc7dfffb398d0b48b056795e222cbc4, type: 3}
-  Text1: {fileID: 0}
-  i: 0
 --- !u!114 &1944435173
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -680,3 +629,4 @@ SceneRoots:
   - {fileID: 459287768}
   - {fileID: 1539326939}
   - {fileID: 1944435171}
+  - {fileID: 535211882}
