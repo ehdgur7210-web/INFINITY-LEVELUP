@@ -92,7 +92,9 @@ public class TopMenuManager : MonoBehaviour
         if (TutorialManager.Instance == null || !TutorialManager.Instance.ShouldBlockNonFocusButtons)
             return false;
         // 튜토리얼 포커스 대상 버튼이면 허용
-        if (btn != null && TutorialManager.Instance.IsCurrentFocusTarget(btn.gameObject))
+        bool isFocus = btn != null && TutorialManager.Instance.IsCurrentFocusTarget(btn.gameObject);
+        Debug.Log($"[TopMenu] IsBlockedByTutorial: btn={btn?.gameObject.name}, isFocusTarget={isFocus}, frame={Time.frameCount}");
+        if (isFocus)
             return false;
         // ClickFocusTarget 단계에서 포커스 대상이 아닌 버튼은 차단
         return true;
@@ -306,7 +308,22 @@ public class TopMenuManager : MonoBehaviour
         PlayButtonSound();
     }
     private void OnSkillButtonClicked() { if (IsButtonOnCooldown()) return; if (IsBlockedByTutorial(skillButton)) return; SkillManager.Instance?.ToggleSkillTree(); PlayButtonSound(); }
-    private void OnmailButtonClicked() { if (IsButtonOnCooldown()) return; if (IsBlockedByTutorial(mailButton)) return; MailUI.Instance?.OpenMailPanel(); PlayButtonSound(); }
+    private void OnmailButtonClicked()
+    {
+        if (IsButtonOnCooldown()) return;
+        if (IsBlockedByTutorial(mailButton)) return;
+
+        // ★ MailUI.Instance가 null이면 (비활성 오브젝트) FindObjectOfType으로 찾기
+        var mailUI = MailUI.Instance;
+        if (mailUI == null)
+            mailUI = FindObjectOfType<MailUI>(true); // includeInactive=true
+        if (mailUI != null)
+        {
+            MailUI.Instance = mailUI;
+            mailUI.OpenMailPanel();
+        }
+        PlayButtonSound();
+    }
     private void OnSettingsButtonClicked() { if (IsButtonOnCooldown()) return; if (IsBlockedByTutorial(settingsButton)) return; OptionUI.Instance?.ToggleOptionPanel(); PlayButtonSound(); }
     private void OnCraftButtonClicked() { if (IsButtonOnCooldown()) return; if (IsBlockedByTutorial(craftButton)) return; CraftingManager.Instance?.ToggleCraftingUI(); PlayButtonSound(); }
     private void OnenhancementButtonClicked() { if (IsButtonOnCooldown()) return; if (IsBlockedByTutorial(enhancementButton)) return; EnhancementSystem.Instance?.ToggleEnhancementUI(); PlayButtonSound(); }

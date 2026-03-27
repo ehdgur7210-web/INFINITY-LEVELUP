@@ -735,15 +735,14 @@ public class InventoryManager : MonoBehaviour
 
         slideCoroutine = StartCoroutine(SlidePanel(targetY));
 
-        if (chatSystem != null)
+        bool tutorialActive = TutorialManager.Instance != null && TutorialManager.Instance.IsTutorialActive;
+        var chat = chatSystem != null ? chatSystem : ChatSystem.Instance;
+        if (chat != null)
         {
-            if (!isPanelOpen) chatSystem.ShowChat();
-            else chatSystem.HideChat();
-        }
-        else if (ChatSystem.Instance != null)
-        {
-            if (!isPanelOpen) ChatSystem.Instance.ShowChat();
-            else ChatSystem.Instance.HideChat();
+            if (!isPanelOpen)
+                chat.ShowChat();
+            else if (!tutorialActive)
+                chat.HideChat();
         }
 
         Debug.Log($"[InventoryManager] 인벤 패널 {(isPanelOpen ? "열기" : "닫기")} → Y={targetY}");

@@ -329,6 +329,15 @@ public class TutorialManager : MonoBehaviour
         if (GameDataBridge.CurrentData != null)
             GameDataBridge.CurrentData.tutorialStep = stepIndex;
 
+        // ★ 채팅 관련 스텝이면 채팅 미니바 강제 표시
+        //   (인벤토리가 열리면서 HideChat()된 상태일 수 있음)
+        if (!string.IsNullOrEmpty(step.requiredAction) &&
+            step.requiredAction.StartsWith("Chat"))
+        {
+            if (ChatSystem.Instance != null)
+                ChatSystem.Instance.ShowChat();
+        }
+
         SetupFocus(step);
         ShowTip(step);
 
@@ -413,6 +422,11 @@ public class TutorialManager : MonoBehaviour
 
     // SetupFocus에서 버튼 리스너 등록 성공 여부 (Retry 코루틴 중복 방지)
     private bool _focusButtonBound = false;
+    // ★ 현재 포커스 대상 오브젝트 (이름 비교 실패 시 참조 비교용)
+    private GameObject _currentFocusTargetObj = null;
+    // ★ 방금 완료된 스텝의 포커스 대상 (같은 프레임 내 onClick 리스너 허용용)
+    private GameObject _justCompletedFocusTarget = null;
+    private int _justCompletedFrame = -1;
     // 월드 오브젝트 포커스 시 Canvas 레이캐스트 차단 해제
     private bool _worldTargetMode = false;
     private UnityEngine.UI.GraphicRaycaster _tutorialRaycaster;
@@ -420,6 +434,7 @@ public class TutorialManager : MonoBehaviour
     private void SetupFocus(TutorialStepData step)
     {
         _focusButtonBound = false;
+        _currentFocusTargetObj = null;
 
         // ★ 이전 월드 타겟 모드 복원
         RestoreCanvasRaycast();
@@ -437,6 +452,8 @@ public class TutorialManager : MonoBehaviour
             focusMask?.ClearFocus();
             return;
         }
+
+        _currentFocusTargetObj = target;
 
         RectTransform rt = target.GetComponent<RectTransform>();
 
@@ -525,6 +542,11 @@ public class TutorialManager : MonoBehaviour
         _isAdvancing = true;
 
         TutorialStepData step = _activeSteps[_currentStep];
+        Debug.Log($"[Tutorial] OnFocusTargetClicked: step={_currentStep}, target={_currentFocusTargetObj?.name}, frame={Time.frameCount}");
+
+        // ★ 방금 완료된 포커스 대상 기록 (같은 프레임 내 다른 onClick 리스너 허용)
+        _justCompletedFocusTarget = _currentFocusTargetObj;
+        _justCompletedFrame = Time.frameCount;
 
         // 리스너 정리 — 현재 스텝의 모든 리스너 제거
         CleanupCurrentStepListeners(step);
@@ -538,7 +560,7 @@ public class TutorialManager : MonoBehaviour
         }
 
         NextStep();
-        _isAdvancing = false; // ★ 락 해제
+        _isAdvancing = false;
     }
 
     /// <summary>현재 스텝의 버튼 리스너 완전 제거</summary>
@@ -760,10 +782,28 @@ public class TutorialManager : MonoBehaviour
     /// </summary>
     public bool IsCurrentFocusTarget(GameObject go)
     {
+        if (go == null)
+            return false;
+
+        // ★ 방금 완료된 스텝의 포커스 대상이면 같은 프레임 내에서 허용
+        //   (OnFocusTargetClicked → NextStep 후 같은 onClick에서 실행되는 핸들러 보호)
+        if (_justCompletedFocusTarget != null && Time.frameCount == _justCompletedFrame)
+        {
+            if (go == _justCompletedFocusTarget || go.transform.IsChildOf(_justCompletedFocusTarget.transform))
+                return true;
+        }
+
         if (!_isTutorialActive || _activeSteps == null || _currentStep >= _activeSteps.Count)
             return false;
+
+        // ★ 오브젝트 참조 비교 (이름이 달라도 같은 오브젝트면 허용)
+        if (_currentFocusTargetObj != null && go == _currentFocusTargetObj)
+            return true;
+        // ★ 부모 중에 포커스 대상이 있으면 허용 (자식 버튼 클릭 시)
+        if (_currentFocusTargetObj != null && go.transform.IsChildOf(_currentFocusTargetObj.transform))
+            return true;
         TutorialStepData step = _activeSteps[_currentStep];
-        if (string.IsNullOrEmpty(step.focusTargetName) || go == null)
+        if (string.IsNullOrEmpty(step.focusTargetName))
             return false;
         return go.name == step.focusTargetName;
     }

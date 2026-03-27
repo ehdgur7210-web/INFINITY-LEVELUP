@@ -52,16 +52,28 @@ public class MailUI : MonoBehaviour
     private List<GameObject> currentRewardSlots = new List<GameObject>();
     private Mail currentSelectedMail;
 
+    private bool _openRequested = false;
+
     void Awake()
     {
         Instance = this;
+    }
+
+    void OnEnable()
+    {
+        if (Instance == null)
+            Instance = this;
     }
 
     void Start()
     {
         SetupButtons();
 
-        if (mailPanel != null) mailPanel.SetActive(false);
+        // ★ OpenMailPanel()이 Start() 전에 호출된 경우 패널을 닫지 않음
+        if (!_openRequested)
+        {
+            if (mailPanel != null) mailPanel.SetActive(false);
+        }
         if (mailDetailPanel != null) mailDetailPanel.SetActive(false);
         if (couponPanel != null) couponPanel.SetActive(false);
 
@@ -71,8 +83,12 @@ public class MailUI : MonoBehaviour
     /// <summary>
     /// 버튼 이벤트 설정
     /// </summary>
+    private bool _buttonsSetup = false;
     private void SetupButtons()
     {
+        if (_buttonsSetup) return;
+        _buttonsSetup = true;
+
         if (closeMailButton != null)
             closeMailButton.onClick.AddListener(CloseMailPanel);
 
@@ -104,7 +120,9 @@ public class MailUI : MonoBehaviour
     {
         if (mailPanel != null)
         {
+            _openRequested = true; // ★ Start()에서 닫지 않도록 플래그
             mailPanel.SetActive(true);
+            SetupButtons(); // ★ Start() 전에 호출되었을 경우 버튼 설정 보장
             ShowMailList();
             RefreshMailList();
             TutorialManager.Instance?.OnActionCompleted("OpenMail");
