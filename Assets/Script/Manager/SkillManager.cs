@@ -402,6 +402,9 @@ public class SkillManager : MonoBehaviour
             Debug.Log($"[SkillManager] 핫바 Sort Order → {hotbarCanvas.sortingOrder}");
         }
 
+        if (wasActive)
+            TopMenuManager.Instance?.ClearBanner();
+
         if (!wasActive)
             UpdateSkillTreeUI();
     }

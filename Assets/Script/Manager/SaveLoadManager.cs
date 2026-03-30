@@ -1028,8 +1028,8 @@ public class SaveData
 
     public int playerLevel;
     public int playerExp;
-    public int playerGold;
-    public int playerGem;
+    public long playerGold;
+    public long playerGem;
 
     public float playerHealth;
     public float playerMaxHealth;
@@ -1053,7 +1053,7 @@ public class SaveData
     public int crystals = 0;
     public int essences = 0;
     public int fragments = 0;
-    public int cropPoints = 0; // ★ 작물 포인트
+    public long cropPoints = 0; // ★ 작물 포인트
 
     public int gachaLevel = 1;
     public int gachaCount = 0;

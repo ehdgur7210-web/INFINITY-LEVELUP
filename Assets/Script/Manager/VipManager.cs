@@ -459,7 +459,7 @@ public class VipManager : MonoBehaviour
     }
 
     /// <summary>골드 안전 지급 — GameManager → GameDataBridge 폴백</summary>
-    private void AddGoldSafe(int amount)
+    private void AddGoldSafe(long amount)
     {
         if (GameManager.Instance != null)
             GameManager.Instance.AddGold(amount);

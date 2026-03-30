@@ -13,7 +13,7 @@ using TMPro;
 ///
 /// (구 EquipmentSlot → EquipPanelSlot 리네임)
 /// </summary>
-public class EquipPanelSlot : MonoBehaviour, IDropHandler, IPointerClickHandler
+public class EquipPanelSlot : MonoBehaviour, IDropHandler, IPointerClickHandler, IPointerDownHandler, IPointerUpHandler
 {
     [Header("슬롯 설정")]
     public EquipmentType slotType;
@@ -27,8 +27,16 @@ public class EquipPanelSlot : MonoBehaviour, IDropHandler, IPointerClickHandler
     [Tooltip("장비 이름 텍스트")]
     public TextMeshProUGUI itemNameText;
 
+    [Header("롱프레스 설정")]
+    [Tooltip("꾹 누르면 탈착 (초)")]
+    [SerializeField] private float longPressDuration = 0.6f;
+
     public EquipmentData currentEquipment;
     public int currentEnhanceLevel = 0;
+
+    private float pointerDownTime;
+    private bool isPointerDown;
+    private bool longPressTriggered;
 
     void Awake()
     {
@@ -142,10 +150,59 @@ public class EquipPanelSlot : MonoBehaviour, IDropHandler, IPointerClickHandler
     }
 
     // ─────────────────────────────────────────
+    // 롱프레스: 꾹 누르면 탈착
+    // ─────────────────────────────────────────
+    public void OnPointerDown(PointerEventData eventData)
+    {
+        isPointerDown = true;
+        longPressTriggered = false;
+        pointerDownTime = Time.unscaledTime;
+    }
+
+    public void OnPointerUp(PointerEventData eventData)
+    {
+        isPointerDown = false;
+    }
+
+    void Update()
+    {
+        if (!isPointerDown || longPressTriggered) return;
+        if (currentEquipment == null) return;
+
+        if (Time.unscaledTime - pointerDownTime >= longPressDuration)
+        {
+            longPressTriggered = true;
+            isPointerDown = false;
+            UnequipToInventory();
+        }
+    }
+
+    /// <summary>롱프레스 시 장비 탈착 → 인벤토리로</summary>
+    private void UnequipToInventory()
+    {
+        if (currentEquipment == null || EquipmentManager.Instance == null) return;
+
+        EquipmentData eq = currentEquipment;
+        int enhLevel = currentEnhanceLevel;
+
+        // 인벤토리에 돌려주기 (강화 수치 유지)
+        if (InventoryManager.Instance != null)
+            InventoryManager.Instance.AddItemWithEnhancement(eq, 1, enhLevel);
+
+        // 장비 해제
+        EquipmentManager.Instance.UnequipItem(slotType);
+
+        SoundManager.Instance?.PlayButtonClick();
+        UIManager.Instance?.ShowMessage($"{eq.itemName} 탈착!", Color.yellow);
+    }
+
+    // ─────────────────────────────────────────
     // 클릭: 장착된 아이템 → 강화 패널 열기
     // ─────────────────────────────────────────
     public void OnPointerClick(PointerEventData eventData)
     {
+        // 롱프레스로 탈착했으면 클릭 무시
+        if (longPressTriggered) return;
         if (currentEquipment == null) return;
         SoundManager.Instance?.PlayButtonClick();
 

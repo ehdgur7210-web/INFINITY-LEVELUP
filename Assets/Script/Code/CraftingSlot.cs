@@ -66,7 +66,7 @@ public class CraftingSlot : MonoBehaviour
         if (recipe == null) return;
 
         int playerLevel = 1;
-        int playerGold = 0;
+        long playerGold = 0;
 
         if (CraftingManager.Instance != null && CraftingManager.Instance.playerStats != null)
         {

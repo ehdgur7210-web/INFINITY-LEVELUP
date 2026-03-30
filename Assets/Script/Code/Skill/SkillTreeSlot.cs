@@ -1,129 +1,129 @@
-﻿using UnityEngine;
+using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.EventSystems;
 using TMPro;
 
 /// <summary>
-/// 스킬 트리 슬롯 UI (참조 동기화 수정 버전)
-/// ⭐ 수정: learnedSkill이 항상 SkillManager의 실제 참조를 가리키도록 수정
+/// 스킬 트리 슬롯 UI (깔끔한 아이콘 + 레벨 뱃지)
+/// 클릭하면 SkillDetailPanel에 상세 정보 표시
 /// </summary>
-public class SkillTreeSlot : MonoBehaviour, IBeginDragHandler, IDragHandler, IEndDragHandler
+public class SkillTreeSlot : MonoBehaviour, IBeginDragHandler, IDragHandler, IEndDragHandler, IPointerClickHandler
 {
     [Header("스킬 정보")]
-    public LearnedSkill learnedSkill;       // 습득한 스킬 (참조만 유지)
+    public LearnedSkill learnedSkill;
 
     [Header("UI 참조")]
     public Image skillIconImage;            // 스킬 아이콘
-    public TextMeshProUGUI skillNameText;   // 스킬 이름
-    public TextMeshProUGUI skillLevelText;  // 스킬 레벨
-    public TextMeshProUGUI costText;        // 필요 SP
-    public Button learnButton;              // 습득 버튼
-    public Button levelUpButton;            // 레벨업 버튼
+    public TextMeshProUGUI skillLevelText;  // 레벨 뱃지 ("Lv.3")
+    public GameObject levelBadge;           // 레벨 뱃지 배경 오브젝트
+    public Image slotFrame;                 // 슬롯 테두리 (선택 강조용)
 
     [Header("상태")]
-    public bool isLearned = false;          // 습득 여부
-    public bool canLearn = false;           // 습득 가능 여부
+    public bool isLearned = false;
+    public bool canLearn = false;
 
     [Header("드래그")]
-    private GameObject dragIcon;            // 드래그 중 아이콘
-    private Canvas canvas;                  // 캔버스 참조
+    private GameObject dragIcon;
+    private Canvas canvas;
+
+    // 선택 상태
+    private bool isSelected = false;
+    private static SkillTreeSlot currentSelected;
+
+    // 선택 시 테두리 색상
+    private static readonly Color selectedColor = new Color(1f, 0.8f, 0f);     // 금색
+    private static readonly Color normalColor = new Color(0.5f, 0.5f, 0.5f, 0.5f);
+    private static readonly Color learnedColor = new Color(1f, 1f, 1f, 0.8f);
 
     private int _syncCounter = 0;
-    private const int SYNC_INTERVAL = 30;   // 30프레임마다 동기화
+    private const int SYNC_INTERVAL = 30;
 
     void Start()
     {
-        // 버튼 이벤트
-        if (learnButton != null)
-        {
-            learnButton.onClick.AddListener(OnLearnButtonClicked);
-        }
-
-        if (levelUpButton != null)
-        {
-            levelUpButton.onClick.AddListener(OnLevelUpButtonClicked);
-        }
-
-        // 캔버스 찾기
         canvas = GetComponentInParent<Canvas>();
-
         UpdateSlotUI();
     }
 
     void Update()
     {
-        // 30프레임마다만 동기화 (매 프레임 불필요)
         if (++_syncCounter < SYNC_INTERVAL) return;
         _syncCounter = 0;
 
-        // Canvas가 비활성화 상태면 Update 실행 안 함
-        if (canvas != null && !canvas.gameObject.activeInHierarchy)
-            return;
+        if (canvas != null && !canvas.gameObject.activeInHierarchy) return;
+        if (learnedSkill == null || learnedSkill.skillData == null) return;
+        if (SkillManager.Instance == null) return;
 
-        // learnedSkill이 null이면 Update 실행 안 함
-        if (learnedSkill == null || learnedSkill.skillData == null)
-            return;
-
-        // SkillManager가 null이면 Update 실행 안 함
-        if (SkillManager.Instance == null)
-            return;
-
-        // ⭐ 30프레임 간격으로 SkillManager의 최신 참조 가져오기
         SyncWithSkillManager();
-
-        // 스킬 가능 여부 업데이트
         UpdateLearnability();
     }
 
-    /// <summary>
-    /// ⭐ SkillManager와 동기화 (매 프레임)
-    /// </summary>
     private void SyncWithSkillManager()
     {
         if (learnedSkill == null || learnedSkill.skillData == null) return;
         if (SkillManager.Instance == null) return;
 
-        // ⭐ SkillManager에서 최신 참조 가져오기
         LearnedSkill latest = SkillManager.Instance.GetLearnedSkill(learnedSkill.skillData.skillID);
-
         if (latest != null && latest != learnedSkill)
-        {
-            // ⭐ 참조가 다르면 교체
             learnedSkill = latest;
-        }
     }
 
-    /// <summary>
-    /// 슬롯 설정
-    /// </summary>
+    // ══════════════════════════════════════════════════════
+    // 슬롯 클릭 → 하단 상세 팝업 표시
+    // ══════════════════════════════════════════════════════
+
+    public void OnPointerClick(PointerEventData eventData)
+    {
+        SelectSlot();
+    }
+
+    public void SelectSlot()
+    {
+        // 이전 선택 해제
+        if (currentSelected != null && currentSelected != this)
+            currentSelected.Deselect();
+
+        currentSelected = this;
+        isSelected = true;
+
+        // 테두리 강조
+        if (slotFrame != null)
+            slotFrame.color = selectedColor;
+
+        // 상세 패널에 정보 전달
+        if (SkillDetailPanel.Instance != null)
+            SkillDetailPanel.Instance.ShowSkillDetail(this);
+    }
+
+    public void Deselect()
+    {
+        isSelected = false;
+        if (slotFrame != null)
+            slotFrame.color = isLearned ? learnedColor : normalColor;
+    }
+
+    // ══════════════════════════════════════════════════════
+    // 슬롯 설정 및 UI 업데이트
+    // ══════════════════════════════════════════════════════
+
     public void SetupSlot(SkillData skillData)
     {
         if (skillData == null) return;
 
-        // ⭐ SkillManager에서 실제 참조 가져오기
         if (SkillManager.Instance != null)
         {
             LearnedSkill existing = SkillManager.Instance.GetLearnedSkill(skillData.skillID);
-
             if (existing != null)
-            {
-                // ⭐ 이미 배운 스킬이면 실제 참조 사용
                 learnedSkill = existing;
-            }
             else
             {
-                // ⭐ 아직 안 배운 스킬이면 임시 객체 생성
                 learnedSkill = new LearnedSkill(skillData);
-                learnedSkill.currentLevel = 0; // 미습득 상태
+                learnedSkill.currentLevel = 0;
             }
         }
 
         UpdateSlotUI();
     }
 
-    /// <summary>
-    /// 슬롯 UI 업데이트
-    /// </summary>
     public void UpdateSlotUI()
     {
         if (learnedSkill == null || learnedSkill.skillData == null) return;
@@ -131,90 +131,37 @@ public class SkillTreeSlot : MonoBehaviour, IBeginDragHandler, IDragHandler, IEn
         SkillData skill = learnedSkill.skillData;
         isLearned = learnedSkill.currentLevel > 0;
 
-        // 스킬 아이콘
+        // 아이콘 (미습득 시 어둡게)
         if (skillIconImage != null)
         {
             skillIconImage.sprite = skill.skillIcon;
-            skillIconImage.color = isLearned ? Color.white : new Color(0.5f, 0.5f, 0.5f);
+            skillIconImage.color = isLearned ? Color.white : new Color(0.4f, 0.4f, 0.4f);
         }
 
-        // 스킬 이름
-        if (skillNameText != null)
-        {
-            skillNameText.text = skill.skillName;
-        }
+        // 레벨 뱃지 (습득한 스킬만 표시)
+        if (levelBadge != null)
+            levelBadge.SetActive(isLearned);
 
-        // 스킬 레벨
         if (skillLevelText != null)
         {
             if (isLearned)
-            {
-                skillLevelText.text = $"{learnedSkill.currentLevel}/{skill.maxLevel}";
-            }
+                skillLevelText.text = $"Lv.{learnedSkill.currentLevel}";
             else
-            {
                 skillLevelText.text = "";
-            }
         }
 
-        // 비용
-        if (costText != null)
-        {
-            costText.text = $"SP: {skill.requiredSkillPoints}";
-        }
-
-        // 버튼 표시
-        UpdateButtonState();
+        // 테두리 색상
+        if (slotFrame != null && !isSelected)
+            slotFrame.color = isLearned ? learnedColor : normalColor;
     }
 
-    /// <summary>
-    /// ⭐ 버튼 상태 업데이트
-    /// </summary>
-    private void UpdateButtonState()
-    {
-        if (isLearned)
-        {
-            // 이미 습득함 - 레벨업 버튼만
-            if (learnButton != null)
-            {
-                learnButton.gameObject.SetActive(false);
-            }
+    // ══════════════════════════════════════════════════════
+    // 습득 가능 여부
+    // ══════════════════════════════════════════════════════
 
-            if (levelUpButton != null)
-            {
-                bool canLevelUp = learnedSkill.currentLevel < learnedSkill.skillData.maxLevel;
-                levelUpButton.gameObject.SetActive(canLevelUp);
-                levelUpButton.interactable = canLearn && canLevelUp;
-            }
-        }
-        else
-        {
-            // 미습득 - 습득 버튼만
-            if (learnButton != null)
-            {
-                learnButton.gameObject.SetActive(true);
-                learnButton.interactable = canLearn;
-            }
-
-            if (levelUpButton != null)
-            {
-                levelUpButton.gameObject.SetActive(false);
-            }
-        }
-    }
-
-    /// <summary>
-    /// 습득 가능 여부 업데이트
-    /// </summary>
     void UpdateLearnability()
     {
-        if (learnedSkill == null || learnedSkill.skillData == null)
-        {
-            canLearn = false;
-            return;
-        }
-
-        if (SkillManager.Instance == null)
+        if (learnedSkill == null || learnedSkill.skillData == null || SkillManager.Instance == null)
         {
             canLearn = false;
             return;
@@ -222,18 +169,14 @@ public class SkillTreeSlot : MonoBehaviour, IBeginDragHandler, IDragHandler, IEn
 
         SkillData skill = learnedSkill.skillData;
 
-        // 스킬 포인트 확인
         bool hasEnoughSP = SkillManager.Instance.availableSkillPoints >= skill.requiredSkillPoints;
 
-        // ✅ 레벨 확인 - level=0이면 아직 로드 전이므로 통과
         bool hasEnoughLevel = true;
         int myLevel = PlayerStats.Instance != null ? PlayerStats.Instance.level
                     : (SkillManager.Instance.playerStats != null ? SkillManager.Instance.playerStats.level : 0);
-        // level > 0일 때만 체크 (0이면 초기화 전 → 통과)
         if (myLevel > 0)
             hasEnoughLevel = myLevel >= skill.requiredLevel;
 
-        // 선행 스킬 확인
         bool hasPrerequisites = true;
         if (skill.prerequisiteSkills != null && skill.prerequisiteSkills.Length > 0)
         {
@@ -249,94 +192,38 @@ public class SkillTreeSlot : MonoBehaviour, IBeginDragHandler, IDragHandler, IEn
         }
 
         canLearn = hasEnoughSP && hasEnoughLevel && hasPrerequisites;
-
-        // ⭐ 버튼 상태도 같이 업데이트
-        UpdateButtonState();
     }
 
-    /// <summary>
-    /// 습득 버튼 클릭
-    /// </summary>
-    void OnLearnButtonClicked()
+    // ══════════════════════════════════════════════════════
+    // 습득/레벨업 (SkillDetailPanel에서 호출)
+    // ══════════════════════════════════════════════════════
+
+    public bool TryLearnOrLevelUp()
     {
-        if (learnedSkill == null || learnedSkill.skillData == null)
-        {
-            Debug.LogError("[SkillTreeSlot] learnedSkill이 null입니다!");
-            return;
-        }
-
-        if (SkillManager.Instance == null)
-        {
-            Debug.LogError("[SkillTreeSlot] SkillManager.Instance가 null입니다!");
-            return;
-        }
-
-        Debug.Log($"[SkillTreeSlot] 습득 버튼 클릭: {learnedSkill.skillData.skillName}");
+        if (learnedSkill == null || learnedSkill.skillData == null || SkillManager.Instance == null)
+            return false;
 
         if (SkillManager.Instance.LearnSkill(learnedSkill.skillData))
         {
-            // ★ 스킬 습득 효과음
             SoundManager.Instance?.PlaySkillLearn();
-            // ⭐ 성공 시 최신 참조 가져오기
             LearnedSkill latest = SkillManager.Instance.GetLearnedSkill(learnedSkill.skillData.skillID);
             if (latest != null)
-            {
                 learnedSkill = latest;
-            }
 
             UpdateSlotUI();
+            return true;
         }
+        return false;
     }
 
-    /// <summary>
-    /// 레벨업 버튼 클릭
-    /// </summary>
-    void OnLevelUpButtonClicked()
-    {
-        if (learnedSkill == null || learnedSkill.skillData == null)
-        {
-            Debug.LogError("[SkillTreeSlot] learnedSkill이 null입니다!");
-            return;
-        }
+    // ══════════════════════════════════════════════════════
+    // 드래그 앤 드롭
+    // ══════════════════════════════════════════════════════
 
-        if (SkillManager.Instance == null)
-        {
-            Debug.LogError("[SkillTreeSlot] SkillManager.Instance가 null입니다!");
-            return;
-        }
-
-        Debug.Log($"[SkillTreeSlot] 레벨업 버튼 클릭: {learnedSkill.skillData.skillName} (현재 Lv.{learnedSkill.currentLevel})");
-
-        if (SkillManager.Instance.LearnSkill(learnedSkill.skillData))
-        {
-            // ★ 스킬 레벨업 효과음
-            SoundManager.Instance?.PlaySkillLearn();
-            // ⭐ 성공 시 최신 참조 가져오기
-            LearnedSkill latest = SkillManager.Instance.GetLearnedSkill(learnedSkill.skillData.skillID);
-            if (latest != null)
-            {
-                learnedSkill = latest;
-            }
-
-            Debug.Log($"[SkillTreeSlot] 레벨업 성공! 새 레벨: {learnedSkill.currentLevel}");
-            UpdateSlotUI();
-        }
-        else
-        {
-            Debug.LogWarning($"[SkillTreeSlot] 레벨업 실패!");
-        }
-    }
-
-    // === 드래그 앤 드롭 기능 ===
-
-    /// <summary>
-    /// 드래그 시작
-    /// </summary>
     public void OnBeginDrag(PointerEventData eventData)
     {
-        if (!isLearned) return; // 미습득 스킬은 드래그 불가
+        if (!isLearned) return;
 
-        // 드래그 아이콘 생성
         dragIcon = new GameObject("DragIcon");
         dragIcon.transform.SetParent(canvas.transform, false);
         dragIcon.transform.SetAsLastSibling();
@@ -349,25 +236,15 @@ public class SkillTreeSlot : MonoBehaviour, IBeginDragHandler, IDragHandler, IEn
         rectTransform.sizeDelta = new Vector2(50, 50);
     }
 
-    /// <summary>
-    /// 드래그 중
-    /// </summary>
     public void OnDrag(PointerEventData eventData)
     {
         if (dragIcon != null)
-        {
             dragIcon.transform.position = eventData.position;
-        }
     }
 
-    /// <summary>
-    /// 드래그 종료
-    /// </summary>
     public void OnEndDrag(PointerEventData eventData)
     {
         if (dragIcon != null)
-        {
             Destroy(dragIcon);
-        }
     }
 }

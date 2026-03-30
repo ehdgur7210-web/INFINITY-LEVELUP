@@ -34,7 +34,7 @@ public class FarmSupplySlotUI : MonoBehaviour
     {
         if (iconImage && water.icon) iconImage.sprite = water.icon;
         if (nameText) nameText.text = water.waterName;
-        if (costText) costText.text = water.costGem > 0 ? $"💎 {water.costGem}" : $"💰 {water.costGold}";
+        if (costText) costText.text = water.costGem > 0 ? $"{water.costGem}" : $"{water.costGold}";
         if (effectText) effectText.text = water.extraSpeedBonus > 0
                                             ? $"+{water.extraSpeedBonus * 100f:F0}% 단축"
                                             : "기본 물주기";
@@ -55,7 +55,7 @@ public class FarmSupplySlotUI : MonoBehaviour
     {
         if (iconImage && fert.icon) iconImage.sprite = fert.icon;
         if (nameText) nameText.text = fert.fertilizerName;
-        if (costText) costText.text = fert.costGem > 0 ? $"💎 {fert.costGem}" : $"💰 {fert.costGold}";
+        if (costText) costText.text = fert.costGem > 0 ? $"{fert.costGem}" : $"{fert.costGold}";
         if (effectText) effectText.text = $"수확 +{fert.yieldBonus * 100f:F0}%  속도 +{fert.speedBonus * 100f:F0}%";
         if (ownedText) ownedText.text = $"보유 {owned}개";
 

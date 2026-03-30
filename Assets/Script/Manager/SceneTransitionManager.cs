@@ -103,14 +103,39 @@ public class SceneTransitionManager : MonoBehaviour
         // AudioListener 중복 제거
         RemoveDuplicateAudioListeners();
 
+        // ★ 중복 플레이어 제거
+        RemoveDuplicatePlayers();
+
         // ★ 채팅 채널 재입장 (씬 전환 후)
         BackendChatManager.Instance?.RejoinDefaultChannels();
 
         // 플레이어 씬 배치 + 모드 전환
-        // ★ LoadGame은 여기서 하지 않음!
-        //   SaveLoadManager.Start()의 AutoLoadOnStart() 코루틴이 담당
-        //   → 중복 로드 방지
         StartCoroutine(SetupPlayerForScene(scene.name));
+    }
+
+    /// <summary>씬 로드 후 중복 플레이어 제거 (DDOL 원본만 유지)</summary>
+    private void RemoveDuplicatePlayers()
+    {
+        PlayerController[] players = FindObjectsOfType<PlayerController>();
+        if (players.Length <= 1) return;
+
+        Debug.Log($"[SceneTransitionManager] 중복 플레이어 감지: {players.Length}개");
+
+        foreach (var pc in players)
+        {
+            if (pc.gameObject == persistentPlayer) continue; // 원본 유지
+
+            if (persistentPlayer == null)
+            {
+                // 원본이 없으면 첫 번째를 원본으로 등록
+                persistentPlayer = pc.gameObject;
+                continue;
+            }
+
+            // 나머지 중복 파괴
+            Debug.Log($"[SceneTransitionManager] 중복 플레이어 파괴: {pc.gameObject.name}");
+            Destroy(pc.gameObject);
+        }
     }
 
     private IEnumerator SetupPlayerForScene(string sceneName)

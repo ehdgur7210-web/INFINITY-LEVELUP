@@ -68,6 +68,7 @@ public class FarmBuildingUpgradeUI : MonoBehaviour
     public void ClosePanel()
     {
         upgradePanel?.SetActive(false);
+        FarmSceneController.Instance?.ResetBanner();
     }
 
     // ════════════════════════════════════════════════
@@ -170,8 +171,8 @@ public class FarmBuildingUpgradeUI : MonoBehaviour
         int gold = FarmBuildingManager.Instance.GetNextUpgradeCostGold(type);
 
         // 젬 비용이 있으면 젬 우선 표시
-        if (gem > 0) return $"💎 {gem:N0}";
-        return $"💰 {gold:N0}";
+        if (gem > 0) return $"{gem:N0}";
+        return $"{UIManager.FormatKoreanUnit(gold)}";
     }
 
     // ════════════════════════════════════════════════

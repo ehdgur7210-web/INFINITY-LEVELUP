@@ -44,10 +44,10 @@ public class ChatSystem : MonoBehaviour
     public Button[] tabButtons = new Button[TAB_COUNT];
 
     [Header("===== 탭 색상 =====")]
-    [SerializeField] private Color tabActiveColor = new Color(0.25f, 0.28f, 0.38f, 1f);
-    [SerializeField] private Color tabInactiveColor = new Color(0.12f, 0.14f, 0.2f, 0.8f);
+    [SerializeField] private Color tabActiveColor = new Color(0.35f, 0.38f, 0.50f, 1f);
+    [SerializeField] private Color tabInactiveColor = new Color(0.22f, 0.24f, 0.32f, 1f);
     [SerializeField] private Color tabActiveTextColor = Color.white;
-    [SerializeField] private Color tabInactiveTextColor = new Color(0.6f, 0.6f, 0.6f);
+    [SerializeField] private Color tabInactiveTextColor = new Color(0.75f, 0.75f, 0.75f);
 
     [Header("===== 메시지 영역 =====")]
     public ScrollRect messageScrollRect;
@@ -79,6 +79,22 @@ public class ChatSystem : MonoBehaviour
     [SerializeField] private float messageItemHeight = 48f;
     [SerializeField] private int maxMessages = 50;
     [SerializeField] private float messageFontSize = 28f;
+    [SerializeField] private float avatarSize = 40f;
+
+    [Header("===== 탭 아이콘 (선택) =====")]
+    [SerializeField] private Sprite tabIconAll;
+    [SerializeField] private Sprite tabIconWorld;
+    [SerializeField] private Sprite tabIconGuild;
+    [SerializeField] private Sprite tabIconPrivate;
+    [SerializeField] private Sprite tabIconSystem;
+
+    [Header("===== 기본 아바타 =====")]
+    [Tooltip("채팅 아바타 기본 이미지 (NPC/상대방)")]
+    [SerializeField] private Sprite defaultAvatar;
+
+    [Header("===== 채팅 펼칠 때 숨길 패널들 =====")]
+    [Tooltip("채팅 펼치면 숨기고, 접으면 복원할 패널 목록")]
+    [SerializeField] private GameObject[] hidePanelsOnExpand;
 
     // 자동 축소 제거됨 — 축소 버튼으로만 축소
 
@@ -87,6 +103,7 @@ public class ChatSystem : MonoBehaviour
     private bool isExpanded = false;
     private bool isVisible = false;
     private bool useServerChat = false;
+    private bool[] panelWasActive; // 채팅 펼치기 전 패널 활성 상태 기억
 
     private string whisperTargetNickname;
     private ChatTab currentTab = ChatTab.All;
@@ -112,6 +129,7 @@ public class ChatSystem : MonoBehaviour
         public bool isMe;
         public int combatPower;
         public Action onRescueClick;
+        public Sprite avatar;
     }
 
     // ── NPC 더미 (오프라인 폴백) ──────────────────────────────
@@ -577,6 +595,7 @@ public class ChatSystem : MonoBehaviour
         if (!isExpanded) return;
         isExpanded = false;
         if (isVisible) ShowMinimizedBar();
+        RestoreHiddenPanels();
         TutorialManager.Instance?.OnActionCompleted("ChatCollapse");
     }
 
@@ -584,8 +603,38 @@ public class ChatSystem : MonoBehaviour
     {
         if (isExpanded) return;
         isExpanded = true;
+        HidePanelsForChat();
         if (isVisible) ShowExpandedPanel();
         TutorialManager.Instance?.OnActionCompleted("ChatExpand");
+    }
+
+    /// <summary>채팅 펼칠 때 — 하단 패널들 숨기기 (상태 기억)</summary>
+    private void HidePanelsForChat()
+    {
+        if (hidePanelsOnExpand == null || hidePanelsOnExpand.Length == 0) return;
+
+        panelWasActive = new bool[hidePanelsOnExpand.Length];
+        for (int i = 0; i < hidePanelsOnExpand.Length; i++)
+        {
+            if (hidePanelsOnExpand[i] != null)
+            {
+                panelWasActive[i] = hidePanelsOnExpand[i].activeSelf;
+                hidePanelsOnExpand[i].SetActive(false);
+            }
+        }
+    }
+
+    /// <summary>채팅 접을 때 — 원래 활성이었던 패널만 복원</summary>
+    private void RestoreHiddenPanels()
+    {
+        if (hidePanelsOnExpand == null || panelWasActive == null) return;
+
+        for (int i = 0; i < hidePanelsOnExpand.Length; i++)
+        {
+            if (hidePanelsOnExpand[i] != null && i < panelWasActive.Length)
+                hidePanelsOnExpand[i].SetActive(panelWasActive[i]);
+        }
+        panelWasActive = null;
     }
 
     public void ToggleMinimize()
@@ -629,14 +678,30 @@ public class ChatSystem : MonoBehaviour
 
     private void SetupTabButtons()
     {
+        Sprite[] tabIcons = { tabIconAll, tabIconWorld, tabIconGuild, tabIconPrivate, tabIconSystem };
+
         for (int i = 0; i < tabButtons.Length && i < TAB_COUNT; i++)
         {
             if (tabButtons[i] == null) continue;
             int tabIdx = i;
             tabButtons[i].onClick.AddListener(() => OnTabClicked((ChatTab)tabIdx));
 
+            // 텍스트 설정
             var txt = tabButtons[i].GetComponentInChildren<TextMeshProUGUI>();
             if (txt != null) txt.text = TabNames[i];
+
+            // 탭 아이콘 추가 (Inspector에 Sprite가 연결된 경우)
+            if (i < tabIcons.Length && tabIcons[i] != null)
+            {
+                // 버튼 안에 아이콘 Image가 있으면 설정
+                Transform iconTf = tabButtons[i].transform.Find("Icon");
+                if (iconTf != null)
+                {
+                    Image iconImg = iconTf.GetComponent<Image>();
+                    if (iconImg != null)
+                        iconImg.sprite = tabIcons[i];
+                }
+            }
         }
         UpdateTabVisuals();
     }
@@ -674,7 +739,12 @@ public class ChatSystem : MonoBehaviour
             bool active = ((int)currentTab == i);
 
             var img = tabButtons[i].GetComponent<Image>();
-            if (img != null) img.color = active ? tabActiveColor : tabInactiveColor;
+            if (img != null)
+            {
+                Color c = active ? tabActiveColor : tabInactiveColor;
+                c.a = 1f; // 알파 항상 1 (뿌옇게 안 보이는 문제 방지)
+                img.color = c;
+            }
 
             var txt = tabButtons[i].GetComponentInChildren<TextMeshProUGUI>();
             if (txt != null) txt.color = active ? tabActiveTextColor : tabInactiveTextColor;
@@ -751,7 +821,7 @@ public class ChatSystem : MonoBehaviour
 
     private void SpawnNormalMessage(ChatMessageData data)
     {
-        if (messagePrefab == null) return;
+        if (messagePrefab == null || messageContent == null) return;
 
         GameObject msgObj = Instantiate(messagePrefab, messageContent);
         TextMeshProUGUI tmp = msgObj.GetComponent<TextMeshProUGUI>()
@@ -766,6 +836,7 @@ public class ChatSystem : MonoBehaviour
             tmp.enableWordWrapping = true;
             tmp.overflowMode = TextOverflowModes.Overflow;
             tmp.fontSize = messageFontSize;
+            tmp.alignment = TextAlignmentOptions.Left;
         }
 
         ConfigureMessageLayout(msgObj);
@@ -785,6 +856,7 @@ public class ChatSystem : MonoBehaviour
             tmp.enableWordWrapping = true;
             tmp.overflowMode = TextOverflowModes.Overflow;
             tmp.fontSize = messageFontSize;
+            tmp.alignment = TextAlignmentOptions.Center;
         }
 
         ConfigureMessageLayout(msgObj);
@@ -834,11 +906,27 @@ public class ChatSystem : MonoBehaviour
 
     private void ConfigureMessageLayout(GameObject msgObj)
     {
-        var csf = msgObj.GetComponent<ContentSizeFitter>();
-        if (csf != null) Destroy(csf);
+        // RectTransform을 가로 전체 stretch로 설정
+        RectTransform rt = msgObj.GetComponent<RectTransform>();
+        if (rt != null)
+        {
+            rt.anchorMin = new Vector2(0f, 1f);
+            rt.anchorMax = new Vector2(1f, 1f);
+            rt.pivot = new Vector2(0.5f, 1f);
+            rt.offsetMin = new Vector2(0f, rt.offsetMin.y);
+            rt.offsetMax = new Vector2(0f, rt.offsetMax.y);
+        }
+
+        // ContentSizeFitter — 높이만 자동 (텍스트 줄바꿈 시 늘어남)
+        var csf = msgObj.GetComponent<ContentSizeFitter>()
+               ?? msgObj.AddComponent<ContentSizeFitter>();
+        csf.horizontalFit = ContentSizeFitter.FitMode.Unconstrained;
+        csf.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
+
+        // LayoutElement — 최소 높이만 보장
         LayoutElement le = msgObj.GetComponent<LayoutElement>() ?? msgObj.AddComponent<LayoutElement>();
         le.minHeight = messageItemHeight;
-        le.preferredHeight = messageItemHeight;
+        le.preferredHeight = -1; // 자동
     }
 
     private void ClearDisplayedMessages()

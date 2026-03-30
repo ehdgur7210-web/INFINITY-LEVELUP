@@ -95,9 +95,13 @@ MonoBehaviour:
   borderImage: {fileID: 2683480280271325409}
   activeIndicator: {fileID: 5155573896283809714}
   nameText: {fileID: 5877448271553277369}
+  cooldownOverlay: {fileID: 0}
+  cooldownText: {fileID: 0}
   emptyColor: {r: 0.2, g: 0.2, b: 0.2, a: 0.5}
   activeColor: {r: 0, g: 1, b: 0.5, a: 0.8}
   inactiveColor: {r: 0.5, g: 0.5, b: 0.5, a: 1}
+  cooldownOverlayColor: {r: 0, g: 0, b: 0, a: 0.6}
+  longPressThreshold: 0.5
   dragGhostAlpha: 0.7
   dragOriginAlpha: 0.3
 --- !u!1 &2569398515058222742
@@ -292,7 +296,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   m_Material: {fileID: 0}
-  m_Color: {r: 0.83396226, g: 0.80406547, b: 0.80406547, a: 1}
+  m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_RaycastTarget: 1
   m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
   m_Maskable: 1
@@ -367,7 +371,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   m_Material: {fileID: 0}
-  m_Color: {r: 0.83396226, g: 0.80406547, b: 0.80406547, a: 1}
+  m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_RaycastTarget: 1
   m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
   m_Maskable: 1

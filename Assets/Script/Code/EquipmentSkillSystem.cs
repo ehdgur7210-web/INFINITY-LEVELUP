@@ -184,7 +184,7 @@ public class EquipmentSkillSystem : MonoBehaviour
         if (UIManager.Instance != null)
         {
             Color messageColor = GetRarityColor(rarity);
-            UIManager.Instance.ShowMessage($"⭐ {rarity} {skill.skillName} 활성화!", messageColor);
+            UIManager.Instance.ShowMessage($"{rarity} {skill.skillName} 활성화!", messageColor);
         }
     }
 

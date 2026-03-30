@@ -27,7 +27,7 @@ public class FarmQuestPanelUI : MonoBehaviour
 
     void Awake()
     {
-        closeButton?.onClick.AddListener(() => gameObject.SetActive(false));
+        closeButton?.onClick.AddListener(() => { gameObject.SetActive(false); FarmSceneController.Instance?.ResetBanner(); });
     }
 
     void OnEnable()
@@ -70,8 +70,8 @@ public class FarmQuestPanelUI : MonoBehaviour
             else go.SetActive(false);
         }
 
-        int pts = FarmManager.Instance?.GetCropPoints() ?? 0;
-        if (cropPointsText) cropPointsText.text = $"🌱 작물 포인트: {pts}";
+        long pts = FarmManager.Instance?.GetCropPoints() ?? 0;
+        if (cropPointsText) cropPointsText.text = $"작물 포인트: {UIManager.FormatKoreanUnit(pts)}";
         LayoutRebuilder.ForceRebuildLayoutImmediate(questListContent as RectTransform);
     }
 
@@ -131,8 +131,8 @@ public class FarmQuestPanelUI : MonoBehaviour
         var rewardRoot = go.transform.Find("보상");
         if (rewardRoot != null)
         {
-            SetChildTmp(rewardRoot, "Cp", $"🌱 {quest.cropPointReward}");
-            SetChildTmp(rewardRoot, "Gold", $"💰 {quest.goldReward}");
+            SetChildTmp(rewardRoot, "Cp", $"{quest.cropPointReward}");
+            SetChildTmp(rewardRoot, "Gold", $"{UIManager.FormatKoreanUnit(quest.goldReward)}");
         }
 
         // ── 상태별 GO 표시/숨김
@@ -221,8 +221,8 @@ public class FarmQuestPanelUI : MonoBehaviour
         RefreshQuestList();
         UIManager.Instance?.ShowMessage($"🎉 퀘스트 완료! {q.questTitle}", Color.yellow);
     }
-    private void OnCropPointsChanged(int pts)
+    private void OnCropPointsChanged(long pts)
     {
-        if (cropPointsText) cropPointsText.text = $"🌱 작물 포인트: {pts}";
+        if (cropPointsText) cropPointsText.text = $"작물 포인트: {UIManager.FormatKoreanUnit(pts)}";
     }
 }

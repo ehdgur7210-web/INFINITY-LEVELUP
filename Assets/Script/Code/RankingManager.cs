@@ -278,6 +278,7 @@ public class RankingManager : MonoBehaviour
     {
         ClosePortraitPopup();
         if (rankingPanel != null) rankingPanel.SetActive(false);
+        TopMenuManager.Instance?.ClearBanner();
     }
 
     private string GetTitleForType(RankType type) => type switch
@@ -565,11 +566,11 @@ public class RankingManager : MonoBehaviour
         return list;
     }
 
-    private int GetScore(int cp, int lv, int farm) => currentType switch
+    private int GetScore(int cp, int lv, long farm) => currentType switch
     {
         RankType.CombatPower => cp,
         RankType.Level       => lv,
-        RankType.Farm        => farm,
+        RankType.Farm        => (int)farm,
         _                    => cp
     };
 

@@ -102,6 +102,14 @@ public class CharacterSelectManager : MonoBehaviour
     [Header("===== 씬 이름 =====")]
     [SerializeField] private string gameSceneName = "MainScene";
 
+    [Header("===== 로딩 화면 =====")]
+    [Tooltip("로딩 패널 (LoginScene Canvas 안에 배치)")]
+    [SerializeField] private GameObject 로딩패널;
+    [Tooltip("로딩 프로그레스 바")]
+    [SerializeField] private UnityEngine.UI.Slider 로딩바;
+    [Tooltip("로딩 텍스트 (예: '로딩 중... 85%')")]
+    [SerializeField] private TMPro.TextMeshProUGUI 로딩텍스트;
+
     [Header("===== 뒤로가기 =====")]
     [SerializeField] private Button backButton;
 
@@ -493,11 +501,15 @@ public class CharacterSelectManager : MonoBehaviour
         GameDataBridge.WriteCharacterSlots();
         GameDataBridge.SetCurrentUser(data.accountID);
 
-        // ★ SceneTransitionManager 우선, 없으면 직접 로드
+        // ★ SceneTransitionManager 우선, 없으면 로딩 화면 직접 표시
         if (SceneTransitionManager.Instance != null)
+        {
             SceneTransitionManager.Instance.LoadGameplay();
+        }
         else
-            UnityEngine.SceneManagement.SceneManager.LoadScene(gameSceneName);
+        {
+            StartCoroutine(LoadMainSceneWithLoading());
+        }
     }
 
     /// <summary>
@@ -737,6 +749,54 @@ public class CharacterSelectManager : MonoBehaviour
         if (GameDataBridge.HasData && GameDataBridge.CurrentData.activeCharacterSlot == idx)
         {
             GameDataBridge.ResetCurrentData();
+        }
+    }
+
+    // ══════════════════════════════════════════════════════
+    //  로딩 화면 (SceneTransitionManager 없을 때 사용)
+    // ══════════════════════════════════════════════════════
+
+    private IEnumerator LoadMainSceneWithLoading()
+    {
+        // 로딩 패널 표시
+        if (로딩패널 != null)
+            로딩패널.SetActive(true);
+        if (로딩바 != null)
+            로딩바.value = 1f; // 1에서 시작
+        if (로딩텍스트 != null)
+            로딩텍스트.text = "로딩 중...";
+
+        yield return null;
+
+        // 비동기 씬 로딩
+        AsyncOperation asyncLoad = UnityEngine.SceneManagement.SceneManager.LoadSceneAsync(gameSceneName);
+        if (asyncLoad == null)
+        {
+            Debug.LogError($"[CharacterSelect] 씬 '{gameSceneName}' 없음!");
+            if (로딩패널 != null) 로딩패널.SetActive(false);
+            yield break;
+        }
+        asyncLoad.allowSceneActivation = false;
+
+        // 로딩 진행률 표시 (1→0 방향)
+        while (!asyncLoad.isDone)
+        {
+            float progress = Mathf.Clamp01(asyncLoad.progress / 0.9f);
+
+            if (로딩바 != null)
+                로딩바.value = 1f - progress; // 반대로: 1→0
+            if (로딩텍스트 != null)
+                로딩텍스트.text = $"로딩 중... {(int)(progress * 100)}%";
+
+            if (asyncLoad.progress >= 0.9f)
+            {
+                if (로딩바 != null) 로딩바.value = 0f; // 0으로 완료
+                if (로딩텍스트 != null) 로딩텍스트.text = "준비 완료!";
+                yield return new WaitForSeconds(0.5f);
+                asyncLoad.allowSceneActivation = true;
+            }
+
+            yield return null;
         }
     }
 }

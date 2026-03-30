@@ -47,7 +47,7 @@ public class EquipmentLevelUpPanel : MonoBehaviour
 
     [Header("레벨업 정보 (우측)")]
     public TextMeshProUGUI nextStatText;
-    public TextMeshProUGUI arrowText;
+    public Image arrowImage;
     public Image requiredMaterialIcon;
     public TextMeshProUGUI requiredMaterialCount;
     public TextMeshProUGUI requiredGoldText;
@@ -408,7 +408,7 @@ public class EquipmentLevelUpPanel : MonoBehaviour
         if (currentStatText != null) currentStatText.gameObject.SetActive(active);
         if (descriptionText != null) descriptionText.gameObject.SetActive(active);
         if (nextStatText != null) nextStatText.gameObject.SetActive(active);
-        if (arrowText != null) arrowText.gameObject.SetActive(active);
+        if (arrowImage != null) arrowImage.gameObject.SetActive(active);
         if (requiredMaterialIcon != null) requiredMaterialIcon.gameObject.SetActive(active);
         if (requiredMaterialCount != null) requiredMaterialCount.gameObject.SetActive(active);
         if (requiredGoldText != null) requiredGoldText.gameObject.SetActive(active);
@@ -498,7 +498,7 @@ public class EquipmentLevelUpPanel : MonoBehaviour
         {
             if (nextStatText != null)
                 nextStatText.text = "<color=#FFD700>최대 레벨 달성!</color>";
-            if (arrowText != null) arrowText.gameObject.SetActive(false);
+            if (arrowImage != null) arrowImage.gameObject.SetActive(false);
             if (requiredGoldText != null) requiredGoldText.text = "-";
             if (requiredMaterialCount != null) requiredMaterialCount.text = "-";
             if (levelUpButton != null) levelUpButton.interactable = false;
@@ -510,16 +510,13 @@ public class EquipmentLevelUpPanel : MonoBehaviour
             EquipmentStats nextStats = currentEquip.GetLeveledStats(currentLevel + 1);
             if (nextStatText != null)
                 nextStatText.text = FormatStatsWithDiff(curStats, nextStats);
-            if (arrowText != null)
-            {
-                arrowText.text = "→";
-                arrowText.gameObject.SetActive(true);
-            }
+            if (arrowImage != null)
+                arrowImage.gameObject.SetActive(true);
 
             // 재료/골드 비용
             int goldNeeded = currentEquip.GetLevelUpGold(currentLevel);
             int matNeeded = currentEquip.GetRequiredMaterials(currentLevel);
-            int goldHave = GameManager.Instance != null ? GameManager.Instance.PlayerGold : 0;
+            long goldHave = GameManager.Instance != null ? GameManager.Instance.PlayerGold : 0;
             int matHave = currentSlot != null ? Mathf.Max(0, currentSlot.itemCount - 1) : 0;
 
             // 수량 조절 반영
@@ -693,7 +690,7 @@ public class EquipmentLevelUpPanel : MonoBehaviour
         // 비용
         int gemCost = GetSkillGemCost(curSkillLv);
         int matHave = currentSlot != null ? Mathf.Max(0, currentSlot.itemCount - 1) : 0;
-        int gemHave = GameManager.Instance != null ? GameManager.Instance.PlayerGem : 0;
+        long gemHave = GameManager.Instance != null ? GameManager.Instance.PlayerGem : 0;
         bool canAfford = gemHave >= gemCost && matHave >= consumeCount;
 
         if (skillCostText != null)

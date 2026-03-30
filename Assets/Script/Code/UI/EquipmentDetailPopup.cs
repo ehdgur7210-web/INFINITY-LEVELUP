@@ -38,7 +38,7 @@ public class EquipmentDetailPopup : MonoBehaviour
     [Header("스탯 비교")]
     public TextMeshProUGUI currentStatsText;
     public TextMeshProUGUI nextStatsText;
-    public TextMeshProUGUI arrowText;
+    public Image arrowImage;
 
     [Header("레벨업 비용")]
     public TextMeshProUGUI goldCostText;
@@ -172,18 +172,15 @@ public class EquipmentDetailPopup : MonoBehaviour
         if (isMaxLevel)
         {
             if (nextStatsText != null) nextStatsText.text = "<color=#FFD700>MAX</color>";
-            if (arrowText != null) arrowText.gameObject.SetActive(false);
+            if (arrowImage != null) arrowImage.gameObject.SetActive(false);
         }
         else
         {
             EquipmentStats nextStats = currentEquip.GetLeveledStats(curLv + 1);
             string next = FormatStatsWithDiff(curStats, nextStats);
             if (nextStatsText != null) nextStatsText.text = next;
-            if (arrowText != null)
-            {
-                arrowText.text = ">";
-                arrowText.gameObject.SetActive(true);
-            }
+            if (arrowImage != null)
+                arrowImage.gameObject.SetActive(true);
         }
     }
 
@@ -200,7 +197,7 @@ public class EquipmentDetailPopup : MonoBehaviour
 
         int goldNeeded = currentEquip.GetLevelUpGold(curLv);
         int matNeeded = currentEquip.GetRequiredMaterials(curLv);
-        int goldHave = GameManager.Instance != null ? GameManager.Instance.PlayerGold : 0;
+        long goldHave = GameManager.Instance != null ? GameManager.Instance.PlayerGold : 0;
         int matHave = currentSlot.itemCount - 1; // 재료 = 동일 아이템 (보유 - 1, 1개는 남겨야 함)
 
         bool canAfford = goldHave >= goldNeeded && matHave >= matNeeded;

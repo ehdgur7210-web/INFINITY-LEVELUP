@@ -148,6 +148,7 @@ public class AchievementSystem : MonoBehaviour
         {
             achievementPanel.SetActive(false);
         }
+        TopMenuManager.Instance?.ClearBanner();
     }
 
     /// <summary>
@@ -212,17 +213,16 @@ public class AchievementSystem : MonoBehaviour
 
         progress.isCompleted = true;
 
-        Debug.Log($" 업적 달성! {progress.achievement.achievementName}");
+        Debug.Log($"업적 달성! {progress.achievement.achievementName}");
 
-        // 알림 표시
+        // 알림 메시지 표시
         ShowAchievementNotification(progress.achievement);
 
-        //  업적 UI 자동 열기
-        if (achievementPanel != null && !achievementPanel.activeSelf)
-        {
-            OpenAchievementUI();
-        }
-        else if (achievementPanel != null && achievementPanel.activeSelf)
+        // ★ 자동 팝업 제거 → 뱃지 알림으로 변경
+        TopMenuManager.Instance?.ShowAchieveBadge();
+
+        // 이미 열려있으면 UI만 갱신
+        if (achievementPanel != null && achievementPanel.activeSelf)
         {
             UpdateAchievementUI();
             UpdateCompletionText();

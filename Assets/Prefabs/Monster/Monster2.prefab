@@ -13,7 +13,6 @@ GameObject:
   - component: {fileID: 4482715384920658197}
   - component: {fileID: 5590921417961702289}
   - component: {fileID: 7470322330249950833}
-  - component: {fileID: 4221355404226793615}
   m_Layer: 7
   m_Name: Monster2
   m_TagString: Monster
@@ -181,7 +180,6 @@ MonoBehaviour:
   usePlayerTracking: 1
   detectionRange: 80
   moveDirection: {x: -1, y: 0}
-  flipSpriteByDirection: 1
   attackRange: 1
   attackCooldown: 1.5
   targetLayer:
@@ -191,24 +189,5 @@ MonoBehaviour:
   expDrop: 5
   equipmentTickets: 1
   itemDropTable: []
-  Effect: {fileID: 0}
---- !u!114 &4221355404226793615
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 6687599173901709884}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 7be6b056fe6a74a4a969dea8f38a36be, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  healthBarPrefab: {fileID: 278050180543554877, guid: 84a718baf5e3cbe4dadaf0859d2473cb, type: 3}
-  offset: {x: 0, y: 0.2, z: 0}
-  barScale: 0.01
-  highHpColor: {r: 0, g: 1, b: 0, a: 1}
-  midHpColor: {r: 1, g: 0.92156863, b: 0.015686275, a: 1}
-  lowHpColor: {r: 1, g: 0, b: 0, a: 1}
-  alwaysVisible: 1
-  visibleDuration: 3
+  deathParticlePrefab: {fileID: 0}
+  deathParticleDuration: 1

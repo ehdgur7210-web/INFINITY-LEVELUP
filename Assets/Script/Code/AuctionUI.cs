@@ -854,6 +854,7 @@ public class AuctionUI : MonoBehaviour
         if (auctionPanel != null) auctionPanel.SetActive(false);
         if (bidPopup != null) bidPopup.SetActive(false);
         if (registerPopup != null) registerPopup.SetActive(false);
+        TopMenuManager.Instance?.ClearBanner();
     }
 
     public void ToggleAuction()
@@ -880,10 +881,10 @@ public class AuctionUI : MonoBehaviour
         }
     }
 
-    private void UpdateGold(int gold)
+    private void UpdateGold(long gold)
     {
         if (playerGoldText != null)
-            playerGoldText.text = $"{gold:N0}G";
+            playerGoldText.text = $"{UIManager.FormatKoreanUnit(gold)}G";
     }
 
     // ══════════════════════════════════════

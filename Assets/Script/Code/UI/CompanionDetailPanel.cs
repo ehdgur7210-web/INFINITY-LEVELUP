@@ -69,8 +69,12 @@ public class CompanionDetailPanel : MonoBehaviour
     [SerializeField] private TextMeshProUGUI expText;               // "1250 / 3000"
 
     [Header("===== 스탯 미리보기 =====")]
-    [SerializeField] private TextMeshProUGUI atkPreviewText;        // "공격력: 100 → 120"
-    [SerializeField] private TextMeshProUGUI spdPreviewText;        // "공격속도: 1.0 → 1.05"
+    [SerializeField] private TextMeshProUGUI atkPreviewText;        // "공격력: 100"
+    [SerializeField] private Image atkArrowImage;                    // → 화살표 이미지
+    [SerializeField] private TextMeshProUGUI atkNextText;            // "120" (다음 값)
+    [SerializeField] private TextMeshProUGUI spdPreviewText;        // "공격속도: 1.0"
+    [SerializeField] private Image spdArrowImage;                    // → 화살표 이미지
+    [SerializeField] private TextMeshProUGUI spdNextText;            // "1.05" (다음 값)
 
     [Header("===== 재료 슬롯 =====")]
     [SerializeField] private Transform materialSlotParent;
@@ -269,12 +273,20 @@ public class CompanionDetailPanel : MonoBehaviour
         float currentAtk = GetScaledStat(_currentCompanion.attackPower, _currentLevel);
         float nextAtk = GetScaledStat(_currentCompanion.attackPower, _currentLevel + 1);
         if (atkPreviewText != null)
-            atkPreviewText.text = $"공격력: {currentAtk:N0} → <color=#00FF00>{nextAtk:N0}</color>";
+            atkPreviewText.text = $"공격력: {currentAtk:N0}";
+        if (atkArrowImage != null)
+            atkArrowImage.gameObject.SetActive(true);
+        if (atkNextText != null)
+            atkNextText.text = $"<color=#00FF00>{nextAtk:N0}</color>";
 
         float currentSpd = GetScaledStat(_currentCompanion.attackSpeed, _currentLevel);
         float nextSpd = GetScaledStat(_currentCompanion.attackSpeed, _currentLevel + 1);
         if (spdPreviewText != null)
-            spdPreviewText.text = $"공격속도: {currentSpd:F2} → <color=#00FF00>{nextSpd:F2}</color>";
+            spdPreviewText.text = $"공격속도: {currentSpd:F2}";
+        if (spdArrowImage != null)
+            spdArrowImage.gameObject.SetActive(true);
+        if (spdNextText != null)
+            spdNextText.text = $"<color=#00FF00>{nextSpd:F2}</color>";
 
         // 재료 경험치/비용
         int totalExpGain = GetTotalMaterialExp();
@@ -525,7 +537,7 @@ public class CompanionDetailPanel : MonoBehaviour
     //  헬퍼
     // ─────────────────────────────────────────────────────────────
 
-    private bool TrySpendGold(int amount)
+    private bool TrySpendGold(long amount)
     {
         if (GameManager.Instance != null)
         {

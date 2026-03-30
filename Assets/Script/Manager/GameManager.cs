@@ -27,8 +27,8 @@ public class GameManager : MonoBehaviour
     public static GameManager Instance { get; private set; }
 
     [Header("플레이어 자원")]
-    public int playerGold = 1000;
-    public int playerGem = 100;
+    public long playerGold = 1000;
+    public long playerGem = 100;
     [SerializeField] private int playerExp = 0;
     [SerializeField] private int playerLevel = 1;
 
@@ -36,14 +36,14 @@ public class GameManager : MonoBehaviour
     public GameConfig gameConfig;
 
     // 자원 변경 이벤트
-    public static event Action<int> OnGoldChanged;
-    public static event Action<int> OnGemChanged;
+    public static event Action<long> OnGoldChanged;
+    public static event Action<long> OnGemChanged;
     public static event Action<int, int> OnExpChanged;  // exp, level
     public static event Action<string, int> OnItemAcquired;
 
     // 읽기 전용 프로퍼티
-    public int PlayerGold => playerGold;
-    public int PlayerGem => playerGem;
+    public long PlayerGold => playerGold;
+    public long PlayerGem => playerGem;
     public int PlayerExp => playerExp;
     public int PlayerLevel => playerLevel;
 
@@ -102,7 +102,7 @@ public class GameManager : MonoBehaviour
     //  골드 관리
     // ══════════════════════════════════════════════════════
 
-    public void AddGold(int amount)
+    public void AddGold(long amount)
     {
         if (amount <= 0) return;
         playerGold += amount;
@@ -110,7 +110,7 @@ public class GameManager : MonoBehaviour
         Debug.Log($"골드 획득: +{amount} (총 골드: {playerGold})");
     }
 
-    public bool SpendGold(int amount)
+    public bool SpendGold(long amount)
     {
         if (amount <= 0) { Debug.LogWarning("지출 금액이 0 이하입니다!"); return false; }
 
@@ -125,9 +125,9 @@ public class GameManager : MonoBehaviour
         return false;
     }
 
-    public void SetGold(int amount)
+    public void SetGold(long amount)
     {
-        playerGold = Mathf.Max(0, amount);
+        playerGold = System.Math.Max(0L, amount);
         OnGoldChanged?.Invoke(playerGold);
     }
 
@@ -135,14 +135,14 @@ public class GameManager : MonoBehaviour
     //  보석 관리
     // ══════════════════════════════════════════════════════
 
-    public void AddGem(int amount)
+    public void AddGem(long amount)
     {
         if (amount <= 0) return;
         playerGem += amount;
         OnGemChanged?.Invoke(playerGem);
     }
 
-    public bool SpendGem(int amount)
+    public bool SpendGem(long amount)
     {
         if (amount <= 0) { Debug.LogWarning("지출 금액이 0 이하입니다!"); return false; }
 
@@ -157,9 +157,9 @@ public class GameManager : MonoBehaviour
         return false;
     }
 
-    public void SetGem(int amount)
+    public void SetGem(long amount)
     {
-        playerGem = Mathf.Max(0, amount);
+        playerGem = System.Math.Max(0L, amount);
         OnGemChanged?.Invoke(playerGem);
     }
 

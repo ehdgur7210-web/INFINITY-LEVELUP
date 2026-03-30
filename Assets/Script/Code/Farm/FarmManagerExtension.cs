@@ -30,7 +30,7 @@ public class FarmManagerExtension : MonoBehaviour
     public static event Action<int, List<CropHarvestReward>> OnHarvestCompleteStatic;
 
     /// <summary>FarmManager.OnCropPointsChanged (static event) → 재노출</summary>
-    public static event Action<int> OnCropPointsChanged;
+    public static event Action<long> OnCropPointsChanged;
 
     public static void InvokePlotChanged(int plotIndex)
    => OnPlotStateChangedStatic?.Invoke(plotIndex);
@@ -120,6 +120,6 @@ public class FarmManagerExtension : MonoBehaviour
     private void BridgeHarvestComplete(int index, List<CropHarvestReward> rewards)
         => OnHarvestCompleteStatic?.Invoke(index, rewards);
 
-    private void BridgeCropPoints(int pts)
+    private void BridgeCropPoints(long pts)
         => OnCropPointsChanged?.Invoke(pts);
 }

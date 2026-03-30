@@ -90,7 +90,7 @@ public class FarmItemSelectPopup : MonoBehaviour
                 : "기본";
             string sub = owned > 0
                 ? $"보유 {owned}개  {effect}"
-                : $"{(water.costGem > 0 ? $"💎 {water.costGem}" : $"💰 {water.costGold}")}  {effect}";
+                : $"{(water.costGem > 0 ? $"{water.costGem}" : $"{water.costGold}")}  {effect}";
 
             var go = SpawnSlot(water.icon, water.waterName, sub, false, "");
             var cap = water;
@@ -118,7 +118,7 @@ public class FarmItemSelectPopup : MonoBehaviour
             string effect = $"수확+{fert.yieldBonus * 100f:F0}%";
             string sub = owned > 0
                 ? $"보유 {owned}개  {effect}"
-                : $"{(fert.costGem > 0 ? $"💎 {fert.costGem}" : $"💰 {fert.costGold}")}  {effect}";
+                : $"{(fert.costGem > 0 ? $"{fert.costGem}" : $"{fert.costGold}")}  {effect}";
 
             var go = SpawnSlot(fert.icon, fert.fertilizerName, sub, false, "");
             var cap = fert;

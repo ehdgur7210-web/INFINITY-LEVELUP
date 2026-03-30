@@ -45,7 +45,7 @@ public class ResourceBarManager : MonoBehaviour
     public int crystals = 0;                // 크리스탈
     public int essences = 0;                // 에센스
     public int fragments = 0;               // 파편
-    public int cropPoints = 0;              // ★ 작물 포인트
+    public long cropPoints = 0;              // ★ 작물 포인트
 
     [Header("애니메이션 설정")]
     [SerializeField] private bool enablePunchAnimation = true;
@@ -375,11 +375,11 @@ public class ResourceBarManager : MonoBehaviour
     private void UpdateCropPointUI()
     {
         if (cropPointText != null)
-            cropPointText.text = $"🌱 {FormatNumber(cropPoints)}";
+            cropPointText.text = UIManager.FormatKoreanUnit(cropPoints);
     }
 
     // ★ FarmManagerExtension 이벤트 수신
-    private void OnCropPointsChanged(int amount)
+    private void OnCropPointsChanged(long amount)
     {
         cropPoints = amount;
         UpdateCropPointUI();
@@ -388,7 +388,7 @@ public class ResourceBarManager : MonoBehaviour
     }
 
     // ★ 외부에서 직접 추가할 때 (퀘스트 보상 등)
-    public void AddCropPoints(int amount)
+    public void AddCropPoints(long amount)
     {
         cropPoints += amount;
         UpdateCropPointUI();
@@ -396,7 +396,7 @@ public class ResourceBarManager : MonoBehaviour
             AnimateText(cropPointText.transform);
     }
 
-    public void SetCropPoints(int amount)
+    public void SetCropPoints(long amount)
     {
         cropPoints = amount;
         UpdateCropPointUI();

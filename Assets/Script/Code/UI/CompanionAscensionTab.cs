@@ -44,7 +44,7 @@ public class CompanionAscensionTab : MonoBehaviour
     [SerializeField] private Image companionIcon;
     [SerializeField] private TextMeshProUGUI companionNameText;
     [SerializeField] private TextMeshProUGUI currentStarsText;    // "★★★★★"
-    [SerializeField] private TextMeshProUGUI arrowText;           // "↓"
+    [SerializeField] private Image arrowImage;                     // ↓ 화살표 이미지
     [SerializeField] private TextMeshProUGUI nextStarsText;       // "★★★★★★"
 
     [Header("===== 승성 조건 =====")]
@@ -58,7 +58,9 @@ public class CompanionAscensionTab : MonoBehaviour
     [SerializeField] private TextMeshProUGUI ascensionButtonText;
 
     [Header("===== 스탯 보너스 미리보기 =====")]
-    [SerializeField] private TextMeshProUGUI statBonusText;       // "공격력 +10%, 체력 +10%"
+    [SerializeField] private TextMeshProUGUI statBonusText;       // "전 스탯 +10%"
+    [SerializeField] private Image statBonusArrowImage;            // → 화살표 이미지
+    [SerializeField] private TextMeshProUGUI statBonusNextText;    // "+20%" (다음 값)
 
     [Header("===== 승성 설정 (Inspector 조정 가능) =====")]
     [SerializeField] private int baseGoldCost = 10000;            // 기본 골드 비용
@@ -147,8 +149,8 @@ public class CompanionAscensionTab : MonoBehaviour
         // 별 표시: 현재 → 다음
         if (currentStarsText != null)
             currentStarsText.text = MakeStarString(_currentStars);
-        if (arrowText != null)
-            arrowText.text = isMaxed ? "" : "↓";
+        if (arrowImage != null)
+            arrowImage.gameObject.SetActive(!isMaxed);
         if (nextStarsText != null)
             nextStarsText.text = isMaxed ? "<color=yellow>MAX</color>" : $"<color=#00FF00>{MakeStarString(_currentStars + 1)}</color>";
 
@@ -166,9 +168,21 @@ public class CompanionAscensionTab : MonoBehaviour
         if (statBonusText != null)
         {
             if (isMaxed)
+            {
                 statBonusText.text = $"현재 별 보너스: 전 스탯 +{_currentStars * starStatBonus * 100f:F0}%";
+                if (statBonusArrowImage != null) statBonusArrowImage.gameObject.SetActive(false);
+                if (statBonusNextText != null) statBonusNextText.gameObject.SetActive(false);
+            }
             else
-                statBonusText.text = $"승성 시: 전 스탯 +{_currentStars * starStatBonus * 100f:F0}% → <color=#00FF00>+{(_currentStars + 1) * starStatBonus * 100f:F0}%</color>";
+            {
+                statBonusText.text = $"승성 시: 전 스탯 +{_currentStars * starStatBonus * 100f:F0}%";
+                if (statBonusArrowImage != null) statBonusArrowImage.gameObject.SetActive(true);
+                if (statBonusNextText != null)
+                {
+                    statBonusNextText.gameObject.SetActive(true);
+                    statBonusNextText.text = $"<color=#00FF00>+{(_currentStars + 1) * starStatBonus * 100f:F0}%</color>";
+                }
+            }
         }
 
         // 버튼
@@ -179,7 +193,7 @@ public class CompanionAscensionTab : MonoBehaviour
         {
             if (isMaxed) ascensionButtonText.text = "최대 등급";
             else if (owned < req.materialCount) ascensionButtonText.text = $"재료 부족 ({owned}/{req.materialCount})";
-            else ascensionButtonText.text = $"승성 ({_currentStars}★ → {_currentStars + 1}★)";
+            else ascensionButtonText.text = $"승성 ({_currentStars}★ ▶ {_currentStars + 1}★)";
         }
     }
 
@@ -235,7 +249,7 @@ public class CompanionAscensionTab : MonoBehaviour
     // ─────────────────────────────────────────────────────────────
 
     /// <summary>골드 차감 — GameManager → GameDataBridge 폴백</summary>
-    private bool TrySpendGold(int amount)
+    private bool TrySpendGold(long amount)
     {
         if (GameManager.Instance != null)
         {

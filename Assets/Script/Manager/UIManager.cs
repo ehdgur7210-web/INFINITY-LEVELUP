@@ -20,12 +20,37 @@ public class UIManager : MonoBehaviour
 {
     public static UIManager Instance { get; private set; }
 
-    [Header("상단 리소스 UI")]
+    [Header("상단 헤더바")]
+    [Tooltip("왼쪽 상단 타이틀 이미지 (패널별 배너 이미지)")]
+    [SerializeField] private Image headerTitleImage;
+    [Tooltip("왼쪽 상단 레벨 텍스트 (메인 게임 화면용)")]
+    [SerializeField] private TextMeshProUGUI headerLevelText;
+    [Tooltip("메인 게임 화면에서만 보이는 UI 그룹 (HP/EXP/Stage 등)")]
+    [SerializeField] private GameObject gameOnlyUI;
+
+    [Header("패널 배너 이미지")]
+    [SerializeField] private Sprite bannerEquip;       // 장착
+    [SerializeField] private Sprite bannerSkill;       // 스킬
+    [SerializeField] private Sprite bannerCompanion;   // 동료
+    [SerializeField] private Sprite bannerCraft;       // 제작
+    [SerializeField] private Sprite bannerInventory;   // 가방
+    [SerializeField] private Sprite bannerShop;        // 상점
+    [SerializeField] private Sprite bannerGacha;       // 뽑기
+    [SerializeField] private Sprite bannerRanking;     // 랭킹
+    [SerializeField] private Sprite bannerSetting;     // 설정
+    [SerializeField] private Sprite bannerMail;        // 우편
+    [SerializeField] private Sprite bannerAuction;     // 경매
+    [SerializeField] private Sprite bannerEnhance;     // 강화
+    [SerializeField] private Sprite bannerAchieve;     // 업적
+
+    [Header("상단 리소스 UI (항상 고정)")]
     [SerializeField] public TextMeshProUGUI GameId;
     [SerializeField] public TextMeshProUGUI GameName;
     [SerializeField] public Image Character;
     [SerializeField] private TextMeshProUGUI goldText;
     [SerializeField] private TextMeshProUGUI gemText;
+    [Tooltip("상단 고정 크롭포인트 텍스트")]
+    [SerializeField] private TextMeshProUGUI cropPointText;
     [SerializeField] private TextMeshProUGUI levelText;
     [SerializeField] private Slider hpSlider;
     [SerializeField] private TextMeshProUGUI hpText;
@@ -140,6 +165,9 @@ public class UIManager : MonoBehaviour
 
         // PlayerStats 이벤트 구독
         PlayerStats.OnHealthChanged += UpdateHpUI;
+
+        // 크롭포인트 이벤트 구독
+        FarmManager.OnCropPointsChanged += UpdateCropPointUI;
     }
 
     void OnDisable()
@@ -149,6 +177,7 @@ public class UIManager : MonoBehaviour
         GameManager.OnGemChanged -= UpdateGemUI;
         GameManager.OnItemAcquired -= ShowItemNotification;
         PlayerStats.OnHealthChanged -= UpdateHpUI;
+        FarmManager.OnCropPointsChanged -= UpdateCropPointUI;
     }
 
     /// <summary>
@@ -327,6 +356,10 @@ public class UIManager : MonoBehaviour
         UpdateGemUI(GameManager.Instance.PlayerGem);
         UpdateExpUI(GameManager.Instance.PlayerExp, GameManager.Instance.PlayerLevel);
 
+        // 크롭포인트 초기값 표시
+        long cp = FarmManager.Instance != null ? FarmManager.Instance.GetCropPoints() : 0;
+        UpdateCropPointUI(cp);
+
         if (PlayerStats.Instance != null)
         {
             UpdateHpUI(PlayerStats.Instance.currentHealth, PlayerStats.Instance.maxHealth);
@@ -335,16 +368,22 @@ public class UIManager : MonoBehaviour
         UpdateStatsUI();
     }
 
-    public void UpdateGoldUI(int gold)
+    public void UpdateGoldUI(long gold)
     {
         if (goldText == null) return;
-        goldText.text = FormatNumber(gold);
+        goldText.text = FormatKoreanUnit(gold);
     }
 
-    public void UpdateGemUI(int gem)
+    public void UpdateGemUI(long gem)
     {
         if (gemText == null) return;
-        gemText.text = FormatNumber(gem);
+        gemText.text = FormatKoreanUnit(gem);
+    }
+
+    public void UpdateCropPointUI(long cropPoints)
+    {
+        if (cropPointText == null) return;
+        cropPointText.text = FormatKoreanUnit(cropPoints);
     }
 
     private void UpdateHpUI(float currentHp, float maxHp)
@@ -372,6 +411,12 @@ public class UIManager : MonoBehaviour
         if (levelText != null)
         {
             levelText.text = $"Lv.{level}";
+        }
+
+        // 게임 화면 상태일 때 헤더 레벨 텍스트도 업데이트
+        if (headerLevelText != null && headerLevelText.gameObject.activeSelf)
+        {
+            headerLevelText.text = $"Lv.{level}";
         }
 
         if (expText != null && GameManager.Instance != null)
@@ -471,6 +516,77 @@ public class UIManager : MonoBehaviour
         if (value >= 1000f) return $"{value / 1000f:F1}K";
         return $"{value:F0}";
     }
+    #region 상단 헤더 타이틀
+
+    /// <summary>
+    /// 패널 열릴 때 호출 — 왼쪽 상단 배너 이미지를 해당 패널 이미지로 변경
+    /// 예: SetHeaderBanner("장착"), SetHeaderBanner("스킬")
+    /// </summary>
+    public void SetHeaderBanner(string panelName)
+    {
+        Sprite banner = GetBannerSprite(panelName);
+
+        if (headerTitleImage != null)
+        {
+            if (banner != null)
+            {
+                headerTitleImage.sprite = banner;
+                headerTitleImage.gameObject.SetActive(true);
+            }
+            else
+            {
+                headerTitleImage.gameObject.SetActive(false);
+            }
+        }
+
+        // 배너가 보이면 레벨 텍스트 숨기기
+        if (headerLevelText != null)
+            headerLevelText.gameObject.SetActive(false);
+    }
+
+    /// <summary>
+    /// 패널 닫히고 메인 게임 화면으로 돌아올 때 호출
+    /// 배너 이미지 숨기고, 레벨 텍스트 표시
+    /// </summary>
+    public void ResetHeaderToGame()
+    {
+        // 배너 이미지 숨기기
+        if (headerTitleImage != null)
+            headerTitleImage.gameObject.SetActive(false);
+
+        // 레벨 텍스트 보이기
+        if (headerLevelText != null)
+        {
+            headerLevelText.gameObject.SetActive(true);
+            if (GameManager.Instance != null)
+                headerLevelText.text = $"Lv.{GameManager.Instance.PlayerLevel}";
+        }
+    }
+
+    /// <summary>패널 이름으로 배너 Sprite 찾기</summary>
+    private Sprite GetBannerSprite(string panelName)
+    {
+        switch (panelName)
+        {
+            case "장착":   return bannerEquip;
+            case "스킬":   return bannerSkill;
+            case "동료":   return bannerCompanion;
+            case "제작":   return bannerCraft;
+            case "가방":   return bannerInventory;
+            case "상점":   return bannerShop;
+            case "뽑기":   return bannerGacha;
+            case "랭킹":   return bannerRanking;
+            case "설정":   return bannerSetting;
+            case "우편":   return bannerMail;
+            case "경매":   return bannerAuction;
+            case "강화":   return bannerEnhance;
+            case "업적":   return bannerAchieve;
+            default:       return null;
+        }
+    }
+
+    #endregion
+
     #region 메시지 시스템
 
     public void ShowMessage(string message, Color? color = null)
@@ -642,6 +758,33 @@ public class UIManager : MonoBehaviour
 
     private string FormatNumber(int number)
     {
+        return number.ToString("N0");
+    }
+
+    public static string FormatKoreanUnit(long number)
+    {
+        if (number < 0) return "-" + FormatKoreanUnit(-number);
+
+        if (number >= 10_000_000_000_000_000L)  // 경 (10^16)
+        {
+            double val = number / 10_000_000_000_000_000.0;
+            return val >= 100 ? $"{val:F0}경" : $"{val:F1}경".TrimEnd('0').TrimEnd('.');
+        }
+        if (number >= 1_000_000_000_000L)  // 조
+        {
+            double val = number / 1_000_000_000_000.0;
+            return val >= 100 ? $"{val:F0}조" : $"{val:F1}조".TrimEnd('0').TrimEnd('.');
+        }
+        if (number >= 100_000_000L)  // 억
+        {
+            double val = number / 100_000_000.0;
+            return val >= 100 ? $"{val:F0}억" : $"{val:F1}억".TrimEnd('0').TrimEnd('.');
+        }
+        if (number >= 10_000L)  // 만
+        {
+            double val = number / 10_000.0;
+            return val >= 100 ? $"{val:F0}만" : $"{val:F1}만".TrimEnd('0').TrimEnd('.');
+        }
         return number.ToString("N0");
     }
 

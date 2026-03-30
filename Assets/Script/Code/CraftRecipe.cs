@@ -57,7 +57,7 @@ public class CraftRecipe : ScriptableObject
     /// <summary>
     /// 제작 가능 여부 확인
     /// </summary>
-    public bool CanCraft(int playerLevel, int playerGold)
+    public bool CanCraft(int playerLevel, long playerGold)
     {
         // 레벨 확인
         if (playerLevel < requiredLevel)

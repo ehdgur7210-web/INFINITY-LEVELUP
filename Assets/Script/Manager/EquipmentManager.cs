@@ -220,6 +220,9 @@ public class EquipmentManager : MonoBehaviour
 
         OnEquipmentChanged?.Invoke(type, entry.equipment, newLevel);
 
+        // ★ 강화 레벨에 따른 스킬 자동 레벨업
+        UpdateSkillLevelByEnhance(type, newLevel);
+
         PlayerStats.Instance?.UpdateStatsUI();
         CombatPowerManager.Instance?.Recalculate();
 
@@ -411,5 +414,51 @@ public class EquipmentManager : MonoBehaviour
         CombatPowerManager.Instance?.Recalculate();
 
         Debug.Log($"[EquipmentManager] 장비 로드 완료: {equippedItems.Count}개");
+
+        // ★ 로드 후 모든 장비의 강화 레벨에 따른 스킬 레벨 동기화
+        foreach (var kvp in equippedItems)
+            UpdateSkillLevelByEnhance(kvp.Key, kvp.Value.enhanceLevel);
+    }
+
+    // ═══════════════════════════════════════════════════════
+    //  강화 레벨 → 스킬 자동 레벨업
+    // ═══════════════════════════════════════════════════════
+
+    /// <summary>
+    /// 장비 강화 레벨에 따라 해당 장비 스킬의 레벨을 자동 설정
+    /// 공식: 스킬 레벨 = 1 + (강화레벨 / EnhancePerSkillLevel)
+    /// 기본: 강화 5당 스킬 레벨 +1 (5강=Lv2, 10강=Lv3...)
+    /// </summary>
+    private void UpdateSkillLevelByEnhance(EquipmentType type, int enhanceLevel)
+    {
+        if (SkillManager.Instance == null || EquipmentSkillSystem.Instance == null)
+            return;
+
+        if (!equippedItems.TryGetValue(type, out var entry) || entry.equipment == null)
+            return;
+
+        // 이 장비 슬롯의 스킬 찾기
+        SkillData skill = EquipmentSkillSystem.Instance.GetActiveSkillForSlot(type);
+        if (skill == null) return;
+
+        LearnedSkill learned = SkillManager.Instance.GetLearnedSkill(skill.skillID);
+        if (learned == null) return;
+
+        int newSkillLevel = SkillAutoLevelConfig.GetSkillLevel(enhanceLevel);
+        newSkillLevel = Mathf.Clamp(newSkillLevel, 1, skill.maxLevel);
+
+        if (learned.currentLevel != newSkillLevel)
+        {
+            int oldLevel = learned.currentLevel;
+            learned.currentLevel = newSkillLevel;
+
+            if (newSkillLevel > oldLevel)
+            {
+                UIManager.Instance?.ShowMessage(
+                    $"스킬 레벨업! {skill.skillName} Lv.{newSkillLevel}", Color.yellow);
+            }
+
+            Debug.Log($"[Equipment→Skill] {type} 강화+{enhanceLevel} → {skill.skillName} Lv.{newSkillLevel}");
+        }
     }
 }

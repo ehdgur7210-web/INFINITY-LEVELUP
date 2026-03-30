@@ -228,7 +228,7 @@ public class FarmQuestManager : MonoBehaviour
 
         OnQuestCompleted?.Invoke(quest);
         UIManager.Instance?.ShowMessage(
-            $"보상 수령! 🌱+{quest.cropPointReward} 💰+{quest.goldReward}", Color.green);
+            $"보상 수령! +{quest.cropPointReward} +{quest.goldReward}", Color.green);
 
         return true;
     }

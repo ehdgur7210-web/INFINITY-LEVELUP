@@ -68,6 +68,17 @@ public class FarmSceneController : MonoBehaviour
     //  Inspector 연결 - 상단 리소스
     // ════════════════════════════════════════════════
 
+    [Header("상단 헤더")]
+    [Tooltip("왼쪽 상단 배너 이미지")]
+    public Image 헤더배너이미지;
+
+    [Header("배너 이미지")]
+    public Sprite 배너_농장;
+    public Sprite 배너_농장업그레이드;
+    public Sprite 배너_퀘스트;
+    public Sprite 배너_작물상점;
+    public Sprite 배너_작물인벤토리;
+
     [Header("리소스 표시")]
     public TextMeshProUGUI goldText;
     public TextMeshProUGUI gemText;
@@ -208,19 +219,18 @@ public class FarmSceneController : MonoBehaviour
 
     public void OpenQuestPanel()
     {
+        SetBanner("퀘스트");
         questPanelUI?.gameObject.SetActive(true);
         questPanelUI?.RefreshQuestList();
     }
 
     public void OpenCropShop()
     {
+        SetBanner("작물상점");
         cropShopUI?.OpenShop();
-
-        // 튜토리얼 트리거
         TutorialManager.Instance?.OnActionCompleted("OpenCropShop");
     }
 
-    // ★ 작물진행도 버튼 → FarmProgressPanel
     public void OpenProgressPanel()
     {
         if (farmProgressPanel == null)
@@ -228,10 +238,10 @@ public class FarmSceneController : MonoBehaviour
             Debug.LogWarning("[FarmSceneController] farmProgressPanel이 연결되지 않았습니다!");
             return;
         }
+        SetBanner("작물인벤토리");
         farmProgressPanel.OpenPanel();
     }
 
-    // ★ 수확인벤 버튼 → FarmInventoryUI
     public void OpenHarvestInventory()
     {
         if (farmInventoryUI == null)
@@ -239,13 +249,11 @@ public class FarmSceneController : MonoBehaviour
             Debug.LogWarning("[FarmSceneController] farmInventoryUI가 연결되지 않았습니다!");
             return;
         }
+        SetBanner("작물인벤토리");
         farmInventoryUI.OpenPanel();
-
-        // 튜토리얼 트리거
         TutorialManager.Instance?.OnActionCompleted("OpenFarmInventory");
     }
 
-    // 기존 호환용 (다른 곳에서 호출될 수 있으므로 유지)
     public void OpenCropProcess()
     {
         OpenProgressPanel();
@@ -253,6 +261,7 @@ public class FarmSceneController : MonoBehaviour
 
     public void OpenBuildingUpgrade(BuildingType type)
     {
+        SetBanner("농장업그레이드");
         buildingUpgradeUI?.OpenPanel();
         Debug.Log($"[FarmSceneController] 건물 업그레이드 패널 열기: {type}");
     }
@@ -278,6 +287,35 @@ public class FarmSceneController : MonoBehaviour
     }
 
     // ════════════════════════════════════════════════
+    //  상단 배너 전환
+    // ════════════════════════════════════════════════
+
+    /// <summary>패널 열 때 배너 변경</summary>
+    public void SetBanner(string panelName)
+    {
+        if (헤더배너이미지 == null) return;
+
+        Sprite banner = panelName switch
+        {
+            "농장업그레이드" => 배너_농장업그레이드,
+            "퀘스트"        => 배너_퀘스트,
+            "작물상점"      => 배너_작물상점,
+            "작물인벤토리"  => 배너_작물인벤토리,
+            _               => 배너_농장
+        };
+
+        if (banner != null)
+            헤더배너이미지.sprite = banner;
+    }
+
+    /// <summary>패널 닫을 때 기본 농장 배너로 복원</summary>
+    public void ResetBanner()
+    {
+        if (헤더배너이미지 != null && 배너_농장 != null)
+            헤더배너이미지.sprite = 배너_농장;
+    }
+
+    // ════════════════════════════════════════════════
     //  건물 레벨 라벨 갱신
     // ════════════════════════════════════════════════
 
@@ -294,11 +332,11 @@ public class FarmSceneController : MonoBehaviour
     {
         if (GameManager.Instance != null)
         {
-            if (goldText) goldText.text = $"💰 {GameManager.Instance.PlayerGold:N0}";
-            if (gemText) gemText.text = $"💎 {GameManager.Instance.PlayerGem}";
+            if (goldText) goldText.text = UIManager.FormatKoreanUnit(GameManager.Instance.PlayerGold);
+            if (gemText) gemText.text = UIManager.FormatKoreanUnit(GameManager.Instance.PlayerGem);
         }
-        int pts = FarmManager.Instance?.GetCropPoints() ?? 0;
-        if (cropPointText) cropPointText.text = $"🌱 {pts}";
+        long pts = FarmManager.Instance?.GetCropPoints() ?? 0;
+        if (cropPointText) cropPointText.text = UIManager.FormatKoreanUnit(pts);
     }
 
     // ════════════════════════════════════════════════
@@ -317,18 +355,18 @@ public class FarmSceneController : MonoBehaviour
         Debug.Log($"[FarmSceneController] 플롯 {plotIndex} 해금 ({plotType})");
     }
 
-    private void OnCropPointsChanged(int points)
+    private void OnCropPointsChanged(long points)
     {
-        if (cropPointText) cropPointText.text = $"🌱 {points}";
+        if (cropPointText) cropPointText.text = UIManager.FormatKoreanUnit(points);
     }
 
-    private void OnGoldChanged(int gold)
+    private void OnGoldChanged(long gold)
     {
-        if (goldText) goldText.text = $"💰 {gold:N0}";
+        if (goldText) goldText.text = UIManager.FormatKoreanUnit(gold);
     }
 
-    private void OnGemChanged(int gem)
+    private void OnGemChanged(long gem)
     {
-        if (gemText) gemText.text = $"💎 {gem}";
+        if (gemText) gemText.text = UIManager.FormatKoreanUnit(gem);
     }
 }

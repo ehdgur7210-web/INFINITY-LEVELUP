@@ -157,7 +157,7 @@ public class CraftingDetailView : MonoBehaviour
         // 골드 비용
         if (goldCostText != null && recipe.requiredGold > 0)
         {
-            int playerGold = GameManager.Instance != null ? GameManager.Instance.playerGold : 0;
+            long playerGold = GameManager.Instance != null ? GameManager.Instance.playerGold : 0;
             bool hasEnough = playerGold >= recipe.requiredGold;
 
             string colorTag = hasEnough ? "green" : "red";
@@ -219,7 +219,7 @@ public class CraftingDetailView : MonoBehaviour
         if (currentRecipe == null || craftButton == null) return;
 
         int playerLevel = GameManager.Instance != null ? GameManager.Instance.PlayerLevel : 1;
-        int playerGold = GameManager.Instance != null ? GameManager.Instance.playerGold : 0;
+        long playerGold = GameManager.Instance != null ? GameManager.Instance.playerGold : 0;
 
         bool canCraft = currentRecipe.CanCraft(playerLevel, playerGold);
 

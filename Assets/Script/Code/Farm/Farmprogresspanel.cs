@@ -109,6 +109,7 @@ public class FarmProgressPanel : MonoBehaviour
         gameObject.SetActive(false);
         sharedSelectPopup?.Hide();
         SoundManager.Instance?.PlayPanelClose();
+        FarmSceneController.Instance?.ResetBanner();
     }
 
     // ═══ 탭 전환 — 슬롯 재생성 없이 스크롤뷰만 Show/Hide ══════════

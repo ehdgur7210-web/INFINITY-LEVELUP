@@ -61,11 +61,11 @@ public class EnhancementCropCostPatch : MonoBehaviour
         if (GameManager.Instance == null || GameManager.Instance.PlayerGold < goldCost)
         {
             UIManager.Instance?.ShowMessage(
-                $"골드 부족! {goldCost:N0}G 필요 (현재 {GameManager.Instance?.PlayerGold ?? 0:N0}G)", Color.red);
+                $"골드 부족! {goldCost:N0}G 필요 (현재 {UIManager.FormatKoreanUnit(GameManager.Instance?.PlayerGold ?? 0)}G)", Color.red);
             return false;
         }
 
-        int curCp = FarmManager.Instance != null ? FarmManager.Instance.GetCropPoints() : 0;
+        long curCp = FarmManager.Instance != null ? FarmManager.Instance.GetCropPoints() : 0;
         if (curCp < cpCost)
         {
             UIManager.Instance?.ShowMessage(

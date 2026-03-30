@@ -141,7 +141,7 @@ public class FarmProgressSlot : MonoBehaviour
             {
                 int reqLv = FarmManager.Instance?.GetUnlockRequiredLevel(plotIndex) ?? 1;
                 int cost = FarmManager.Instance?.GetUnlockCost(plotIndex) ?? 0;
-                lockInfoText.text = $"🔒 Lv.{reqLv}\n💰 {cost:N0}";
+                lockInfoText.text = $"Lv.{reqLv}\n{cost:N0}";
             }
             if (btnUnlock != null)
             {
@@ -165,7 +165,7 @@ public class FarmProgressSlot : MonoBehaviour
         {
             if (bgImage != null) bgImage.color = colorEmpty;
             if (cropIcon != null) cropIcon.gameObject.SetActive(false);
-            if (statusText != null) statusText.text = "🌱 빈 밭";
+            if (statusText != null) statusText.text = "빈 밭";
             if (remainText != null) remainText.text = "";
             if (progressFill != null) progressFill.fillAmount = 0f;
             if (waterBadge != null) waterBadge.SetActive(false);
@@ -210,7 +210,7 @@ public class FarmProgressSlot : MonoBehaviour
         if (instantCostText != null)
         {
             int gem = Mathf.Max(1, Mathf.CeilToInt(remain / 60f));
-            instantCostText.text = $"💎{gem}";
+            instantCostText.text = $"{gem}";
         }
 
         SetBtn(btnPlant, false);
@@ -328,10 +328,10 @@ public class FarmProgressSlot : MonoBehaviour
         int gemCost = Mathf.Max(1, Mathf.CeilToInt(remain / 60f));
 
         bool paid = GameManager.Instance?.SpendGem(gemCost) ?? false;
-        if (!paid) { UIManager.Instance?.ShowMessage($"💎 {gemCost} 부족!", Color.red); return; }
+        if (!paid) { UIManager.Instance?.ShowMessage($"{gemCost} 부족!", Color.red); return; }
 
         FarmManager.Instance?.InstantFinish(plotIndex);
-        UIManager.Instance?.ShowMessage($"⚡ 즉시 완료! (💎 -{gemCost})", Color.yellow);
+        UIManager.Instance?.ShowMessage($"즉시 완료! (-{gemCost})", Color.yellow);
     }
 
     private void OnHarvestClicked()

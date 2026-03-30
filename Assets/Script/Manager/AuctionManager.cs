@@ -434,7 +434,7 @@ public class AuctionManager : MonoBehaviour
                         new MailReward(MailReward.RewardType.Gold, sellerGold)
                     };
                     MailManager.Instance.SendRewardMail(
-                        "💰 경매 낙찰!",
+                        "경매 낙찰!",
                         $"'{auction.item.itemName}' x{auction.quantity}이(가) {winningBid.bidAmount:N0}G에 낙찰되었습니다!\n수수료: {tax:N0}G\n수령 골드: {sellerGold:N0}G",
                         rewards
                     );

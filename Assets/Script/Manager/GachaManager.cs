@@ -366,7 +366,7 @@ public class GachaManager : MonoBehaviour
         RefreshGachaUI();
         InventoryManager.Instance?.RefreshEquipDisplay();
 
-        UIManager.Instance?.ShowMessage($"⭐ 100연차 완료! 전설 {leg}개!", Color.yellow);
+        UIManager.Instance?.ShowMessage($"100연차 완료! 전설 {leg}개!", Color.yellow);
         Debug.Log($"[GachaManager] 100연차 결과: 전설{leg} / 영웅{epic} / 희귀{rare}");
     }
 
@@ -479,13 +479,13 @@ public class GachaManager : MonoBehaviour
         int goldCost = lv1to2GoldCost;
         int cpCost = lv1to2CropPointCost;
 
-        int currentGold = GameManager.Instance != null ? GameManager.Instance.PlayerGold : 0;
-        int currentCP = FarmManager.Instance != null ? FarmManager.Instance.GetCropPoints() : 0;
+        long currentGold = GameManager.Instance != null ? GameManager.Instance.PlayerGold : 0;
+        long currentCP = FarmManager.Instance != null ? FarmManager.Instance.GetCropPoints() : 0;
 
         if (GameManager.Instance == null || currentGold < goldCost)
         {
             UIManager.Instance?.ShowMessage(
-                $"골드가 부족합니다.\n현재: {currentGold:N0}G / 필요: {goldCost:N0}G", Color.red);
+                $"골드가 부족합니다.\n현재: {UIManager.FormatKoreanUnit(currentGold)}G / 필요: {goldCost:N0}G", Color.red);
             return false;
         }
 
@@ -528,7 +528,7 @@ public class GachaManager : MonoBehaviour
         InventoryManager.Instance?.AddItem(guaranteed, 1);
 
         Debug.Log($"[GachaManager] ⭐ 천장 보장! 전설 지급: {guaranteed.itemName}");
-        UIManager.Instance?.ShowMessage($"⭐ 천장 달성! [{guaranteed.itemName}] 획득!", Color.yellow);
+        UIManager.Instance?.ShowMessage($"천장 달성! [{guaranteed.itemName}] 획득!", Color.yellow);
 
         ShowGachaResults(new List<EquipmentData> { guaranteed });
         RefreshGachaUI();

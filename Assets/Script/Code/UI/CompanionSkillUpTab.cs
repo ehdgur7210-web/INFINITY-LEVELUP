@@ -88,7 +88,9 @@ public class CompanionSkillUpTab : MonoBehaviour
     [SerializeField] private TextMeshProUGUI skillNameText;
     [SerializeField] private TextMeshProUGUI skillLevelText;
     [SerializeField] private TextMeshProUGUI skillDescText;
-    [SerializeField] private TextMeshProUGUI skillEffectText;     // "데미지: 50 → 55"
+    [SerializeField] private TextMeshProUGUI skillEffectText;     // "효과: 50"
+    [SerializeField] private Image skillArrowImage;               // → 화살표 이미지
+    [SerializeField] private TextMeshProUGUI skillEffectNextText; // "55" (다음 값)
     [SerializeField] private TextMeshProUGUI skillCostText;       // "비용: 2,000 골드"
     [SerializeField] private Button skillUpButton;
 
@@ -209,9 +211,21 @@ public class CompanionSkillUpTab : MonoBehaviour
         if (skillEffectText != null)
         {
             if (skillLv >= skill.maxLevel)
+            {
                 skillEffectText.text = $"효과: {currentVal:N0} (MAX)";
+                if (skillArrowImage != null) skillArrowImage.gameObject.SetActive(false);
+                if (skillEffectNextText != null) skillEffectNextText.gameObject.SetActive(false);
+            }
             else
-                skillEffectText.text = $"효과: {currentVal:N0} → <color=#00FF00>{nextVal:N0}</color>";
+            {
+                skillEffectText.text = $"효과: {currentVal:N0}";
+                if (skillArrowImage != null) skillArrowImage.gameObject.SetActive(true);
+                if (skillEffectNextText != null)
+                {
+                    skillEffectNextText.gameObject.SetActive(true);
+                    skillEffectNextText.text = $"<color=#00FF00>{nextVal:N0}</color>";
+                }
+            }
         }
 
         // 비용
@@ -262,7 +276,7 @@ public class CompanionSkillUpTab : MonoBehaviour
     }
 
     /// <summary>골드 차감 — GameManager → GameDataBridge 폴백</summary>
-    private bool TrySpendGold(int amount)
+    private bool TrySpendGold(long amount)
     {
         if (GameManager.Instance != null)
         {

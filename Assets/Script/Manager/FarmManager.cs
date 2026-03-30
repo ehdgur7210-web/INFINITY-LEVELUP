@@ -46,8 +46,8 @@ public class FarmManager : MonoBehaviour
     public int defaultWaterCostGem = 1;
 
     [Header("작물 포인트")]
-    public int cropPoints = 0;
-    public static event Action<int> OnCropPointsChanged;
+    public long cropPoints = 0;
+    public static event Action<long> OnCropPointsChanged;
 
     [Header("UI 이벤트")]
     public UnityEvent<int> OnPlotStateChanged;
@@ -401,7 +401,7 @@ public class FarmManager : MonoBehaviour
         plot.plantTime = DateTime.Now.AddSeconds(-totalSeconds);
 
         OnPlotStateChanged?.Invoke(plotIndex);
-        UIManager.Instance?.ShowMessage($"즉시 완성! ({gemCost}💎)", Color.yellow);
+        UIManager.Instance?.ShowMessage($"즉시 완성! ({gemCost})", Color.yellow);
         return true;
     }
 
@@ -646,7 +646,7 @@ public class FarmManager : MonoBehaviour
     //  작물 포인트 (Crop Points) ★ 신규
     // ════════════════════════════════════════════════
 
-    public void AddCropPoints(int amount)
+    public void AddCropPoints(long amount)
     {
         if (amount <= 0) return;
         cropPoints += amount;
@@ -654,20 +654,20 @@ public class FarmManager : MonoBehaviour
         Debug.Log($"[FarmManager] 작물포인트 +{amount} (총 {cropPoints})");
     }
 
-    public bool SpendCropPoints(int amount)
+    public bool SpendCropPoints(long amount)
     {
         if (amount <= 0 || cropPoints < amount)
         {
             UIManager.Instance?.ShowMessage($"작물 포인트가 부족합니다! (필요:{amount} / 보유:{cropPoints})", Color.red);
             return false;
         }
-        cropPoints = Mathf.Max(0, cropPoints - amount);
+        cropPoints = System.Math.Max(0L, cropPoints - amount);
         OnCropPointsChanged?.Invoke(cropPoints);
         Debug.Log($"[FarmManager] CropPoint -{amount} → {cropPoints}");
         return true;
     }
 
-    public int GetCropPoints() => cropPoints;
+    public long GetCropPoints() => cropPoints;
 
     // ════════════════════════════════════════════════
     //  안전한 재화 차감 (FarmScene에서 GameManager 없을 때 대비)
@@ -699,7 +699,7 @@ public class FarmManager : MonoBehaviour
     /// <summary>
     /// GameManager가 있으면 SpendGem, 없으면 GameDataBridge에서 직접 차감.
     /// </summary>
-    private bool SpendGemSafe(int amount)
+    private bool SpendGemSafe(long amount)
     {
         if (amount <= 0) return true;
 
@@ -737,7 +737,7 @@ public class FarmManager : MonoBehaviour
     /// <summary>
     /// GameManager가 있으면 AddGem, 없으면 GameDataBridge에서 직접 추가.
     /// </summary>
-    private void AddGemSafe(int amount)
+    private void AddGemSafe(long amount)
     {
         if (amount <= 0) return;
         if (GameManager.Instance != null)

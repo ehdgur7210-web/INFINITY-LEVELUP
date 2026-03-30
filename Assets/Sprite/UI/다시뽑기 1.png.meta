@@ -43,7 +43,7 @@ TextureImporter:
   nPOTScale: 0
   lightmap: 0
   compressionQuality: 50
-  spriteMode: 1
+  spriteMode: 2
   spriteExtrude: 1
   spriteMeshType: 1
   alignment: 0
@@ -121,7 +121,49 @@ TextureImporter:
     forceMaximumCompressionQuality_BC6H_BC7: 0
   spriteSheet:
     serializedVersion: 2
-    sprites: []
+    sprites:
+    - serializedVersion: 2
+      name: "\uB2E4\uC2DC\uBF51\uAE30 1_0"
+      rect:
+        serializedVersion: 2
+        x: 978
+        y: 812
+        width: 923
+        height: 650
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 717cad0f91ed0af46a73c12bbb75801e
+      internalID: 176825863
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: "\uB2E4\uC2DC\uBF51\uAE30 1_1"
+      rect:
+        serializedVersion: 2
+        x: 926
+        y: 31
+        width: 1018
+        height: 699
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 9a15a38ecffa55246bf47d39d2c25538
+      internalID: 2130382378
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
     outline: []
     physicsShape: []
     bones: []
@@ -132,7 +174,9 @@ TextureImporter:
     edges: []
     weights: []
     secondaryTextures: []
-    nameFileIdTable: {}
+    nameFileIdTable:
+      "\uB2E4\uC2DC\uBF51\uAE30 1_0": 176825863
+      "\uB2E4\uC2DC\uBF51\uAE30 1_1": 2130382378
   mipmapLimitGroupName: 
   pSDRemoveMatte: 0
   userData: 

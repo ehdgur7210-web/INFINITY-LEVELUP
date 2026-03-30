@@ -56,12 +56,24 @@ public class QuestManager : MonoBehaviour
                 currentQuest.objectives[i].currentAmount = pendingObjectiveAmounts[i];
             pendingObjectiveAmounts = null;
 
-            // ★ 저장된 상태 복원 (Completed 상태 유지)
+            // ★ 저장된 상태 복원
             if (pendingQuestStatus >= 0)
             {
-                currentQuest.status = (QuestStatus)pendingQuestStatus;
-                Debug.Log($"[QuestManager] 퀘스트 상태 복원: {currentQuest.status}");
+                QuestStatus savedStatus = (QuestStatus)pendingQuestStatus;
+                Debug.Log($"[QuestManager] 퀘스트 상태 복원: {savedStatus}");
                 pendingQuestStatus = -1;
+
+                // ★ Rewarded 상태면 이미 보상 받은 퀘스트 → 다음 퀘스트로
+                if (savedStatus == QuestStatus.Rewarded)
+                {
+                    Debug.Log("[QuestManager] 이미 보상 받은 퀘스트 → 다음 퀘스트로 이동");
+                    currentQuestIndex++;
+                    pendingObjectiveAmounts = null;
+                    StartNextQuest();
+                    return;
+                }
+
+                currentQuest.status = savedStatus;
             }
             else
             {

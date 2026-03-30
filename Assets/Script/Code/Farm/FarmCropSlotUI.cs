@@ -56,7 +56,7 @@ public class FarmCropSlotUI : MonoBehaviour
         if (cropNameText) cropNameText.text = crop.cropName;
 
         bool useGem = crop.seedCostGem > 0;
-        if (costText) costText.text = useGem ? $"💎 {crop.seedCostGem}" : $"💰 {crop.seedCostGold}";
+        if (costText) costText.text = useGem ? $"{crop.seedCostGem}" : $"{crop.seedCostGold}";
 
         UpdateOwned(owned);
 

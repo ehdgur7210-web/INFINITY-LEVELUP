@@ -143,7 +143,7 @@ public class BackendRankingManager : MonoBehaviour
     {
         int combatPower = CombatPowerManager.Instance?.TotalCombatPower ?? 0;
         int level = GameManager.Instance?.PlayerLevel ?? 1;
-        int farm = FarmManager.Instance?.GetCropPoints() ?? 0;
+        long farm = FarmManager.Instance?.GetCropPoints() ?? 0;
 
         Debug.Log($"[BackendRanking] ▶ DoUpdateAllScores — 전투력:{combatPower}, 레벨:{level}, 농장:{farm}");
 
@@ -160,7 +160,7 @@ public class BackendRankingManager : MonoBehaviour
             Debug.LogWarning("[BackendRanking] ⚠ 레벨 UUID 비어있음 → 스킵");
 
         if (!string.IsNullOrEmpty(farmRankUUID))
-        { UpdateScore(farmRankUUID, "farm_score", farm, "농장"); updated++; }
+        { UpdateScore(farmRankUUID, "farm_score", (int)farm, "농장"); updated++; }
         else
             Debug.LogWarning("[BackendRanking] ⚠ 농장 UUID 비어있음 → 스킵");
 
@@ -327,12 +327,12 @@ public class BackendRankingManager : MonoBehaviour
                 // 서버 값은 마지막 SaveGame() 시점이므로 레벨업 등이 미반영될 수 있음
                 int localCp   = CombatPowerManager.Instance?.TotalCombatPower ?? 0;
                 int localLv   = GameManager.Instance?.PlayerLevel ?? 1;
-                int localFarm = FarmManager.Instance?.GetCropPoints() ?? 0;
+                long localFarm = FarmManager.Instance?.GetCropPoints() ?? 0;
                 score = currentRankType switch
                 {
                     RankingManager.RankType.CombatPower => localCp,
                     RankingManager.RankType.Level       => localLv,
-                    RankingManager.RankType.Farm        => localFarm,
+                    RankingManager.RankType.Farm        => (int)localFarm,
                     _ => score
                 };
             }

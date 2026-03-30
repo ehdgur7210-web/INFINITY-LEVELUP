@@ -139,6 +139,8 @@ public class MailUI : MonoBehaviour
 
         if (couponPanel != null)
             couponPanel.SetActive(false);
+
+        TopMenuManager.Instance?.ClearBanner();
     }
 
     private void ShowMailList()

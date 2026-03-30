@@ -169,7 +169,7 @@ public class FarmPlantModePanel : MonoBehaviour
         return true;
     }
 
-    private bool SpendGem(int amount)
+    private bool SpendGem(long amount)
     {
         if (amount <= 0) return true;
         if (GameManager.Instance != null) return GameManager.Instance.SpendGem(amount);
@@ -333,7 +333,7 @@ public class FarmPlantModePanel : MonoBehaviour
         selectedSeed = crop;
         if (plantBtnIcon != null && crop.seedIcon != null)
             plantBtnIcon.sprite = crop.seedIcon;
-        UIManager.Instance?.ShowMessage($"🌱 [{crop.cropName}] 심을 밭을 선택하세요", Color.green);
+        UIManager.Instance?.ShowMessage($"[{crop.cropName}] 심을 밭을 선택하세요", Color.green);
     }
 
     /// <summary>
@@ -448,9 +448,9 @@ public class FarmPlantModePanel : MonoBehaviour
             int reqLv = FarmManager.Instance?.GetUnlockRequiredLevel(currentPlotIndex) ?? 1;
 
             if (statusText != null)
-                statusText.text = $"🔒 잠긴 밭 (Lv.{reqLv} 필요)";
+                statusText.text = $"잠긴 밭 (Lv.{reqLv} 필요)";
             if (unlockCostText != null)
-                unlockCostText.text = $"💰 {cost:N0}";
+                unlockCostText.text = $"{cost:N0}";
             if (progressBar != null) progressBar.value = 0f;
             if (remainText != null) remainText.text = "";
 
@@ -475,7 +475,7 @@ public class FarmPlantModePanel : MonoBehaviour
             cropIconImage?.gameObject.SetActive(false);
 
             if (statusText != null)
-                statusText.text = "🌱 빈 밭 — 씨앗을 선택해 심으세요";
+                statusText.text = "빈 밭 — 씨앗을 선택해 심으세요";
             if (progressBar != null) progressBar.value = 0f;
             if (remainText != null) remainText.text = "";
 
@@ -530,7 +530,7 @@ public class FarmPlantModePanel : MonoBehaviour
         if (instantCostText != null)
         {
             int gem = Mathf.Max(1, Mathf.CeilToInt(remaining / 60f));
-            instantCostText.text = $"💎 {gem}";
+            instantCostText.text = $"{gem}";
         }
 
         // ★ 튜토리얼 중: 물/비료를 아직 안 줬으면 수확 불가능으로 간주
@@ -681,12 +681,12 @@ public class FarmPlantModePanel : MonoBehaviour
         bool paid = SpendGem(gemCost);
         if (!paid)
         {
-            UIManager.Instance?.ShowMessage($"💎 {gemCost} 부족!", Color.red);
+            UIManager.Instance?.ShowMessage($"{gemCost} 부족!", Color.red);
             return;
         }
 
         FarmManager.Instance?.InstantFinish(currentPlotIndex);
-        UIManager.Instance?.ShowMessage($"⚡ 즉시 완료! (💎 -{gemCost})", Color.yellow);
+        UIManager.Instance?.ShowMessage($"즉시 완료! (-{gemCost})", Color.yellow);
     }
 
     /// <summary>

@@ -121,7 +121,7 @@ public class GachaEquipmentTierManager : MonoBehaviour
         ApplyTierPool();
 
         Debug.Log($"[GachaEquipmentTierManager] 티어 변경 → {currentTier} (레벨 {level})");
-        UIManager.Instance?.ShowMessage($"⭐ {GetTierName(currentTier)} 해금!", Color.yellow);
+        UIManager.Instance?.ShowMessage($"{GetTierName(currentTier)} 해금!", Color.yellow);
     }
 
     private void ApplyTierPool()
@@ -171,12 +171,12 @@ public class GachaEquipmentTierManager : MonoBehaviour
         {
             UIManager.Instance?.ShowMessage(
                 $"레벨업 비용 부족!\n골드 {goldCost:N0}G 필요 " +
-                $"(보유 {GameManager.Instance?.PlayerGold ?? 0:N0}G)", Color.red);
+                $"(보유 {UIManager.FormatKoreanUnit(GameManager.Instance?.PlayerGold ?? 0)}G)", Color.red);
             return false;
         }
 
         // CropPoint 확인
-        int curCp = FarmManager.Instance != null ? FarmManager.Instance.GetCropPoints() : 0;
+        long curCp = FarmManager.Instance != null ? FarmManager.Instance.GetCropPoints() : 0;
         if (curCp < cpCost)
         {
             UIManager.Instance?.ShowMessage(

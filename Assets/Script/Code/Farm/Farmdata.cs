@@ -23,7 +23,7 @@ public class FarmGatherResult
 {
     public ItemData item;
     public int amount;
-    public int cropPoints;
+    public long cropPoints;
     public int cropIDForQuest = -1; // 퀘스트용 cropID (-1 = 해당없음)
 }
 
@@ -39,7 +39,7 @@ public class FarmGatherPoint : MonoBehaviour
     public ItemData gatherItem;
     [Range(1, 20)] public int minAmount = 1;
     [Range(1, 20)] public int maxAmount = 3;
-    public int cropPoints = 2;
+    public long cropPoints = 2;
     public int cropIDForQuest = -1;
 
     [Header("===== 쿨다운 =====")]
@@ -216,7 +216,7 @@ public partial class FarmSaveData
 {
     public FarmPlotSaveData[] plots;
     public int totalHarvestCount;
-    public int cropPoints;
+    public long cropPoints;
     public FarmBuildingSaveData buildingData;
     public FarmInventorySaveData inventoryData; // ★ 씨앗/수확물 수량 저장
 }

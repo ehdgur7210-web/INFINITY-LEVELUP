@@ -73,7 +73,11 @@ public class CraftingManager : MonoBehaviour
             bool isActive = craftingPanel.activeSelf;
             craftingPanel.SetActive(!isActive);
 
-            if (!isActive)
+            if (isActive)
+            {
+                TopMenuManager.Instance?.ClearBanner();
+            }
+            else
             {
                 UpdateCraftingUI();
             }
@@ -107,7 +111,7 @@ public class CraftingManager : MonoBehaviour
         }
 
         int playerLevel = playerStats != null ? Mathf.Max(1, playerStats.level) : 1;
-        int playerGold = GameManager.Instance != null ? GameManager.Instance.playerGold : 0;
+        long playerGold = GameManager.Instance != null ? GameManager.Instance.playerGold : 0;
 
         if (!recipe.CanCraft(playerLevel, playerGold))
         {
@@ -242,7 +246,7 @@ public class CraftingManager : MonoBehaviour
 
         if (GameManager.Instance != null && GameManager.Instance.playerGold < recipe.requiredGold)
         {
-            int needed = recipe.requiredGold - GameManager.Instance.playerGold;
+            long needed = recipe.requiredGold - GameManager.Instance.playerGold;
             missingItems.Add($"{needed}G 부족");
         }
 
@@ -300,7 +304,7 @@ public class CraftingManager : MonoBehaviour
     public List<CraftRecipe> GetCraftableRecipes()
     {
         int playerLevel = playerStats != null ? Mathf.Max(1, playerStats.level) : 1;
-        int playerGold = GameManager.Instance != null ? GameManager.Instance.playerGold : 0;
+        long playerGold = GameManager.Instance != null ? GameManager.Instance.playerGold : 0;
 
         return knownRecipes.Where(r => r.CanCraft(playerLevel, playerGold)).ToList();
     }

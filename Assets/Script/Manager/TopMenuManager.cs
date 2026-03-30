@@ -46,6 +46,7 @@ public class TopMenuManager : MonoBehaviour
     [SerializeField] private GameObject inventoryBadge;
     [SerializeField] private GameObject questBadge;
     [SerializeField] private GameObject shopBadge;
+    [SerializeField] private GameObject achieveBadge;
 
     [Header("메뉴 패널 (접기/펼치기)")]
     [SerializeField] private GameObject menuPanel;
@@ -281,10 +282,43 @@ public class TopMenuManager : MonoBehaviour
     // ─────────────────────────────────────────────────────────
     #region 버튼 클릭
 
+    /// <summary>
+    /// Toggle 패널용: 먼저 Toggle 실행 → 배너 상태 결정
+    /// headerTitleImage가 보이면 패널이 열린 상태, 안 보이면 닫힌 상태로 판단하지 않고
+    /// 단순히 배너 ON/OFF를 추적
+    /// </summary>
+    private string _currentBanner = null;
+
+    private void ToggleWithBanner(string bannerName, System.Action toggleAction)
+    {
+        // 같은 배너가 이미 열려있으면 → 닫는 동작
+        if (_currentBanner == bannerName)
+        {
+            toggleAction?.Invoke();
+            _currentBanner = null;
+            UIManager.Instance?.ResetHeaderToGame();
+        }
+        else
+        {
+            // 다른 배너이거나 없으면 → 여는 동작
+            toggleAction?.Invoke();
+            _currentBanner = bannerName;
+            UIManager.Instance?.SetHeaderBanner(bannerName);
+        }
+    }
+
+    /// <summary>외부에서 패널 닫힐 때 배너 리셋 (각 패널 Close에서 호출 가능)</summary>
+    public void ClearBanner()
+    {
+        _currentBanner = null;
+        UIManager.Instance?.ResetHeaderToGame();
+    }
+
     private void OnInventoryButtonClicked()
     {
         if (IsButtonOnCooldown()) return;
         if (IsBlockedByTutorial(inventoryButton)) return;
+        // 인벤토리는 상시 표시 — 배너 변경/토글 없음
         InventoryManager.Instance?.ToggleInventory();
         if (inventoryBadge != null) inventoryBadge.SetActive(false);
         PlayButtonSound();
@@ -293,30 +327,48 @@ public class TopMenuManager : MonoBehaviour
     {
         if (IsButtonOnCooldown()) return;
         if (IsBlockedByTutorial(shopButton)) return;
-        ShopManager.Instance?.ToggleShop();
+        ToggleWithBanner("상점", () => ShopManager.Instance?.ToggleShop());
         if (shopBadge != null) shopBadge.SetActive(false);
         PlayButtonSound();
     }
-    private void OnAuctionButtonClicked() { if (IsButtonOnCooldown()) return; if (IsBlockedByTutorial(auctionButton)) return; FindObjectOfType<AuctionUI>()?.ToggleAuction(); PlayButtonSound(); }
-    private void OnAchieveButtonClicked() { if (IsButtonOnCooldown()) return; if (IsBlockedByTutorial(achieveButton)) return; AchievementSystem.Instance?.ToggleAchievementUI(); PlayButtonSound(); }
+    private void OnAuctionButtonClicked()
+    {
+        if (IsButtonOnCooldown()) return;
+        if (IsBlockedByTutorial(auctionButton)) return;
+        ToggleWithBanner("경매", () => FindObjectOfType<AuctionUI>()?.ToggleAuction());
+        PlayButtonSound();
+    }
+    private void OnAchieveButtonClicked()
+    {
+        if (IsButtonOnCooldown()) return;
+        if (IsBlockedByTutorial(achieveButton)) return;
+        if (achieveBadge != null) achieveBadge.SetActive(false);
+        ToggleWithBanner("업적", () => AchievementSystem.Instance?.ToggleAchievementUI());
+        PlayButtonSound();
+    }
     private void OnEquipmentButtonClicked()
     {
         if (IsButtonOnCooldown()) return;
         if (IsBlockedByTutorial(equipmentButton)) return;
-        if (equipmentPanel != null) equipmentPanel.SetActive(!equipmentPanel.activeSelf);
+        ToggleWithBanner("장착", () => { if (equipmentPanel != null) equipmentPanel.SetActive(!equipmentPanel.activeSelf); });
         if (questBadge != null) questBadge.SetActive(false);
         PlayButtonSound();
     }
-    private void OnSkillButtonClicked() { if (IsButtonOnCooldown()) return; if (IsBlockedByTutorial(skillButton)) return; SkillManager.Instance?.ToggleSkillTree(); PlayButtonSound(); }
+    private void OnSkillButtonClicked()
+    {
+        if (IsButtonOnCooldown()) return;
+        if (IsBlockedByTutorial(skillButton)) return;
+        ToggleWithBanner("스킬", () => SkillManager.Instance?.ToggleSkillTree());
+        PlayButtonSound();
+    }
     private void OnmailButtonClicked()
     {
         if (IsButtonOnCooldown()) return;
         if (IsBlockedByTutorial(mailButton)) return;
-
-        // ★ MailUI.Instance가 null이면 (비활성 오브젝트) FindObjectOfType으로 찾기
+        UIManager.Instance?.SetHeaderBanner("우편");
         var mailUI = MailUI.Instance;
         if (mailUI == null)
-            mailUI = FindObjectOfType<MailUI>(true); // includeInactive=true
+            mailUI = FindObjectOfType<MailUI>(true);
         if (mailUI != null)
         {
             MailUI.Instance = mailUI;
@@ -324,32 +376,44 @@ public class TopMenuManager : MonoBehaviour
         }
         PlayButtonSound();
     }
-    private void OnSettingsButtonClicked() { if (IsButtonOnCooldown()) return; if (IsBlockedByTutorial(settingsButton)) return; OptionUI.Instance?.ToggleOptionPanel(); PlayButtonSound(); }
-    private void OnCraftButtonClicked() { if (IsButtonOnCooldown()) return; if (IsBlockedByTutorial(craftButton)) return; CraftingManager.Instance?.ToggleCraftingUI(); PlayButtonSound(); }
-    private void OnenhancementButtonClicked() { if (IsButtonOnCooldown()) return; if (IsBlockedByTutorial(enhancementButton)) return; EnhancementSystem.Instance?.ToggleEnhancementUI(); PlayButtonSound(); }
+    private void OnSettingsButtonClicked()
+    {
+        if (IsButtonOnCooldown()) return;
+        if (IsBlockedByTutorial(settingsButton)) return;
+        ToggleWithBanner("설정", () => OptionUI.Instance?.ToggleOptionPanel());
+        PlayButtonSound();
+    }
+    private void OnCraftButtonClicked()
+    {
+        if (IsButtonOnCooldown()) return;
+        if (IsBlockedByTutorial(craftButton)) return;
+        ToggleWithBanner("제작", () => CraftingManager.Instance?.ToggleCraftingUI());
+        PlayButtonSound();
+    }
+    private void OnenhancementButtonClicked()
+    {
+        if (IsButtonOnCooldown()) return;
+        if (IsBlockedByTutorial(enhancementButton)) return;
+        ToggleWithBanner("강화", () => EnhancementSystem.Instance?.ToggleEnhancementUI());
+        PlayButtonSound();
+    }
     private void OnRankingButtonClicked()
     {
         if (IsButtonOnCooldown()) return;
         if (IsBlockedByTutorial(rankingButton)) return;
+        UIManager.Instance?.SetHeaderBanner("랭킹");
         if (RankingManager.Instance != null)
         {
             RankingManager.Instance.OpenPanel();
         }
         else
         {
-            // Instance가 null이면 씬에서 검색 (비활성 포함)
             var rm = FindObjectOfType<RankingManager>(true);
             if (rm != null)
             {
                 RankingManager.Instance = rm;
                 rm.gameObject.SetActive(true);
                 rm.OpenPanel();
-                Debug.LogWarning("[TopMenuManager] RankingManager.Instance null → 씬 검색으로 복구");
-            }
-            else
-            {
-                Debug.LogError("[TopMenuManager] RankingManager가 씬에 없음! " +
-                    "MainScene Hierarchy → ManagerRoot 하위에 Rankingmanager 오브젝트 확인");
             }
         }
         PlayButtonSound();
@@ -397,11 +461,13 @@ public class TopMenuManager : MonoBehaviour
     public void ShowInventoryBadge() { if (inventoryBadge != null) inventoryBadge.SetActive(true); }
     public void ShowQuestBadge() { if (questBadge != null) questBadge.SetActive(true); }
     public void ShowShopBadge() { if (shopBadge != null) shopBadge.SetActive(true); }
+    public void ShowAchieveBadge() { if (achieveBadge != null) achieveBadge.SetActive(true); }
     public void HideAllBadges()
     {
         if (inventoryBadge != null) inventoryBadge.SetActive(false);
         if (questBadge != null) questBadge.SetActive(false);
         if (shopBadge != null) shopBadge.SetActive(false);
+        if (achieveBadge != null) achieveBadge.SetActive(false);
     }
 
     // ─────────────────────────────────────────────────────────

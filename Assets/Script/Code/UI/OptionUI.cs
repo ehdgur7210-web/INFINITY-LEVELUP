@@ -18,14 +18,14 @@ using TMPro;
 /// 1. Canvas 하위에 "OptionPanel" 오브젝트 생성
 /// 2. 이 스크립트를 OptionPanel 또는 상위 매니저에 붙이기
 /// 3. Inspector에서 각 UI 요소를 연결:
-///    - optionPanel: 옵션 패널 최상위 오브젝트
-///    - bgmSlider: BGM 음량 조절 Slider
-///    - sfxSlider: SFX 음량 조절 Slider
-///    - bgmVolumeText: BGM 음량 수치 표시 Text
-///    - sfxVolumeText: SFX 음량 수치 표시 Text
-///    - bgmMuteToggle: BGM 음소거 Toggle
-///    - sfxMuteToggle: SFX 음소거 Toggle
-///    - backButton: 뒤로가기(닫기) Button
+///    - 옵션패널: 옵션 패널 최상위 오브젝트
+///    - 배경음악슬라이더: BGM 음량 조절 Slider
+///    - 효과음슬라이더: SFX 음량 조절 Slider
+///    - 배경음악볼륨텍스트: BGM 음량 수치 표시 Text
+///    - 효과음볼륨텍스트: SFX 음량 수치 표시 Text
+///    - 배경음악음소거: BGM 음소거 Toggle
+///    - 효과음음소거: SFX 음소거 Toggle
+///    - 닫기버튼: 뒤로가기(닫기) Button
 ///
 /// 권장 UI 구조 (Hierarchy)
 /// Canvas
@@ -58,51 +58,82 @@ public class OptionUI : MonoBehaviour
 
     [Header("===== 옵션 패널 =====")]
     [Tooltip("옵션 패널의 최상위 루트 오브젝트")]
-    [SerializeField] private GameObject optionPanel;
+    [SerializeField] private GameObject 옵션패널;
 
-    [Header("===== BGM (배경음악) 설정 =====")]
-    [Tooltip("BGM 음량 조절 슬라이더 (0~1)")]
-    [SerializeField] private Slider bgmSlider;
+    [Header("===== 배경음악 설정 =====")]
+    [Tooltip("배경음악 음량 슬라이더")]
+    [SerializeField] private Slider 배경음악슬라이더;
 
-    [Tooltip("BGM 음량 수치 표시 텍스트 (예: '75%')")]
-    [SerializeField] private TextMeshProUGUI bgmVolumeText;
+    [Tooltip("배경음악 음량 텍스트")]
+    [SerializeField] private TextMeshProUGUI 배경음악볼륨텍스트;
 
-    [Tooltip("BGM 음소거 토글 버튼")]
-    [SerializeField] private Toggle bgmMuteToggle;
+    [Tooltip("배경음악 음소거 토글")]
+    [SerializeField] private Toggle 배경음악음소거;
 
-    [Header("===== SFX (효과음) 설정 =====")]
-    [Tooltip("SFX 음량 조절 슬라이더 (0~1)")]
-    [SerializeField] private Slider sfxSlider;
+    [Header("===== 효과음 설정 =====")]
+    [Tooltip("효과음 음량 슬라이더")]
+    [SerializeField] private Slider 효과음슬라이더;
 
-    [Tooltip("SFX 음량 수치 표시 텍스트 (예: '100%')")]
-    [SerializeField] private TextMeshProUGUI sfxVolumeText;
+    [Tooltip("효과음 음량 텍스트")]
+    [SerializeField] private TextMeshProUGUI 효과음볼륨텍스트;
 
-    [Tooltip("SFX 음소거 토글 버튼")]
-    [SerializeField] private Toggle sfxMuteToggle;
+    [Tooltip("효과음 음소거 토글")]
+    [SerializeField] private Toggle 효과음음소거;
 
-    [Header("===== 버튼 =====")]
-    [Tooltip("뒤로가기(닫기) 버튼")]
-    [SerializeField] private Button backButton;
+    [Header("===== 기본 버튼 =====")]
+    [Tooltip("닫기 버튼")]
+    [SerializeField] private Button 닫기버튼;
 
-    [Tooltip("(선택) 배경 클릭 시 닫기용 버튼")]
-    [SerializeField] private Button backgroundCloseButton;
+    [Tooltip("배경 클릭 닫기 버튼 (선택)")]
+    [SerializeField] private Button 배경닫기버튼;
 
-    [Header("===== 로그아웃 =====")]
+    [Header("===== 게임 설정 =====")]
+    [Tooltip("데미지 팝업 표시 ON/OFF")]
+    [SerializeField] private Toggle 데미지팝업토글;
+
+    [Tooltip("데미지 특수효과 ON/OFF")]
+    [SerializeField] private Toggle 데미지효과토글;
+
+    [Tooltip("데미지 소수점 자릿수 (정수/1자리/2자리)")]
+    [SerializeField] private TMP_Dropdown 소수점드롭다운;
+
+    [Tooltip("프레임 수 선택 (30/60/120)")]
+    [SerializeField] private TMP_Dropdown 프레임드롭다운;
+
+    [Tooltip("해상도 선택 (낮음/중/고)")]
+    [SerializeField] private TMP_Dropdown 해상도드롭다운;
+
+    [Header("===== 로그아웃 / 종료 =====")]
     [Tooltip("로그아웃 버튼")]
-    [SerializeField] private Button logoutButton;
+    [SerializeField] private Button 로그아웃버튼;
+
+    [Tooltip("앱 종료 버튼")]
+    [SerializeField] private Button 종료버튼;
 
     [Header("===== 애니메이션 설정 =====")]
-    [Tooltip("패널 열기/닫기 애니메이션 사용 여부")]
-    [SerializeField] private bool useAnimation = true;
+    [Tooltip("패널 열기/닫기 애니메이션 사용")]
+    [SerializeField] private bool 애니메이션사용 = true;
 
     [Tooltip("애니메이션 속도")]
-    [SerializeField] private float animationSpeed = 8f;
+    [SerializeField] private float 애니메이션속도 = 8f;
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // [게임 설정 — 전역 접근용 static]
+    // ─────────────────────────────────────────────────────────────────────────
+    public static bool DamagePopupEnabled { get; private set; } = true;
+    public static bool DamageEffectEnabled { get; private set; } = true;
+    public static int DamageDecimalPlaces { get; private set; } = 0;  // 0=정수
+    public static int TargetFrameRate { get; private set; } = 60;
+    public static int ResolutionLevel { get; private set; } = 2;       // 0=낮음, 1=중, 2=고
+
+    private static readonly int[] frameRateOptions = { 30, 60, 120 };
+    private static readonly float[] resolutionScales = { 0.5f, 0.75f, 1.0f };
 
     // ─────────────────────────────────────────────────────────────────────────
     // [내부 상태]
     // ─────────────────────────────────────────────────────────────────────────
-    private bool isAnimating = false;   // 현재 애니메이션 진행중
-    private CanvasGroup canvasGroup;    // 페이드 애니메이션용
+    private bool isAnimating = false;
+    private CanvasGroup canvasGroup;
 
     // ==========================================================
     //  Unity 라이프사이클
@@ -120,6 +151,11 @@ public class OptionUI : MonoBehaviour
             Destroy(gameObject);
             return;
         }
+
+        // ★ 에디터에서 꺼놓아도 런타임에 초기화되도록
+        // 이 오브젝트가 비활성이었다가 누군가 활성화해준 경우 대응
+        if (옵션패널 != null)
+            옵션패널.SetActive(false);
     }
 
     void Start()
@@ -128,19 +164,22 @@ public class OptionUI : MonoBehaviour
         SetupUIEvents();
 
         // CanvasGroup 확인 (페이드 애니메이션용)
-        if (optionPanel != null)
+        if (옵션패널 != null)
         {
-            canvasGroup = optionPanel.GetComponent<CanvasGroup>();
+            canvasGroup = 옵션패널.GetComponent<CanvasGroup>();
             if (canvasGroup == null)
             {
-                canvasGroup = optionPanel.AddComponent<CanvasGroup>();
+                canvasGroup = 옵션패널.AddComponent<CanvasGroup>();
             }
         }
 
+        // 게임 설정 로드 (PlayerPrefs)
+        LoadGameSettings();
+
         // 시작 시 옵션 패널 숨김
-        if (optionPanel != null)
+        if (옵션패널 != null)
         {
-            optionPanel.SetActive(false);
+            옵션패널.SetActive(false);
         }
     }
 
@@ -155,52 +194,86 @@ public class OptionUI : MonoBehaviour
     private void SetupUIEvents()
     {
         // 연결 BGM 슬라이더 이벤트 연결
-        if (bgmSlider != null)
+        if (배경음악슬라이더 != null)
         {
             // 슬라이더 범위 설정 (0 = 무음, 1 = 최대)
-            bgmSlider.minValue = 0f;
-            bgmSlider.maxValue = 1f;
+            배경음악슬라이더.minValue = 0f;
+            배경음악슬라이더.maxValue = 1f;
 
             // 슬라이더 값이 변하면 OnBGMVolumeChanged 호출
-            bgmSlider.onValueChanged.AddListener(OnBGMVolumeChanged);
+            배경음악슬라이더.onValueChanged.AddListener(OnBGMVolumeChanged);
         }
 
         // 연결 SFX 슬라이더 이벤트 연결
-        if (sfxSlider != null)
+        if (효과음슬라이더 != null)
         {
-            sfxSlider.minValue = 0f;
-            sfxSlider.maxValue = 1f;
-            sfxSlider.onValueChanged.AddListener(OnSFXVolumeChanged);
+            효과음슬라이더.minValue = 0f;
+            효과음슬라이더.maxValue = 1f;
+            효과음슬라이더.onValueChanged.AddListener(OnSFXVolumeChanged);
         }
 
         // 연결 BGM 음소거 토글 이벤트 연결
-        if (bgmMuteToggle != null)
+        if (배경음악음소거 != null)
         {
-            bgmMuteToggle.onValueChanged.AddListener(OnBGMMuteChanged);
+            배경음악음소거.onValueChanged.AddListener(OnBGMMuteChanged);
         }
 
         // 연결 SFX 음소거 토글 이벤트 연결
-        if (sfxMuteToggle != null)
+        if (효과음음소거 != null)
         {
-            sfxMuteToggle.onValueChanged.AddListener(OnSFXMuteChanged);
+            효과음음소거.onValueChanged.AddListener(OnSFXMuteChanged);
         }
 
         // 연결 뒤로가기 버튼 이벤트 연결
-        if (backButton != null)
+        if (닫기버튼 != null)
         {
-            backButton.onClick.AddListener(CloseOptionPanel);
+            닫기버튼.onClick.AddListener(CloseOptionPanel);
         }
 
         // 연결 배경 클릭 닫기 (선택사항) 연결
-        if (backgroundCloseButton != null)
+        if (배경닫기버튼 != null)
         {
-            backgroundCloseButton.onClick.AddListener(CloseOptionPanel);
+            배경닫기버튼.onClick.AddListener(CloseOptionPanel);
         }
 
         // 로그아웃 버튼 이벤트 연결
-        if (logoutButton != null)
+        if (로그아웃버튼 != null)
+            로그아웃버튼.onClick.AddListener(OnLogoutButtonClicked);
+
+        // 앱 종료 버튼
+        if (종료버튼 != null)
+            종료버튼.onClick.AddListener(OnQuitButtonClicked);
+
+        // 데미지 팝업 토글
+        if (데미지팝업토글 != null)
+            데미지팝업토글.onValueChanged.AddListener(OnDamagePopupChanged);
+
+        // 데미지 특수효과 토글
+        if (데미지효과토글 != null)
+            데미지효과토글.onValueChanged.AddListener(OnDamageEffectChanged);
+
+        // 소수점 자릿수 드롭다운
+        if (소수점드롭다운 != null)
         {
-            logoutButton.onClick.AddListener(OnLogoutButtonClicked);
+            소수점드롭다운.ClearOptions();
+            소수점드롭다운.AddOptions(new System.Collections.Generic.List<string> { "정수", "소수점 1자리", "소수점 2자리" });
+            소수점드롭다운.onValueChanged.AddListener(OnDecimalChanged);
+        }
+
+        // 프레임 수 드롭다운
+        if (프레임드롭다운 != null)
+        {
+            프레임드롭다운.ClearOptions();
+            프레임드롭다운.AddOptions(new System.Collections.Generic.List<string> { "30 FPS", "60 FPS", "120 FPS" });
+            프레임드롭다운.onValueChanged.AddListener(OnFrameRateChanged);
+        }
+
+        // 해상도 드롭다운
+        if (해상도드롭다운 != null)
+        {
+            해상도드롭다운.ClearOptions();
+            해상도드롭다운.AddOptions(new System.Collections.Generic.List<string> { "낮음", "중", "고" });
+            해상도드롭다운.onValueChanged.AddListener(OnResolutionChanged);
         }
     }
 
@@ -214,13 +287,16 @@ public class OptionUI : MonoBehaviour
     /// </summary>
     public void OpenOptionPanel()
     {
-        if (optionPanel == null) return;
+        if (옵션패널 == null) return;
 
         // 패널 활성화
-        optionPanel.SetActive(true);
+        옵션패널.SetActive(true);
 
         // SoundManager에서 현재 설정값을 가져와서 UI에 반영
         LoadCurrentSettings();
+
+        // 게임 설정 UI 동기화
+        LoadGameSettingsToUI();
 
         // 패널 열기 효과음
         if (SoundManager.Instance != null)
@@ -229,7 +305,7 @@ public class OptionUI : MonoBehaviour
         }
 
         // 페이드인 애니메이션
-        if (useAnimation && canvasGroup != null)
+        if (애니메이션사용 && canvasGroup != null)
         {
             StartCoroutine(FadeIn());
         }
@@ -242,7 +318,7 @@ public class OptionUI : MonoBehaviour
     /// </summary>
     public void CloseOptionPanel()
     {
-        if (optionPanel == null) return;
+        if (옵션패널 == null) return;
 
         // 패널 닫기 효과음
         if (SoundManager.Instance != null)
@@ -251,15 +327,16 @@ public class OptionUI : MonoBehaviour
         }
 
         // 페이드아웃 애니메이션
-        if (useAnimation && canvasGroup != null)
+        if (애니메이션사용 && canvasGroup != null)
         {
             StartCoroutine(FadeOut());
         }
         else
         {
-            optionPanel.SetActive(false);
+            옵션패널.SetActive(false);
         }
 
+        TopMenuManager.Instance?.ClearBanner();
         Debug.Log("[OptionUI] 옵션 패널 닫힘");
     }
 
@@ -270,9 +347,9 @@ public class OptionUI : MonoBehaviour
     public void ToggleOptionPanel()
     {
         if (TutorialManager.Instance != null && TutorialManager.Instance.ShouldBlockNonFocusButtons) return;
-        if (optionPanel == null) return;
+        if (옵션패널 == null) return;
 
-        if (optionPanel.activeSelf)
+        if (옵션패널.activeSelf)
         {
             CloseOptionPanel();
         }
@@ -299,36 +376,36 @@ public class OptionUI : MonoBehaviour
         }
 
         // 연결 BGM 슬라이더에 현재 설정값 반영 시작
-        if (bgmSlider != null)
+        if (배경음악슬라이더 != null)
         {
             // 이벤트 임시 제거 후 값 설정 뒤 이벤트 재연결
             // (값 설정 중 이벤트가 발생하는 것을 방지)
-            bgmSlider.onValueChanged.RemoveListener(OnBGMVolumeChanged);
-            bgmSlider.value = SoundManager.Instance.GetBGMVolume();
-            bgmSlider.onValueChanged.AddListener(OnBGMVolumeChanged);
+            배경음악슬라이더.onValueChanged.RemoveListener(OnBGMVolumeChanged);
+            배경음악슬라이더.value = SoundManager.Instance.GetBGMVolume();
+            배경음악슬라이더.onValueChanged.AddListener(OnBGMVolumeChanged);
         }
 
         // 연결 SFX 슬라이더에 현재 설정값 반영 시작
-        if (sfxSlider != null)
+        if (효과음슬라이더 != null)
         {
-            sfxSlider.onValueChanged.RemoveListener(OnSFXVolumeChanged);
-            sfxSlider.value = SoundManager.Instance.GetSFXVolume();
-            sfxSlider.onValueChanged.AddListener(OnSFXVolumeChanged);
+            효과음슬라이더.onValueChanged.RemoveListener(OnSFXVolumeChanged);
+            효과음슬라이더.value = SoundManager.Instance.GetSFXVolume();
+            효과음슬라이더.onValueChanged.AddListener(OnSFXVolumeChanged);
         }
 
         // 연결 음소거 토글 상태 반영 시작
-        if (bgmMuteToggle != null)
+        if (배경음악음소거 != null)
         {
-            bgmMuteToggle.onValueChanged.RemoveListener(OnBGMMuteChanged);
-            bgmMuteToggle.isOn = !SoundManager.Instance.IsBGMMuted(); // 토글 ON = 소리 켜짐
-            bgmMuteToggle.onValueChanged.AddListener(OnBGMMuteChanged);
+            배경음악음소거.onValueChanged.RemoveListener(OnBGMMuteChanged);
+            배경음악음소거.isOn = !SoundManager.Instance.IsBGMMuted(); // 토글 ON = 소리 켜짐
+            배경음악음소거.onValueChanged.AddListener(OnBGMMuteChanged);
         }
 
-        if (sfxMuteToggle != null)
+        if (효과음음소거 != null)
         {
-            sfxMuteToggle.onValueChanged.RemoveListener(OnSFXMuteChanged);
-            sfxMuteToggle.isOn = !SoundManager.Instance.IsSFXMuted();
-            sfxMuteToggle.onValueChanged.AddListener(OnSFXMuteChanged);
+            효과음음소거.onValueChanged.RemoveListener(OnSFXMuteChanged);
+            효과음음소거.isOn = !SoundManager.Instance.IsSFXMuted();
+            효과음음소거.onValueChanged.AddListener(OnSFXMuteChanged);
         }
 
         // 연결 음량 텍스트 초기 갱신
@@ -381,9 +458,9 @@ public class OptionUI : MonoBehaviour
         }
 
         // 음소거 시 슬라이더 비활성화 (시각적 피드백)
-        if (bgmSlider != null)
+        if (배경음악슬라이더 != null)
         {
-            bgmSlider.interactable = isOn;
+            배경음악슬라이더.interactable = isOn;
         }
     }
 
@@ -398,9 +475,9 @@ public class OptionUI : MonoBehaviour
             SoundManager.Instance.SetSFXMute(!isOn);
         }
 
-        if (sfxSlider != null)
+        if (효과음슬라이더 != null)
         {
-            sfxSlider.interactable = isOn;
+            효과음슬라이더.interactable = isOn;
         }
     }
 
@@ -413,8 +490,8 @@ public class OptionUI : MonoBehaviour
     /// </summary>
     private void UpdateVolumeTexts()
     {
-        if (bgmSlider != null) UpdateBGMVolumeText(bgmSlider.value);
-        if (sfxSlider != null) UpdateSFXVolumeText(sfxSlider.value);
+        if (배경음악슬라이더 != null) UpdateBGMVolumeText(배경음악슬라이더.value);
+        if (효과음슬라이더 != null) UpdateSFXVolumeText(효과음슬라이더.value);
     }
 
     /// <summary>
@@ -422,10 +499,10 @@ public class OptionUI : MonoBehaviour
     /// </summary>
     private void UpdateBGMVolumeText(float value)
     {
-        if (bgmVolumeText != null)
+        if (배경음악볼륨텍스트 != null)
         {
             int percentage = Mathf.RoundToInt(value * 100f);
-            bgmVolumeText.text = $"{percentage}%";
+            배경음악볼륨텍스트.text = $"{percentage}%";
         }
     }
 
@@ -434,10 +511,10 @@ public class OptionUI : MonoBehaviour
     /// </summary>
     private void UpdateSFXVolumeText(float value)
     {
-        if (sfxVolumeText != null)
+        if (효과음볼륨텍스트 != null)
         {
             int percentage = Mathf.RoundToInt(value * 100f);
-            sfxVolumeText.text = $"{percentage}%";
+            효과음볼륨텍스트.text = $"{percentage}%";
         }
     }
 
@@ -455,7 +532,7 @@ public class OptionUI : MonoBehaviour
 
         while (canvasGroup.alpha < 1f)
         {
-            canvasGroup.alpha += Time.unscaledDeltaTime * animationSpeed;
+            canvasGroup.alpha += Time.unscaledDeltaTime * 애니메이션속도;
             yield return null;
         }
 
@@ -473,12 +550,12 @@ public class OptionUI : MonoBehaviour
 
         while (canvasGroup.alpha > 0f)
         {
-            canvasGroup.alpha -= Time.unscaledDeltaTime * animationSpeed;
+            canvasGroup.alpha -= Time.unscaledDeltaTime * 애니메이션속도;
             yield return null;
         }
 
         canvasGroup.alpha = 0f;
-        optionPanel.SetActive(false);
+        옵션패널.SetActive(false);
         isAnimating = false;
     }
 
@@ -531,5 +608,156 @@ public class OptionUI : MonoBehaviour
         }
 
         Debug.Log("[OptionUI] 로그아웃 → LoginScene 이동");
+    }
+
+    // ==========================================================
+    //  게임 설정 핸들러
+    // ==========================================================
+
+    private void OnDamagePopupChanged(bool isOn)
+    {
+        DamagePopupEnabled = isOn;
+        PlayerPrefs.SetInt("opt_damagePopup", isOn ? 1 : 0);
+        Debug.Log($"[OptionUI] 데미지 팝업: {(isOn ? "ON" : "OFF")}");
+    }
+
+    private void OnDamageEffectChanged(bool isOn)
+    {
+        DamageEffectEnabled = isOn;
+        PlayerPrefs.SetInt("opt_damageEffect", isOn ? 1 : 0);
+        Debug.Log($"[OptionUI] 데미지 특수효과: {(isOn ? "ON" : "OFF")}");
+    }
+
+    private void OnDecimalChanged(int index)
+    {
+        DamageDecimalPlaces = index; // 0=정수, 1=소수점1, 2=소수점2
+        PlayerPrefs.SetInt("opt_decimal", index);
+        Debug.Log($"[OptionUI] 소수점 자릿수: {index}");
+    }
+
+    private void OnFrameRateChanged(int index)
+    {
+        if (index < 0 || index >= frameRateOptions.Length) return;
+        TargetFrameRate = frameRateOptions[index];
+        Application.targetFrameRate = TargetFrameRate;
+        PlayerPrefs.SetInt("opt_frameRate", index);
+        Debug.Log($"[OptionUI] 프레임: {TargetFrameRate} FPS");
+    }
+
+    private void OnResolutionChanged(int index)
+    {
+        if (index < 0 || index >= resolutionScales.Length) return;
+        ResolutionLevel = index;
+        float scale = resolutionScales[index];
+        int w = (int)(Screen.currentResolution.width * scale);
+        int h = (int)(Screen.currentResolution.height * scale);
+        Screen.SetResolution(w, h, true);
+        PlayerPrefs.SetInt("opt_resolution", index);
+        Debug.Log($"[OptionUI] 해상도: {(index == 0 ? "낮음" : index == 1 ? "중" : "고")} ({w}x{h})");
+    }
+
+    // ==========================================================
+    //  앱 종료
+    // ==========================================================
+
+    private void OnQuitButtonClicked()
+    {
+        SoundManager.Instance?.PlayButtonClick();
+
+        if (UIManager.Instance != null)
+        {
+            UIManager.Instance.ShowConfirmDialog(
+                "게임을 종료하시겠습니까?\n현재 데이터가 저장됩니다.",
+                OnQuitConfirmed
+            );
+        }
+        else
+        {
+            OnQuitConfirmed();
+        }
+    }
+
+    private void OnQuitConfirmed()
+    {
+        SaveLoadManager.Instance?.SaveGame();
+
+#if UNITY_EDITOR
+        UnityEditor.EditorApplication.isPlaying = false;
+#else
+        Application.Quit();
+#endif
+    }
+
+    // ==========================================================
+    //  게임 설정 저장/로드 (PlayerPrefs)
+    // ==========================================================
+
+    private void LoadGameSettings()
+    {
+        DamagePopupEnabled = PlayerPrefs.GetInt("opt_damagePopup", 1) == 1;
+        DamageEffectEnabled = PlayerPrefs.GetInt("opt_damageEffect", 1) == 1;
+        DamageDecimalPlaces = PlayerPrefs.GetInt("opt_decimal", 0);
+
+        int frameIdx = PlayerPrefs.GetInt("opt_frameRate", 1); // 기본 60FPS
+        if (frameIdx >= 0 && frameIdx < frameRateOptions.Length)
+        {
+            TargetFrameRate = frameRateOptions[frameIdx];
+            Application.targetFrameRate = TargetFrameRate;
+        }
+
+        int resIdx = PlayerPrefs.GetInt("opt_resolution", 2); // 기본 고
+        ResolutionLevel = Mathf.Clamp(resIdx, 0, 2);
+    }
+
+    private void LoadGameSettingsToUI()
+    {
+        // 토글
+        if (데미지팝업토글 != null)
+        {
+            데미지팝업토글.onValueChanged.RemoveListener(OnDamagePopupChanged);
+            데미지팝업토글.isOn = DamagePopupEnabled;
+            데미지팝업토글.onValueChanged.AddListener(OnDamagePopupChanged);
+        }
+
+        if (데미지효과토글 != null)
+        {
+            데미지효과토글.onValueChanged.RemoveListener(OnDamageEffectChanged);
+            데미지효과토글.isOn = DamageEffectEnabled;
+            데미지효과토글.onValueChanged.AddListener(OnDamageEffectChanged);
+        }
+
+        // 드롭다운
+        if (소수점드롭다운 != null)
+        {
+            소수점드롭다운.onValueChanged.RemoveListener(OnDecimalChanged);
+            소수점드롭다운.value = DamageDecimalPlaces;
+            소수점드롭다운.onValueChanged.AddListener(OnDecimalChanged);
+        }
+
+        if (프레임드롭다운 != null)
+        {
+            프레임드롭다운.onValueChanged.RemoveListener(OnFrameRateChanged);
+            int idx = System.Array.IndexOf(frameRateOptions, TargetFrameRate);
+            프레임드롭다운.value = idx >= 0 ? idx : 1;
+            프레임드롭다운.onValueChanged.AddListener(OnFrameRateChanged);
+        }
+
+        if (해상도드롭다운 != null)
+        {
+            해상도드롭다운.onValueChanged.RemoveListener(OnResolutionChanged);
+            해상도드롭다운.value = ResolutionLevel;
+            해상도드롭다운.onValueChanged.AddListener(OnResolutionChanged);
+        }
+    }
+
+    /// <summary>데미지 표시용 포맷 문자열 (다른 스크립트에서 사용)</summary>
+    public static string FormatDamage(float damage)
+    {
+        return DamageDecimalPlaces switch
+        {
+            1 => damage.ToString("F1"),
+            2 => damage.ToString("F2"),
+            _ => ((int)damage).ToString()
+        };
     }
 }

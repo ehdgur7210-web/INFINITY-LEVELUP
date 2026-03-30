@@ -327,6 +327,7 @@ public class FarmCropShopUI : MonoBehaviour
     public void CloseShop()
     {
         shopPanel?.SetActive(false);
+        FarmSceneController.Instance?.ResetBanner();
         // ★ 닫을 때 마지막 선택 초기화 (다음에 열면 빈 상태)
         lastVeggieCrop = null;
         lastFruitCrop = null;
@@ -596,7 +597,7 @@ public class FarmCropShopUI : MonoBehaviour
                                 + $"💧 물주기 {FormatTime(crop.GetModifiedGrowthTime(true, false, wb, 0f))}\n"
                                 + $"✨ 비료+물 {FormatTime(crop.GetModifiedGrowthTime(true, true, wb, fb))}";
 
-        if (costText) costText.text = crop.seedCostGem > 0 ? $"💎 {crop.seedCostGem}" : $"💰 {crop.seedCostGold}";
+        if (costText) costText.text = crop.seedCostGem > 0 ? $"{crop.seedCostGem}" : $"{crop.seedCostGold}";
 
         int owned = GetFarmInventoryUI()?.GetSeedCount(crop.cropID) ?? 0;
         if (ownedCountText) ownedCountText.text = $"보유 {owned}개";
@@ -616,7 +617,7 @@ public class FarmCropShopUI : MonoBehaviour
                     int plyrLv = GameManager.Instance != null ? GameManager.Instance.PlayerLevel : (GameDataBridge.CurrentData?.playerLevel ?? 1);
                     if (crop.requiredPlayerLevel > plyrLv) r += $"플레이어 Lv{crop.requiredPlayerLevel} 필요";
                 }
-                lockReasonText.text = "🔒 " + r;
+                lockReasonText.text = r;
             }
         }
 
@@ -701,7 +702,7 @@ public class FarmCropShopUI : MonoBehaviour
             supplyEffectText.text = water.extraSpeedBonus > 0
                 ? $"💧 성장 {water.extraSpeedBonus * 100f:F0}% 단축"
                 : "💧 기본 물주기";
-        if (supplyCostText) supplyCostText.text = water.costGem > 0 ? $"💎 {water.costGem}" : $"💰 {water.costGold}";
+        if (supplyCostText) supplyCostText.text = water.costGem > 0 ? $"{water.costGem}" : $"{water.costGold}";
 
         bool unlocked = IsUnlocked(water.requiredPlayerLevel);
         int owned = GetFarmInventoryUI()?.GetWaterCount(water.waterID) ?? 0;
@@ -710,7 +711,7 @@ public class FarmCropShopUI : MonoBehaviour
         if (supplyLockText)
         {
             supplyLockText.gameObject.SetActive(!unlocked);
-            if (!unlocked) supplyLockText.text = $"🔒 플레이어 Lv.{water.requiredPlayerLevel} 필요";
+            if (!unlocked) supplyLockText.text = $"플레이어 Lv.{water.requiredPlayerLevel} 필요";
         }
 
         if (buySupplyButton) buySupplyButton.interactable = unlocked;
@@ -740,7 +741,7 @@ public class FarmCropShopUI : MonoBehaviour
         if (supplyDescText) supplyDescText.text = fert.description;
         if (supplyEffectText)
             supplyEffectText.text = $"🌿 수확량 +{fert.yieldBonus * 100f:F0}%  속도 +{fert.speedBonus * 100f:F0}%";
-        if (supplyCostText) supplyCostText.text = fert.costGem > 0 ? $"💎 {fert.costGem}" : $"💰 {fert.costGold}";
+        if (supplyCostText) supplyCostText.text = fert.costGem > 0 ? $"{fert.costGem}" : $"{fert.costGold}";
 
         bool unlocked = IsUnlocked(fert.requiredPlayerLevel);
         int owned = GetFarmInventoryUI()?.GetFertCount(fert.fertilizerID) ?? 0;
@@ -749,7 +750,7 @@ public class FarmCropShopUI : MonoBehaviour
         if (supplyLockText)
         {
             supplyLockText.gameObject.SetActive(!unlocked);
-            if (!unlocked) supplyLockText.text = $"🔒 플레이어 Lv.{fert.requiredPlayerLevel} 필요";
+            if (!unlocked) supplyLockText.text = $"플레이어 Lv.{fert.requiredPlayerLevel} 필요";
         }
 
         if (buySupplyButton) buySupplyButton.interactable = unlocked;
@@ -767,7 +768,7 @@ public class FarmCropShopUI : MonoBehaviour
         // ── 1) 재화 차감 (SpendCurrency: GameManager 우선 → GameDataBridge 폴백) ──
         bool useGem = crop.seedCostGem > 0;
         int totalGem = crop.seedCostGem * amount;
-        int totalGold = crop.seedCostGold * amount;
+        long totalGold = crop.seedCostGold * amount;
 
         if (!SpendCurrency(useGem, totalGem, totalGold))
         {
@@ -797,7 +798,7 @@ public class FarmCropShopUI : MonoBehaviour
         if (currentTab == ShopTab.Vegetable) ResortSlots(veggieSlots);
         else if (currentTab == ShopTab.Fruit) ResortSlots(fruitSlots);
 
-        UIManager.Instance?.ShowMessage($"🌱 {crop.cropName} x{amount} 구매!", Color.green);
+        UIManager.Instance?.ShowMessage($"{crop.cropName} x{amount} 구매!", Color.green);
         SoundManager.Instance?.PlayPurchaseSound();
 
         SaveLoadManager.Instance?.SaveGame();
@@ -901,7 +902,7 @@ public class FarmCropShopUI : MonoBehaviour
     }
 
     /// <summary>재화 차감 (GameManager 우선, 없으면 GameDataBridge 폴백)</summary>
-    private bool SpendCurrency(bool useGem, int gemAmount, int goldAmount)
+    private bool SpendCurrency(bool useGem, int gemAmount, long goldAmount)
     {
         // GameManager가 있으면 사용
         if (GameManager.Instance != null)

@@ -244,6 +244,7 @@ public class FarmInventoryUI : MonoBehaviour
     public void ClosePanel()
     {
         inventoryPanel?.SetActive(false);
+        FarmSceneController.Instance?.ResetBanner();
         ExitPlantMode();
 
         // 튜토리얼 트리거
@@ -679,10 +680,10 @@ public class FarmInventoryUI : MonoBehaviour
     //  이벤트 수신
     // ════════════════════════════════════════════════
 
-    private void RefreshCropPoints(int points)
+    private void RefreshCropPoints(long points)
     {
         if (cropPointsText)
-            cropPointsText.text = $"🌱 작물 포인트: {points}";
+            cropPointsText.text = $"작물 포인트: {UIManager.FormatKoreanUnit(points)}";
     }
 
     private void OnHarvestComplete(int plotIndex, List<CropHarvestReward> rewards)

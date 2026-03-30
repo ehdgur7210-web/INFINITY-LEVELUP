@@ -27,11 +27,11 @@ using LitJson;
 ///   테이블명 : gamedata  ← 콘솔에서 정확한 이름 확인 필수 (대소문자 구분!)
 ///   컬럼     : slot_index    (int32)   기본값 0
 ///              player_level  (int32)   기본값 1
-///              player_gold   (int32)   기본값 0
+///              player_gold   (int64)   기본값 0   ← long
 ///              character_name(string)  기본값 ""
 ///              save_json     (string)  기본값 ""
 ///              combat_power  (int32)   기본값 0   ← 랭킹용
-///              farm_score    (int32)   기본값 0   ← 랭킹용
+///              farm_score    (int64)   기본값 0   ← long, 랭킹용
 /// ══════════════════════════════════════════════════════════
 /// </summary>
 public class BackendGameDataManager : MonoBehaviour
@@ -279,7 +279,7 @@ public class BackendGameDataManager : MonoBehaviour
         IsBusy = true;
 
         int cp = CombatPowerManager.Instance?.TotalCombatPower ?? 0;
-        int farmScore = FarmManager.Instance?.GetCropPoints() ?? 0;
+        long farmScore = FarmManager.Instance?.GetCropPoints() ?? 0;
 
         Debug.Log($"[BackendGameData] ▶ SaveToServer 시작 — 테이블:\"{tableName}\", slot:{data.activeCharacterSlot}, Lv:{data.playerLevel}, CP:{cp}, Farm:{farmScore}, RowInDate:{(_rowInDate ?? "null")}");
 

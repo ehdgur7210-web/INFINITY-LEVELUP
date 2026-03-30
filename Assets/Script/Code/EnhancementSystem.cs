@@ -100,7 +100,10 @@ public class EnhancementSystem : MonoBehaviour
         if (enhancementPanel == null) return;
         bool isActive = enhancementPanel.activeSelf;
         enhancementPanel.SetActive(!isActive);
-        if (!isActive) ClearSelection();
+        if (isActive)
+            TopMenuManager.Instance?.ClearBanner();
+        else
+            ClearSelection();
     }
 
     // ─────────────────────────────────────────
@@ -422,7 +425,7 @@ public class EnhancementSystem : MonoBehaviour
             if (EnhancementCropCostPatch.Instance != null)
             {
                 int cpCost = EnhancementCropCostPatch.Instance.GetCropPointCost(currentEnhanceLevel);
-                int curCp = FarmManager.Instance != null ? FarmManager.Instance.GetCropPoints() : 0;
+                long curCp = FarmManager.Instance != null ? FarmManager.Instance.GetCropPoints() : 0;
 
                 cropCostText.text = $"CP: {cpCost} (보유 {curCp})";
                 cropCostText.color = curCp >= cpCost ? Color.white : Color.red;
