@@ -49,6 +49,14 @@ public class CompanionHotbarManager : MonoBehaviour
     public float autoSummonInterval = 1f;
     private float autoSummonTimer;
 
+    [Header("오토 버튼 UI")]
+    [Tooltip("AUTO 토글 버튼 (Inspector에서 연결하거나 자동 생성)")]
+    public Button autoButton;
+    [Tooltip("AUTO 버튼 텍스트")]
+    public TextMeshProUGUI autoButtonText;
+    [SerializeField] private Color autoOnColor = new Color(0.2f, 0.9f, 0.3f, 1f);
+    [SerializeField] private Color autoOffColor = new Color(0.5f, 0.5f, 0.5f, 1f);
+
     // 슬롯 데이터
     private List<CompanionHotbarSlotData> slotDataList = new List<CompanionHotbarSlotData>();
     private List<CompanionHotbarSlot> slotUIs = new List<CompanionHotbarSlot>();
@@ -76,6 +84,42 @@ public class CompanionHotbarManager : MonoBehaviour
     {
         InitializeSlots();
         FindPlayer();
+        SetupAutoButton();
+        RefreshAutoButtonUI();
+        FixParentRaycast();
+
+        // ★ AUTO ON 상태로 로드된 경우, 씬 초기화 완료 후 자동 소환 시작
+        if (autoSummonEnabled)
+            StartCoroutine(DelayedAutoSummon());
+    }
+
+    /// <summary>씬 로드 후 플레이어 탐색 완료를 기다린 뒤 자동 소환</summary>
+    private System.Collections.IEnumerator DelayedAutoSummon()
+    {
+        // 플레이어가 준비될 때까지 최대 3초 대기
+        float waited = 0f;
+        while (companionSpawnAnchor == null && waited < 3f)
+        {
+            FindPlayer();
+            yield return new WaitForSeconds(0.5f);
+            waited += 0.5f;
+        }
+
+        if (companionSpawnAnchor == null) yield break;
+
+        // 한 프레임 더 대기 (UI 초기화 완료)
+        yield return null;
+
+        // 소환 가능한 슬롯 순서대로 즉시 소환
+        for (int i = 0; i < slotDataList.Count; i++)
+        {
+            if (GetActiveSummonCount() >= maxActiveSummons) break;
+            if (slotDataList[i].data == null) continue;
+            if (spawnedAgents.ContainsKey(i) && spawnedAgents[i] != null && !spawnedAgents[i].IsDead) continue;
+            if (cooldownTimers[i] > 0f) continue;
+
+            SummonCompanion(i);
+        }
     }
 
     /// <summary>PlayerController 컴포넌트로 플레이어 찾기</summary>
@@ -459,19 +503,84 @@ public class CompanionHotbarManager : MonoBehaviour
     //  오토 소환
     // ─────────────────────────────────────────────────────────
 
+    /// <summary>AUTO 버튼 초기 세팅 (Inspector 연결 또는 자동 생성)</summary>
+    private void SetupAutoButton()
+    {
+        if (autoButton != null)
+        {
+            autoButton.onClick.RemoveAllListeners();
+            autoButton.onClick.AddListener(ToggleAutoSummon);
+            Debug.Log($"[CompanionHotbarManager] AUTO 버튼 연결 완료: {autoButton.gameObject.name}");
+        }
+    }
+
+    /// <summary>
+    /// ★ 부모 오브젝트의 Image raycastTarget을 꺼서 자식 버튼 클릭을 차단하지 않도록 함
+    /// 동료핫바 배경 Image가 raycastTarget=true이면 AUTO/슬롯 버튼이 눌리지 않는 버그 방지
+    /// </summary>
+    private void FixParentRaycast()
+    {
+        // 자기 자신의 Image
+        Image myImage = GetComponent<Image>();
+        if (myImage != null && myImage.raycastTarget)
+        {
+            myImage.raycastTarget = false;
+            Debug.Log("[CompanionHotbarManager] 자신의 Image raycastTarget OFF");
+        }
+
+        // hotbarParent의 Image
+        if (hotbarParent != null)
+        {
+            Image parentImage = hotbarParent.GetComponent<Image>();
+            if (parentImage != null && parentImage.raycastTarget)
+            {
+                parentImage.raycastTarget = false;
+                Debug.Log("[CompanionHotbarManager] hotbarParent Image raycastTarget OFF");
+            }
+        }
+    }
+
+    /// <summary>AUTO 버튼 시각 갱신</summary>
+    private void RefreshAutoButtonUI()
+    {
+        if (autoButtonText != null)
+            autoButtonText.text = autoSummonEnabled ? "AUTO\nON" : "AUTO\nOFF";
+
+        if (autoButton != null)
+        {
+            Image btnImg = autoButton.GetComponent<Image>();
+            if (btnImg != null)
+                btnImg.color = autoSummonEnabled ? autoOnColor : autoOffColor;
+        }
+    }
+
     /// <summary>오토 버튼에서 호출 — 자동 소환 ON/OFF 토글</summary>
     public void ToggleAutoSummon()
     {
         autoSummonEnabled = !autoSummonEnabled;
+
+        RefreshAutoButtonUI();
+        SoundManager.Instance?.PlayButtonClick();
+
         UIManager.Instance?.ShowMessage(
             autoSummonEnabled ? "동료 자동 소환 ON" : "동료 자동 소환 OFF",
             autoSummonEnabled ? Color.green : Color.gray);
         Debug.Log($"[CompanionHotbarManager] 오토 소환: {(autoSummonEnabled ? "ON" : "OFF")}");
+
+        // ★ ON으로 전환 즉시 소환 시도
+        if (autoSummonEnabled)
+        {
+            autoSummonTimer = 0f; // 타이머 초기화 → 즉시 TryAutoSummon 실행
+        }
+
+        // 저장
+        SaveLoadManager.Instance?.SaveGame();
     }
 
     public void SetAutoSummon(bool enabled)
     {
         autoSummonEnabled = enabled;
+        RefreshAutoButtonUI();
     }
 
     private void TryAutoSummon()
@@ -479,6 +588,13 @@ public class CompanionHotbarManager : MonoBehaviour
         autoSummonTimer -= Time.deltaTime;
         if (autoSummonTimer > 0f) return;
         autoSummonTimer = autoSummonInterval;
+
+        // 플레이어가 없으면 재탐색
+        if (companionSpawnAnchor == null)
+        {
+            FindPlayer();
+            if (companionSpawnAnchor == null) return;
+        }
 
         // 소환 가능 여유가 없으면 스킵
         if (GetActiveSummonCount() >= maxActiveSummons) return;

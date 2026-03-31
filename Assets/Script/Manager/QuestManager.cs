@@ -122,6 +122,7 @@ public class QuestManager : MonoBehaviour
         if (playerLevel < nextQuest.requiredLevel)
         {
             Debug.Log($"[QuestManager] 레벨 부족 ({playerLevel} < {nextQuest.requiredLevel}) → 1초 후 재시도");
+            CancelInvoke(nameof(StartNextQuest));
             Invoke(nameof(StartNextQuest), 1f);
             return;
         }

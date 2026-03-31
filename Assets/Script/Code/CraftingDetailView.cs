@@ -33,6 +33,14 @@ public class CraftingDetailView : MonoBehaviour
     [SerializeField] private Button craftButton;
     [SerializeField] private TextMeshProUGUI craftButtonText;
 
+    [Header("제작 버튼 이미지 (텍스트 대신 이미지 사용 시)")]
+    [Tooltip("제작 가능 상태 이미지 (예: '제작' 버튼 이미지)")]
+    [SerializeField] private Sprite craftableSprite;
+    [Tooltip("재료 부족 상태 이미지 (예: '재료 부족' 버튼 이미지)")]
+    [SerializeField] private Sprite notCraftableSprite;
+    [Tooltip("버튼 안의 Image 컴포넌트 (이미지 모드일 때 사용)")]
+    [SerializeField] private Image craftButtonImage;
+
     [Header("진행 상태")]
     [SerializeField] private Slider progressSlider;
     [SerializeField] private TextMeshProUGUI progressText;
@@ -225,9 +233,25 @@ public class CraftingDetailView : MonoBehaviour
 
         craftButton.interactable = canCraft;
 
-        if (craftButtonText != null)
+        // ★ 이미지 모드: Sprite가 설정되어 있으면 이미지로 표시
+        if (craftButtonImage != null && craftableSprite != null && notCraftableSprite != null)
         {
-            craftButtonText.text = canCraft ? "제작" : "재료 부족";
+            craftButtonImage.sprite = canCraft ? craftableSprite : notCraftableSprite;
+            craftButtonImage.color = Color.white;
+            craftButtonImage.gameObject.SetActive(true);
+
+            // 이미지 모드에서는 텍스트 숨김
+            if (craftButtonText != null)
+                craftButtonText.gameObject.SetActive(false);
+        }
+        else
+        {
+            // 폴백: 이미지 미설정 시 기존 텍스트 방식
+            if (craftButtonText != null)
+            {
+                craftButtonText.gameObject.SetActive(true);
+                craftButtonText.text = canCraft ? "제작" : "재료 부족";
+            }
         }
     }
 

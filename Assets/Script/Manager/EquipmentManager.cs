@@ -27,6 +27,15 @@ public class EquipmentManager : MonoBehaviour
         else { enabled = false; Destroy(gameObject); return; }
     }
 
+    void OnDestroy()
+    {
+        if (Instance == this)
+        {
+            OnEquipmentChanged = null;
+            Instance = null;
+        }
+    }
+
     void Start()
     {
         if (Instance != this) return;
@@ -131,6 +140,9 @@ public class EquipmentManager : MonoBehaviour
         OnEquipmentChanged?.Invoke(type, equipment, enhanceLevel);
         EquipmentSkillSystem.Instance?.OnEquipmentEquipped(type, equipment);
 
+        // ★ 스킬 조합 재판정 (장비 레어리티 변경)
+        SkillComboSystem.Instance?.ForceReshuffle();
+
         // 장착 즉시 전투력 갱신
         CombatPowerManager.Instance?.Recalculate();
 
@@ -160,6 +172,9 @@ public class EquipmentManager : MonoBehaviour
 
         OnEquipmentChanged?.Invoke(type, null, 0);
         EquipmentSkillSystem.Instance?.OnEquipmentUnequipped(type);
+
+        // ★ 스킬 조합 재판정
+        SkillComboSystem.Instance?.ForceReshuffle();
 
         CombatPowerManager.Instance?.Recalculate();
 
@@ -207,6 +222,9 @@ public class EquipmentManager : MonoBehaviour
 
         if (cachedPanelSlots == null || cachedPanelSlots.Length == 0)
             CacheEquipPanelSlots();
+
+        // ★ CacheEquipPanelSlots 후에도 null일 수 있으므로 방어
+        if (cachedPanelSlots == null) return;
 
         foreach (var slot in cachedPanelSlots)
         {
@@ -329,6 +347,7 @@ public class EquipmentManager : MonoBehaviour
     {
         if (cachedPanelSlots == null || cachedPanelSlots.Length == 0)
             CacheEquipPanelSlots();
+        if (cachedPanelSlots == null) return;
 
         foreach (var slot in cachedPanelSlots)
         {
@@ -345,6 +364,7 @@ public class EquipmentManager : MonoBehaviour
     {
         if (cachedPanelSlots == null || cachedPanelSlots.Length == 0)
             CacheEquipPanelSlots();
+        if (cachedPanelSlots == null) return;
 
         foreach (var slot in cachedPanelSlots)
         {

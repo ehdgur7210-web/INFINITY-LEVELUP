@@ -133,6 +133,7 @@ public class OfflineRewardUI : MonoBehaviour
 
             // ── 수익 미리보기 실시간 갱신 ──
             var reward = OfflineRewardManager.Instance.CalculateCurrentReward();
+            if (reward == null) continue;
             if (goldAmountText != null) goldAmountText.text = FormatNumber(reward.goldReward);
             if (gemAmountText != null) gemAmountText.text = FormatNumber(reward.gemReward);
             if (expAmountText != null) expAmountText.text = FormatNumber(reward.expReward);

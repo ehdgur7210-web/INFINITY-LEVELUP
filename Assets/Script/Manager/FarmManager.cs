@@ -83,10 +83,12 @@ public class FarmManager : MonoBehaviour
         }
         else if (Instance != this)
         {
-            // ★ 씬 전환 시: gameObject 파괴 없이 Instance만 교체
+            // ★ 씬 전환 시: 이전 Instance의 이벤트 정리 후 교체
             //   FarmManager가 FarmCanvas 하위에 있으므로 Destroy(gameObject) 사용 금지
             //   이전 Instance는 씬 언로드 시 자동 파괴됨
-            Debug.Log($"[FarmManager] Instance 교체 (파괴 없음): 이전={Instance.gameObject.name} → 새={gameObject.name} (allCrops:{allCrops?.Count ?? 0})");
+            FarmManager oldInstance = Instance;
+            Debug.Log($"[FarmManager] Instance 교체: 이전={oldInstance.gameObject.name} → 새={gameObject.name} (allCrops:{allCrops?.Count ?? 0})");
+            if (oldInstance != null) oldInstance.enabled = false;
             Instance = this;
         }
 

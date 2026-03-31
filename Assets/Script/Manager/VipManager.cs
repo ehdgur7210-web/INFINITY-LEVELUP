@@ -375,7 +375,11 @@ public class VipManager : MonoBehaviour
                     if (existing > DateTime.UtcNow)
                         baseDate = existing;
                 }
-                ExpireDate = baseDate.AddDays(days).ToString("yyyy-MM-ddTHH:mm:ss");
+
+                string newExpire = baseDate.AddDays(days).ToString("o"); // ★ ISO 8601 라운드트립 포맷
+                ExpireDate = newExpire;
+
+                Debug.Log($"[VipManager] ★ 기간 연장: baseDate={baseDate}, 새 만료일={newExpire}");
 
                 // VIP 레벨이 0이면 1로 설정
                 if (CurrentVipLevel <= 0)
@@ -384,10 +388,22 @@ public class VipManager : MonoBehaviour
                 // 무료 선물 초기화 (새 기간)
                 IsFreeGiftClaimed = false;
 
-                // ★ UI 즉시 갱신 (서버 응답 기다리지 않음)
+                // ★ SaveData에도 즉시 반영 (GameDataBridge 경유)
+                if (GameDataBridge.CurrentData != null)
+                {
+                    GameDataBridge.CurrentData.vipLevel = CurrentVipLevel;
+                    GameDataBridge.CurrentData.vipExp = CurrentVipExp;
+                    GameDataBridge.CurrentData.vipExpireDate = ExpireDate;
+                    GameDataBridge.CurrentData.vipFreeGiftClaimed = IsFreeGiftClaimed;
+                }
+
+                // UI 즉시 갱신
                 OnVipDataChanged?.Invoke();
                 SaveLoadManager.Instance?.SaveGame();
-                UIManager.Instance?.ShowMessage($"VIP {days}일 연장 완료!", Color.green);
+
+                string remaining = GetRemainingTimeString();
+                UIManager.Instance?.ShowMessage($"VIP {days}일 연장 완료! ({remaining})", Color.green);
+                Debug.Log($"[VipManager] 연장 후 남은 기간: {remaining}");
 
                 // 서버에도 저장 (비동기, 실패해도 로컬은 이미 저장됨)
                 SaveToServer();

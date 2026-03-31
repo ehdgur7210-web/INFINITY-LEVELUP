@@ -110,18 +110,56 @@ public class ShopSlot : MonoBehaviour
     }
 
     /// <summary>
-    /// 구매 버튼 클릭 이벤트
+    /// 구매 버튼 클릭 이벤트 — 확인 다이얼로그 표시
     /// </summary>
     public void OnBuyButtonClicked()
     {
         if (itemData == null) return;
-        // ★ 구매 버튼 클릭 효과음
         SoundManager.Instance?.PlayButtonClick();
 
-        // ShopManager를 통해 구매 처리
-        if (ShopManager.Instance != null)
+        // ★ 구매 확인 다이얼로그 — 아이템 이름 + 가격 표시
+        string rarityName = GetRarityDisplayName(itemData.rarity);
+        string message = $"<color={GetRarityHexColor(itemData.rarity)}>[{rarityName}] {itemData.itemName}</color>\n\n" +
+                         $"{itemPrice:N0} G 로 구매하시겠습니까?";
+
+        UIManager.Instance?.ShowConfirmDialog(
+            message,
+            onConfirm: () =>
+            {
+                if (ShopManager.Instance != null)
+                    ShopManager.Instance.BuyItem(itemData, itemPrice);
+            },
+            onCancel: () =>
+            {
+                // 취소 — 아무것도 안 함
+                Debug.Log($"[ShopSlot] 구매 취소: {itemData.itemName}");
+            }
+        );
+    }
+
+    private string GetRarityDisplayName(ItemRarity rarity)
+    {
+        return rarity switch
         {
-            ShopManager.Instance.BuyItem(itemData, itemPrice);
-        }
+            ItemRarity.Common    => "일반",
+            ItemRarity.Uncommon  => "고급",
+            ItemRarity.Rare      => "희귀",
+            ItemRarity.Epic      => "영웅",
+            ItemRarity.Legendary => "전설",
+            _                    => "일반"
+        };
+    }
+
+    private string GetRarityHexColor(ItemRarity rarity)
+    {
+        return rarity switch
+        {
+            ItemRarity.Common    => "#CCCCCC",
+            ItemRarity.Uncommon  => "#00FF00",
+            ItemRarity.Rare      => "#4488FF",
+            ItemRarity.Epic      => "#BB44FF",
+            ItemRarity.Legendary => "#FF8800",
+            _                    => "#FFFFFF"
+        };
     }
 }

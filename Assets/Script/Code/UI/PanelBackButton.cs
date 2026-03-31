@@ -109,5 +109,8 @@ public class PanelBackButton : MonoBehaviour
         {
             Debug.LogWarning("[PanelBackButton] targetPanel이 지정되지 않았습니다!");
         }
+
+        // ★ 배너를 레벨 텍스트로 복원 (장비/스킬/제작/강화 등 패널 닫기 시)
+        TopMenuManager.Instance?.ClearBanner();
     }
 }

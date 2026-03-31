@@ -87,7 +87,16 @@ public class GameManager : MonoBehaviour
 
     void OnDestroy()
     {
-        if (Instance == this) Instance = null;
+        if (Instance == this)
+        {
+            // ★ 정적 이벤트 정리 — 씬 재로드 시 이중 호출·메모리 누수 방지
+            OnGoldChanged = null;
+            OnGemChanged = null;
+            OnExpChanged = null;
+            OnItemAcquired = null;
+
+            Instance = null;
+        }
     }
 
     // ── 초기화 ───────────────────────────────────────────

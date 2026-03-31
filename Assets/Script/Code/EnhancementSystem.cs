@@ -106,6 +106,24 @@ public class EnhancementSystem : MonoBehaviour
             ClearSelection();
     }
 
+    public void ShowEnhancementUI()
+    {
+        if (enhancementPanel == null) return;
+        if (enhancementPanel.activeSelf) return;
+
+        enhancementPanel.SetActive(true);
+        ClearSelection();
+    }
+
+    public void HideEnhancementUI()
+    {
+        if (enhancementPanel == null) return;
+        if (!enhancementPanel.activeSelf) return;
+
+        enhancementPanel.SetActive(false);
+        TopMenuManager.Instance?.ClearBanner();
+    }
+
     // ─────────────────────────────────────────
     //  아이템 선택
     // ─────────────────────────────────────────

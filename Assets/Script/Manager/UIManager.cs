@@ -386,19 +386,26 @@ public class UIManager : MonoBehaviour
         cropPointText.text = FormatKoreanUnit(cropPoints);
     }
 
+    private Coroutine _hpAnimCoroutine;
+
     private void UpdateHpUI(float currentHp, float maxHp)
     {
         if (hpSlider != null)
         {
-            // ✅ 핵심 수정: maxValue를 먼저 맞추고, 비율 대신 실제 값으로 애니메이션
-            hpSlider.maxValue = maxHp;
-            StartCoroutine(AnimateSlider(hpSlider, currentHp, 0.3f));
+            // ★ 비율(0~1) 방식으로 통일 — maxValue 변경 불필요
+            hpSlider.minValue = 0f;
+            hpSlider.maxValue = 1f;
+            float ratio = maxHp > 0 ? Mathf.Clamp01(currentHp / maxHp) : 0f;
+
+            // 이전 애니메이션 중단 후 새로 시작
+            if (_hpAnimCoroutine != null) StopCoroutine(_hpAnimCoroutine);
+            _hpAnimCoroutine = StartCoroutine(AnimateSlider(hpSlider, ratio, 0.3f));
         }
 
         if (hpText != null)
         {
             hpText.text = $"{(int)currentHp} / {(int)maxHp}";
-            hpText.color = currentHp / maxHp < 0.3f ? Color.red : Color.white;
+            hpText.color = (maxHp > 0 && currentHp / maxHp < 0.3f) ? Color.red : Color.white;
         }
     }
 
@@ -406,23 +413,29 @@ public class UIManager : MonoBehaviour
     {
         currentLevel = level;
         targetDisplayExp = exp;
-        isExpAnimating = true; // ✅ 애니메이션 시작
+        isExpAnimating = true;
 
         if (levelText != null)
-        {
             levelText.text = $"Lv.{level}";
-        }
 
-        // 게임 화면 상태일 때 헤더 레벨 텍스트도 업데이트
         if (headerLevelText != null && headerLevelText.gameObject.activeSelf)
-        {
             headerLevelText.text = $"Lv.{level}";
-        }
 
-        if (expText != null && GameManager.Instance != null)
+        if (GameManager.Instance != null)
         {
             int requiredExp = GameManager.Instance.GetRequiredExpForLevel(level);
-            expText.text = $"{exp} / {requiredExp}";
+
+            if (expText != null)
+                expText.text = $"{exp:N0} / {requiredExp:N0}";
+
+            // ★ 슬라이더 즉시 반영 (Smooth 전 초기값)
+            if (expSlider != null)
+            {
+                expSlider.minValue = 0f;
+                expSlider.maxValue = 1f;
+                float ratio = requiredExp > 0 ? Mathf.Clamp01((float)exp / requiredExp) : 0f;
+                expSlider.value = ratio;
+            }
         }
     }
 
@@ -440,8 +453,12 @@ public class UIManager : MonoBehaviour
             float fillAmount = currentDisplayExp / (float)requiredExp;
             expSlider.value = Mathf.Clamp01(fillAmount);
         }
+        else
+        {
+            expSlider.value = 0f;
+        }
 
-        // ✅ 목표값에 충분히 가까워지면 애니메이션 종료
+        // 목표값에 충분히 가까워지면 애니메이션 종료
         if (Mathf.Abs(currentDisplayExp - targetDisplayExp) < 0.5f)
         {
             currentDisplayExp = targetDisplayExp;
@@ -453,16 +470,20 @@ public class UIManager : MonoBehaviour
     {
         currentDisplayExp = 0f;
         targetDisplayExp = 0f;
+        currentLevel = newLevel;
 
         if (expSlider != null)
         {
+            expSlider.minValue = 0f;
+            expSlider.maxValue = 1f;
             expSlider.value = 0f;
         }
 
         if (levelText != null)
-        {
             levelText.text = $"Lv.{newLevel}";
-        }
+
+        if (headerLevelText != null && headerLevelText.gameObject.activeSelf)
+            headerLevelText.text = $"Lv.{newLevel}";
 
         ShowMessage($"레벨 업! Lv.{newLevel}", new Color(1f, 0.84f, 0f));
     }

@@ -74,6 +74,27 @@ public class RankingManager : MonoBehaviour
     public Color tabActiveColor = new Color(1f, 0.85f, 0.3f);
     public Color tabInactiveColor = new Color(0.5f, 0.5f, 0.5f);
 
+    [Header("===== 탭 버튼 이미지 (텍스트 대신 이미지 사용 시) =====")]
+    [Tooltip("전투력 탭 — 활성/비활성 이미지")]
+    [SerializeField] private Sprite tabCombatActiveSprite;
+    [SerializeField] private Sprite tabCombatInactiveSprite;
+    [Tooltip("탐험 탭 — 활성/비활성 이미지")]
+    [SerializeField] private Sprite tabLevelActiveSprite;
+    [SerializeField] private Sprite tabLevelInactiveSprite;
+    [Tooltip("농장 탭 — 활성/비활성 이미지")]
+    [SerializeField] private Sprite tabFarmActiveSprite;
+    [SerializeField] private Sprite tabFarmInactiveSprite;
+
+    [Header("===== 타이틀 배너 이미지 (텍스트 대신 이미지 사용 시) =====")]
+    [Tooltip("타이틀 Image 컴포넌트 (있으면 텍스트 대신 이미지 사용)")]
+    [SerializeField] private Image titleBannerImage;
+    [Tooltip("전투력 순위 배너")]
+    [SerializeField] private Sprite bannerCombatPower;
+    [Tooltip("탐험 순위 배너")]
+    [SerializeField] private Sprite bannerLevel;
+    [Tooltip("농장 순위 배너")]
+    [SerializeField] private Sprite bannerFarm;
+
     [Header("===== TOP 3 포디움 (0=2위왼쪽, 1=1위가운데, 2=3위오른쪽) =====")]
     [Tooltip("RankPodiumSlot 컴포넌트가 붙은 3개 슬롯")]
     public RankPodiumSlot[] podiumSlots = new RankPodiumSlot[3];
@@ -198,18 +219,76 @@ public class RankingManager : MonoBehaviour
 
     private void UpdateTabColors()
     {
-        SetTabColor(tabCombatBtn, currentType == RankType.CombatPower);
-        SetTabColor(tabLevelBtn, currentType == RankType.Level);
-        SetTabColor(tabFarmBtn, currentType == RankType.Farm);
+        SetTabVisual(tabCombatBtn, currentType == RankType.CombatPower,
+                     tabCombatActiveSprite, tabCombatInactiveSprite);
+        SetTabVisual(tabLevelBtn, currentType == RankType.Level,
+                     tabLevelActiveSprite, tabLevelInactiveSprite);
+        SetTabVisual(tabFarmBtn, currentType == RankType.Farm,
+                     tabFarmActiveSprite, tabFarmInactiveSprite);
+
+        // ★ 타이틀 배너 이미지 갱신
+        UpdateTitleBanner();
     }
 
-    private void SetTabColor(Button btn, bool active)
+    private void SetTabVisual(Button btn, bool active, Sprite activeSprite, Sprite inactiveSprite)
     {
         if (btn == null) return;
         var img = btn.GetComponent<Image>();
-        if (img != null) img.color = active ? tabActiveColor : tabInactiveColor;
+        if (img != null)
+        {
+            // ★ 이미지 모드: Sprite가 설정되어 있으면 이미지 교체
+            if (activeSprite != null && inactiveSprite != null)
+            {
+                img.sprite = active ? activeSprite : inactiveSprite;
+                img.color = Color.white; // 이미지 모드에서는 색상 건드리지 않음
+            }
+            else
+            {
+                // 폴백: 기존 색상 방식
+                img.color = active ? tabActiveColor : tabInactiveColor;
+            }
+        }
+
         var txt = btn.GetComponentInChildren<TextMeshProUGUI>();
-        if (txt != null) txt.color = active ? Color.black : Color.white;
+        if (txt != null)
+        {
+            // 이미지 모드에서는 텍스트 숨김
+            if (activeSprite != null && inactiveSprite != null)
+                txt.gameObject.SetActive(false);
+            else
+                txt.color = active ? Color.black : Color.white;
+        }
+    }
+
+    /// <summary>★ 타이틀을 이미지 배너로 갱신 (Sprite 미설정 시 텍스트 폴백)</summary>
+    private void UpdateTitleBanner()
+    {
+        Sprite banner = currentType switch
+        {
+            RankType.CombatPower => bannerCombatPower,
+            RankType.Level       => bannerLevel,
+            RankType.Farm        => bannerFarm,
+            _                    => null
+        };
+
+        if (titleBannerImage != null && banner != null)
+        {
+            // 이미지 모드
+            titleBannerImage.sprite = banner;
+            titleBannerImage.color = Color.white;
+            titleBannerImage.gameObject.SetActive(true);
+            if (titleText != null) titleText.gameObject.SetActive(false);
+        }
+        else
+        {
+            // 텍스트 폴백
+            if (titleBannerImage != null) titleBannerImage.gameObject.SetActive(false);
+            if (titleText != null)
+            {
+                titleText.gameObject.SetActive(true);
+                titleText.text = GetTitleForType(currentType);
+            }
+        }
     }
 
     // ═══════════════════════════════════════════════════════════════
@@ -264,7 +343,7 @@ public class RankingManager : MonoBehaviour
         ApplyPortrait();
 
         // 타이틀 갱신
-        if (titleText != null) titleText.text = GetTitleForType(currentType);
+        UpdateTitleBanner();
         if (nextSeasonText != null) nextSeasonText.text = "다음 순위 : 시즌 순위";
 
         // 패널 열 때 서버 점수 즉시 갱신
@@ -295,7 +374,7 @@ public class RankingManager : MonoBehaviour
 
     public void RefreshRanking()
     {
-        if (titleText != null) titleText.text = GetTitleForType(currentType);
+        UpdateTitleBanner();
 
         if (BackendRankingManager.Instance != null
             && BackendManager.Instance != null

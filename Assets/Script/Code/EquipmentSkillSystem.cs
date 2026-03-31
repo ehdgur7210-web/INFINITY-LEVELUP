@@ -276,6 +276,12 @@ public class EquipmentSkillSystem : MonoBehaviour
                 Debug.Log($"[EquipmentSkillSystem] 새로고침: {type} → {equippedItem.itemName} ({equippedItem.rarity})");
                 OnEquipmentEquipped(type, equippedItem);
             }
+            else
+            {
+                // ★ 장비가 없는 슬롯의 스킬 클리어 — 빈 슬롯에서 스킬 발동 방지
+                DeactivateSkill(type);
+                ClearHotbarSlotDirect(GetHotbarSlotIndex(type, ItemRarity.Common));
+            }
         }
 
         Debug.Log("[EquipmentSkillSystem] 새로고침 완료");

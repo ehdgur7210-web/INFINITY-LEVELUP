@@ -110,13 +110,33 @@ public class ItemDatabase : MonoBehaviour
         // ── ① Inspector 데이터가 없으면 Resources에서 자동 로드 ────────────
         if (allItems == null || allItems.Count == 0)
         {
-            // Resources.LoadAll<T>("폴더명") 으로 해당 폴더의 모든 SO를 가져옴
             ItemData[] loaded = Resources.LoadAll<ItemData>(ITEMS_RESOURCE_PATH);
             allItems = new List<ItemData>(loaded);
             if (allItems.Count > 0)
                 Debug.Log($"[ItemDatabase] Resources/{ITEMS_RESOURCE_PATH}에서 아이템 {allItems.Count}개 자동 로드");
             else
                 Debug.LogWarning($"[ItemDatabase] Resources/{ITEMS_RESOURCE_PATH} 에서도 아이템을 찾지 못했습니다!");
+        }
+        else
+        {
+            // ★ Inspector에 이미 아이템이 있어도 Resources에서 추가 병합
+            ItemData[] loaded = Resources.LoadAll<ItemData>(ITEMS_RESOURCE_PATH);
+            HashSet<int> existingIDs = new HashSet<int>();
+            foreach (var item in allItems)
+                if (item != null) existingIDs.Add(item.itemID);
+
+            int merged = 0;
+            foreach (var item in loaded)
+            {
+                if (item != null && !existingIDs.Contains(item.itemID))
+                {
+                    allItems.Add(item);
+                    existingIDs.Add(item.itemID);
+                    merged++;
+                }
+            }
+            if (merged > 0)
+                Debug.Log($"[ItemDatabase] ★ Resources/{ITEMS_RESOURCE_PATH}에서 {merged}개 아이템 추가 병합");
         }
 
         if (allEquipments == null || allEquipments.Count == 0)
@@ -135,8 +155,40 @@ public class ItemDatabase : MonoBehaviour
                 Debug.Log($"[ItemDatabase] Resources/{QUESTS_RESOURCE_PATH}에서 퀘스트 {allQuests.Count}개 자동 로드");
         }
 
+        // ── ★ Resources 외부(Data/Items 등)에 있는 아이템도 병합 ─────────
+        MergeNonResourceItems();
+
         // ── ② 딕셔너리 생성 (ID → 데이터 빠른 검색용) ─────────────────────
         BuildDictionaries();
+    }
+
+    /// <summary>
+    /// ★ Resources 폴더 외부에 있는 ItemData를 찾아 allItems에 병합.
+    /// Data/Items/ 등에 배치된 경험치 북 같은 에셋을 자동으로 포함.
+    /// </summary>
+    private void MergeNonResourceItems()
+    {
+        HashSet<int> existingIDs = new HashSet<int>();
+        foreach (var item in allItems)
+            if (item != null) existingIDs.Add(item.itemID);
+
+        // 프로젝트 전체에서 모든 ItemData SO 탐색 (비활성 포함)
+        ItemData[] allFound = Resources.FindObjectsOfTypeAll<ItemData>();
+        int merged = 0;
+
+        foreach (var item in allFound)
+        {
+            if (item == null) continue;
+            if (item is EquipmentData) continue; // 장비는 별도 관리
+            if (existingIDs.Contains(item.itemID)) continue;
+
+            allItems.Add(item);
+            existingIDs.Add(item.itemID);
+            merged++;
+        }
+
+        if (merged > 0)
+            Debug.Log($"[ItemDatabase] ★ 외부 아이템 {merged}개 병합 완료 (Data/Items 등)");
     }
 
     // ────────────────────────────────────────────────────────────────────────

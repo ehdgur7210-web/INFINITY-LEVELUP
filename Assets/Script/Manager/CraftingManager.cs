@@ -84,6 +84,24 @@ public class CraftingManager : MonoBehaviour
         }
     }
 
+    public void ShowCraftingUI()
+    {
+        if (craftingPanel == null) return;
+        if (craftingPanel.activeSelf) return;
+
+        craftingPanel.SetActive(true);
+        UpdateCraftingUI();
+    }
+
+    public void HideCraftingUI()
+    {
+        if (craftingPanel == null) return;
+        if (!craftingPanel.activeSelf) return;
+
+        craftingPanel.SetActive(false);
+        TopMenuManager.Instance?.ClearBanner();
+    }
+
     public bool LearnRecipe(CraftRecipe recipe)
     {
         if (recipe == null || knownRecipes.Contains(recipe)) return false;

@@ -79,11 +79,20 @@ public class ShopManager : MonoBehaviour
         }
     }
 
+    void OnDestroy()
+    {
+        CancelInvoke();
+        if (Instance == this) Instance = null;
+    }
+
     void Start()
     {
         SetupTabButtons();
         InitializeShop();
         SetupUI();
+
+        // ★ ScrollView Viewport의 raycastTarget 끄기 (버튼 클릭 차단 방지)
+        FixViewportRaycast();
 
         if (shopPanel != null)
         {
@@ -92,6 +101,49 @@ public class ShopManager : MonoBehaviour
 
         // ✅ 매 프레임 타이머 체크 대신 1초마다 갱신
         InvokeRepeating(nameof(UpdateRefreshTimer), 1f, 1f);
+    }
+
+    /// <summary>
+    /// ★ Shop 내 모든 ScrollRect의 Viewport Image raycastTarget을 끈다.
+    /// Viewport Image가 raycast를 가로채면 자식 버튼이 눌리지 않는 버그 방지.
+    /// </summary>
+    private void FixViewportRaycast()
+    {
+        if (shopPanel == null) return;
+
+        // shopPanel 하위 모든 ScrollRect의 Viewport 탐색
+        ScrollRect[] scrollRects = shopPanel.GetComponentsInChildren<ScrollRect>(true);
+        foreach (var sr in scrollRects)
+        {
+            if (sr.viewport != null)
+            {
+                Image vpImage = sr.viewport.GetComponent<Image>();
+                if (vpImage != null)
+                {
+                    vpImage.raycastTarget = false;
+                    Debug.Log($"[ShopManager] Viewport raycastTarget OFF: {sr.viewport.name}");
+                }
+            }
+        }
+
+        // shopSlotParent 상위에 Viewport가 있는 경우도 체크
+        if (shopSlotParent != null)
+        {
+            Transform parent = shopSlotParent;
+            while (parent != null && parent != shopPanel.transform)
+            {
+                if (parent.name.ToLower().Contains("viewport"))
+                {
+                    Image img = parent.GetComponent<Image>();
+                    if (img != null && img.raycastTarget)
+                    {
+                        img.raycastTarget = false;
+                        Debug.Log($"[ShopManager] 부모 Viewport raycastTarget OFF: {parent.name}");
+                    }
+                }
+                parent = parent.parent;
+            }
+        }
     }
 
     // ══════════════════════════════════════════════════════
@@ -486,11 +538,31 @@ public class ShopManager : MonoBehaviour
                 // 상점 열 때 현재 탭 상태 복원
                 SwitchTab(currentTab);
             }
+            else
+            {
+                // ★ 상점 닫을 때 배너 복원
+                TopMenuManager.Instance?.ClearBanner();
+            }
         }
         else
         {
             Debug.LogError("shopPanel이 null입니다! Inspector에서 연결 필요!");
         }
+    }
+
+    public void ShowShop()
+    {
+        if (shopPanel == null) return;
+        if (shopPanel.activeSelf) return;
+        shopPanel.SetActive(true);
+        SwitchTab(currentTab);
+    }
+
+    public void HideShop()
+    {
+        if (shopPanel == null) return;
+        shopPanel.SetActive(false);
+        TopMenuManager.Instance?.ClearBanner();
     }
 
     /// <summary>

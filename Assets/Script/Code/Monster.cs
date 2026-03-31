@@ -445,7 +445,46 @@ public class Monster : MonoBehaviour, IHitable
         if (GameManager.Instance != null && goldDrop > 0) GameManager.Instance.AddGold(goldDrop);
         if (GameManager.Instance != null && expDrop > 0) GameManager.Instance.AddExp(expDrop);
         if (ResourceBarManager.Instance != null && equipmentTickets > 0) ResourceBarManager.Instance.AddEquipmentTickets(equipmentTickets);
+
+        // ★ 경험치 북 자동 드롭 (100%, 모든 몬스터 공통)
+        DropExpBooks();
+
+        // 확률 기반 아이템 드롭 (스킬 북 등)
         DropItems();
+    }
+
+    /// <summary>
+    /// ★ 경험치 북 자동 드롭 — 100% 확률로 인벤토리에 직접 추가
+    /// 몬스터 레벨/웨이브에 따라 등급 결정:
+    ///   - 초급(Common): 항상 1개
+    ///   - 중급(Uncommon): 레벨 20+ 시 30% 추가
+    ///   - 고급(Rare): 레벨 40+ 시 15% 추가
+    /// </summary>
+    /// <summary>경험치 북 아이템 ID (Resources/Items/ 에셋 기준)</summary>
+    private const int EXP_BOOK_BEGINNER_ID = 1000;  // 초급경험치북
+    private const int EXP_BOOK_INTERMEDIATE_ID = 1001;  // 중급경험치북
+    private const int EXP_BOOK_ADVANCED_ID = 1002;  // 고급경험치북
+
+    private void DropExpBooks()
+    {
+        if (InventoryManager.Instance == null || ItemDatabase.Instance == null) return;
+
+        // ID로 직접 찾기 (rarity 설정 오류에 영향 안 받음)
+        ItemData bookBeginner = ItemDatabase.Instance.GetItemByID(EXP_BOOK_BEGINNER_ID);
+        ItemData bookIntermediate = ItemDatabase.Instance.GetItemByID(EXP_BOOK_INTERMEDIATE_ID);
+        ItemData bookAdvanced = ItemDatabase.Instance.GetItemByID(EXP_BOOK_ADVANCED_ID);
+
+        // 초급 경험치 북: 항상 1개 (100%)
+        if (bookBeginner != null)
+            InventoryManager.Instance.AddItem(bookBeginner, 1);
+
+        // 중급 경험치 북: 30% 확률
+        if (bookIntermediate != null && Random.Range(0f, 100f) <= 30f)
+            InventoryManager.Instance.AddItem(bookIntermediate, 1);
+
+        // 고급 경험치 북: 10% 확률
+        if (bookAdvanced != null && Random.Range(0f, 100f) <= 10f)
+            InventoryManager.Instance.AddItem(bookAdvanced, 1);
     }
 
     private void DropItems()

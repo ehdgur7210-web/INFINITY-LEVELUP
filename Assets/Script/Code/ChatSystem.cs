@@ -45,9 +45,9 @@ public class ChatSystem : MonoBehaviour
 
     [Header("===== 탭 색상 =====")]
     [SerializeField] private Color tabActiveColor = new Color(0.35f, 0.38f, 0.50f, 1f);
-    [SerializeField] private Color tabInactiveColor = new Color(0.22f, 0.24f, 0.32f, 1f);
+    [SerializeField] private Color tabInactiveColor = new Color(0.30f, 0.32f, 0.42f, 1f);
     [SerializeField] private Color tabActiveTextColor = Color.white;
-    [SerializeField] private Color tabInactiveTextColor = new Color(0.75f, 0.75f, 0.75f);
+    [SerializeField] private Color tabInactiveTextColor = new Color(0.80f, 0.80f, 0.80f);
 
     [Header("===== 메시지 영역 =====")]
     public ScrollRect messageScrollRect;
@@ -95,6 +95,10 @@ public class ChatSystem : MonoBehaviour
     [Header("===== 채팅 펼칠 때 숨길 패널들 =====")]
     [Tooltip("채팅 펼치면 숨기고, 접으면 복원할 패널 목록")]
     [SerializeField] private GameObject[] hidePanelsOnExpand;
+
+    [Header("===== 채팅 배경 프레임 =====")]
+    [Tooltip("채팅 펼침 시 뒤에 표시할 배경 프레임 (반투명 패널)")]
+    [SerializeField] private GameObject chatBackgroundFrame;
 
     // 자동 축소 제거됨 — 축소 버튼으로만 축소
 
@@ -173,6 +177,7 @@ public class ChatSystem : MonoBehaviour
         if (chatPanel != null) chatPanel.SetActive(true);
         SetExpandedContentVisible(false);
         if (minimizedBar != null) minimizedBar.SetActive(false);
+        if (chatBackgroundFrame != null) chatBackgroundFrame.SetActive(false);
     }
 
     void Start()
@@ -608,33 +613,67 @@ public class ChatSystem : MonoBehaviour
         TutorialManager.Instance?.OnActionCompleted("ChatExpand");
     }
 
-    /// <summary>채팅 펼칠 때 — 하단 패널들 숨기기 (상태 기억)</summary>
+    // ★ 동료 핫바 숨김 상태 추적
+    private bool _companionHotbarWasActive = false;
+    private GameObject _companionHotbarPanel = null;
+
+    /// <summary>채팅 펼칠 때 — 하단 패널들 + 동료 핫바 숨기기 (상태 기억)</summary>
     private void HidePanelsForChat()
     {
-        if (hidePanelsOnExpand == null || hidePanelsOnExpand.Length == 0) return;
-
-        panelWasActive = new bool[hidePanelsOnExpand.Length];
-        for (int i = 0; i < hidePanelsOnExpand.Length; i++)
+        // Inspector에 연결된 패널들 숨기기
+        if (hidePanelsOnExpand != null && hidePanelsOnExpand.Length > 0)
         {
-            if (hidePanelsOnExpand[i] != null)
+            panelWasActive = new bool[hidePanelsOnExpand.Length];
+            for (int i = 0; i < hidePanelsOnExpand.Length; i++)
             {
-                panelWasActive[i] = hidePanelsOnExpand[i].activeSelf;
-                hidePanelsOnExpand[i].SetActive(false);
+                if (hidePanelsOnExpand[i] != null)
+                {
+                    panelWasActive[i] = hidePanelsOnExpand[i].activeSelf;
+                    hidePanelsOnExpand[i].SetActive(false);
+                }
             }
         }
+
+        // ★ 동료 핫바 자동 숨김 (Inspector 연결 없이도 동작)
+        if (_companionHotbarPanel == null && CompanionHotbarManager.Instance != null)
+            _companionHotbarPanel = CompanionHotbarManager.Instance.hotbarParent?.gameObject
+                                 ?? CompanionHotbarManager.Instance.gameObject;
+
+        if (_companionHotbarPanel != null)
+        {
+            _companionHotbarWasActive = _companionHotbarPanel.activeSelf;
+            _companionHotbarPanel.SetActive(false);
+        }
+
+        // ★ 배경 프레임 활성화
+        if (chatBackgroundFrame != null)
+            chatBackgroundFrame.SetActive(true);
     }
 
     /// <summary>채팅 접을 때 — 원래 활성이었던 패널만 복원</summary>
     private void RestoreHiddenPanels()
     {
-        if (hidePanelsOnExpand == null || panelWasActive == null) return;
-
-        for (int i = 0; i < hidePanelsOnExpand.Length; i++)
+        // Inspector 패널 복원
+        if (hidePanelsOnExpand != null && panelWasActive != null)
         {
-            if (hidePanelsOnExpand[i] != null && i < panelWasActive.Length)
-                hidePanelsOnExpand[i].SetActive(panelWasActive[i]);
+            for (int i = 0; i < hidePanelsOnExpand.Length; i++)
+            {
+                if (hidePanelsOnExpand[i] != null && i < panelWasActive.Length)
+                    hidePanelsOnExpand[i].SetActive(panelWasActive[i]);
+            }
+            panelWasActive = null;
         }
-        panelWasActive = null;
+
+        // ★ 동료 핫바 복원
+        if (_companionHotbarPanel != null)
+        {
+            _companionHotbarPanel.SetActive(_companionHotbarWasActive);
+            _companionHotbarWasActive = false;
+        }
+
+        // ★ 배경 프레임 비활성화
+        if (chatBackgroundFrame != null)
+            chatBackgroundFrame.SetActive(false);
     }
 
     public void ToggleMinimize()
@@ -738,16 +777,23 @@ public class ChatSystem : MonoBehaviour
             if (tabButtons[i] == null) continue;
             bool active = ((int)currentTab == i);
 
-            var img = tabButtons[i].GetComponent<Image>();
-            if (img != null)
+            // ★ 버튼 배경 색상은 건드리지 않음 — 원본 디자인 유지
+
+            // ★ Outline으로만 선택된 탭 표시 (없으면 자동 추가)
+            var outline = tabButtons[i].GetComponent<Outline>();
+            if (outline == null)
+                outline = tabButtons[i].gameObject.AddComponent<Outline>();
+
+            outline.enabled = active;
+            if (active)
             {
-                Color c = active ? tabActiveColor : tabInactiveColor;
-                c.a = 1f; // 알파 항상 1 (뿌옇게 안 보이는 문제 방지)
-                img.color = c;
+                outline.effectColor = new Color(1f, 0.85f, 0.2f, 1f); // 금색 테두리
+                outline.effectDistance = new Vector2(2f, 2f);
             }
 
+            // 텍스트 색상: 선택된 탭은 밝게, 나머지는 살짝 어둡게
             var txt = tabButtons[i].GetComponentInChildren<TextMeshProUGUI>();
-            if (txt != null) txt.color = active ? tabActiveTextColor : tabInactiveTextColor;
+            if (txt != null) txt.color = active ? Color.white : new Color(0.75f, 0.75f, 0.75f);
         }
     }
 

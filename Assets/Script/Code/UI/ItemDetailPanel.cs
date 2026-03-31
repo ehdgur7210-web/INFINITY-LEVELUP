@@ -172,12 +172,19 @@ public class ItemDetailPanel : MonoBehaviour
                 : "설명 없음";
         }
 
-        // ── 소비 효과 미리보기 ──
+        // ── 소비 효과 / 재료 정보 미리보기 ──
         if (effectText != null)
         {
             if (currentIsConsumable && currentItem.consumableEffect != null)
             {
                 effectText.text = GetEffectDescription(currentItem.consumableEffect);
+                effectText.gameObject.SetActive(true);
+            }
+            else if (currentItem.itemType == ItemType.Material)
+            {
+                // ★ Material 아이템 → 동료 경험치 정보 표시
+                int expValue = GetMaterialExpValue(currentItem);
+                effectText.text = $"동료 경험치: <color=#00FF00>+{expValue}</color>";
                 effectText.gameObject.SetActive(true);
             }
             else
@@ -606,5 +613,20 @@ public class ItemDetailPanel : MonoBehaviour
             case ItemRarity.Legendary: return "전설";
             default:                   return rarity.ToString();
         }
+    }
+
+    /// <summary>★ 동료 경험치 재료 아이템의 경험치 값</summary>
+    private int GetMaterialExpValue(ItemData item)
+    {
+        if (item == null) return 0;
+        return item.rarity switch
+        {
+            ItemRarity.Common    => 50,
+            ItemRarity.Uncommon  => 150,
+            ItemRarity.Rare      => 500,
+            ItemRarity.Epic      => 1500,
+            ItemRarity.Legendary => 5000,
+            _                    => 50
+        };
     }
 }

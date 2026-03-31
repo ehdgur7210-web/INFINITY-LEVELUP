@@ -409,6 +409,34 @@ public class SkillManager : MonoBehaviour
             UpdateSkillTreeUI();
     }
 
+    public void ShowSkillTree()
+    {
+        if (skillTreePanel == null) return;
+        if (skillTreePanel.activeSelf) return;
+
+        skillTreePanel.SetActive(true);
+        Debug.Log("[SkillManager] 스킬 트리 열기 (Show)");
+
+        HotbarManager.Instance?.OnSkillTreeOpened();
+        if (hotbarCanvas != null) hotbarCanvas.sortingOrder = 2;
+
+        UpdateSkillTreeUI();
+    }
+
+    public void HideSkillTree()
+    {
+        if (skillTreePanel == null) return;
+        if (!skillTreePanel.activeSelf) return;
+
+        skillTreePanel.SetActive(false);
+        Debug.Log("[SkillManager] 스킬 트리 닫기 (Hide)");
+
+        HotbarManager.Instance?.OnSkillTreeClosed();
+        if (hotbarCanvas != null) hotbarCanvas.sortingOrder = 0;
+
+        TopMenuManager.Instance?.ClearBanner();
+    }
+
     public bool LearnSkill(SkillData skill)
     {
         if (skill == null)
@@ -571,7 +599,9 @@ public class SkillManager : MonoBehaviour
         if (newSkill == null) return;
         if (hotbarSlots == null || hotbarSlots.Length == 0)
         {
-            Debug.LogWarning("[SkillManager] 핫바 슬롯이 준비되지 않았습니다. 잠시 후 재시도합니다.");
+            // ★ 핫바 미준비 시 코루틴으로 재시도 (즉시 리턴하지 않고 대기)
+            Debug.LogWarning("[SkillManager] 핫바 슬롯 미준비 → 재시도 예약");
+            StartCoroutine(RetrySwapSkill(oldSkill, newSkill, targetSlotIndex));
             return;
         }
 
@@ -615,6 +645,27 @@ public class SkillManager : MonoBehaviour
     public void SwapEquipmentSkillOnHotbar(SkillData oldSkill, SkillData newSkill)
     {
         SwapEquipmentSkillOnHotbarAtIndex(oldSkill, newSkill, -1);
+    }
+
+    /// <summary>★ 핫바 슬롯 미준비 시 재시도 코루틴 (최대 1초, 0.1초 간격)</summary>
+    private IEnumerator RetrySwapSkill(SkillData oldSkill, SkillData newSkill, int targetSlotIndex)
+    {
+        float waited = 0f;
+        while ((hotbarSlots == null || hotbarSlots.Length == 0) && waited < 1f)
+        {
+            yield return new WaitForSeconds(0.1f);
+            waited += 0.1f;
+        }
+
+        if (hotbarSlots != null && hotbarSlots.Length > 0)
+        {
+            Debug.Log($"[SkillManager] 핫바 재시도 성공 ({waited:F1}초 후)");
+            SwapEquipmentSkillOnHotbarAtIndex(oldSkill, newSkill, targetSlotIndex);
+        }
+        else
+        {
+            Debug.LogError("[SkillManager] 핫바 슬롯 재시도 실패 — 1초 후에도 준비 안 됨");
+        }
     }
     // ───────────────────────────────────────────────────────────────
 

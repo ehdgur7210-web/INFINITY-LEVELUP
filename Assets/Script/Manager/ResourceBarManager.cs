@@ -39,16 +39,16 @@ public class ResourceBarManager : MonoBehaviour
     [SerializeField] private Image fragmentIcon;
 
     [Header("현재 보유량")]
-    public int equipmentTickets = 100;      // 장비 뽑기 티켓
-    public int companionTickets = 50;       // 동료 뽑기 티켓
-    public int relicTickets = 30;           // 유물 뽑기 티켓
+    public int equipmentTickets = 0;        // 장비 뽑기 티켓 (SaveLoadManager에서 로드)
+    public int companionTickets = 0;        // 동료 뽑기 티켓 (SaveLoadManager에서 로드)
+    public int relicTickets = 0;            // 유물 뽑기 티켓 (SaveLoadManager에서 로드)
     public int crystals = 0;                // 크리스탈
     public int essences = 0;                // 에센스
     public int fragments = 0;               // 파편
     public long cropPoints = 0;              // ★ 작물 포인트
 
     [Header("애니메이션 설정")]
-    [SerializeField] private bool enablePunchAnimation = true;
+    [SerializeField] private bool enablePunchAnimation = false;
     [SerializeField] private float punchScale = 1.1f;
     [SerializeField] private float animationDuration = 0.2f;
 
@@ -129,10 +129,8 @@ public class ResourceBarManager : MonoBehaviour
         equipmentTickets += amount;
         UpdateEquipmentTicketUI();
 
-        if (enablePunchAnimation && equipmentTicketText != null)
-        {
-            AnimateText(equipmentTicketText.transform);
-        }
+        // ★ 가챠 UI 실시간 연동
+        GachaUI.Instance?.UpdateTicketDisplay();
 
         Debug.Log($"[ResourceBar] 장비 티켓 +{amount} (현재: {equipmentTickets})");
     }
@@ -150,6 +148,9 @@ public class ResourceBarManager : MonoBehaviour
 
         equipmentTickets -= amount;
         UpdateEquipmentTicketUI();
+
+        // ★ 가챠 UI 실시간 연동
+        GachaUI.Instance?.UpdateTicketDisplay();
 
         Debug.Log($"[ResourceBar] 장비 티켓 -{amount} (현재: {equipmentTickets})");
         return true;

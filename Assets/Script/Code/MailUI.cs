@@ -43,6 +43,7 @@ public class MailUI : MonoBehaviour
     [SerializeField] private Button openCouponButton;       // 쿠폰 입력 열기
     [SerializeField] private Button closeMailButton;        // 메일창 닫기
     [SerializeField] private Button claimAllButton;         // 전체 받기
+    [SerializeField] private Button deleteReadButton;       // ★ 읽은 메일 전체 삭제
 
     [Header("알림")]
     [SerializeField] private GameObject notificationBadge;  // 빨간 알림 표시
@@ -112,6 +113,9 @@ public class MailUI : MonoBehaviour
 
         if (claimAllButton != null)
             claimAllButton.onClick.AddListener(OnClaimAll);
+
+        if (deleteReadButton != null)
+            deleteReadButton.onClick.AddListener(OnDeleteReadMails);
     }
 
     #region 메일 패널
@@ -341,6 +345,32 @@ public class MailUI : MonoBehaviour
             // 튜토리얼 트리거
             TutorialManager.Instance?.OnActionCompleted("MailClaimAll");
         }
+    }
+
+    /// <summary>★ 읽은 메일 전체 삭제 (확인 다이얼로그 포함)</summary>
+    private void OnDeleteReadMails()
+    {
+        if (MailManager.Instance == null) return;
+        SoundManager.Instance?.PlayButtonClick();
+
+        UIManager.Instance?.ShowConfirmDialog(
+            "읽은 메일을 전체 삭제하시겠습니까?\n(보상 미수령 메일은 보존됩니다)",
+            onConfirm: () =>
+            {
+                int deleted = MailManager.Instance.DeleteReadMails();
+
+                if (deleted > 0)
+                {
+                    SaveLoadManager.Instance?.SaveGame();
+                    RefreshMailList();
+                    UIManager.Instance?.ShowMessage($"읽은 메일 {deleted}개 삭제 완료!", Color.green);
+                }
+                else
+                {
+                    UIManager.Instance?.ShowMessage("삭제할 메일이 없습니다.", Color.yellow);
+                }
+            }
+        );
     }
 
     #endregion

@@ -359,6 +359,9 @@ public class OptionUI : MonoBehaviour
         }
     }
 
+    public void ShowOptionPanel() => OpenOptionPanel();
+    public void HideOptionPanel() => CloseOptionPanel();
+
     // ==========================================================
     //  SoundManager 와 UI 동기화
     // ==========================================================

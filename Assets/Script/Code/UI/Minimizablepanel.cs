@@ -298,6 +298,15 @@ public class MinimizablePanel : MonoBehaviour, IPointerClickHandler
         }
     }
 
+    void OnDestroy()
+    {
+        if (animCoroutine != null)
+        {
+            StopCoroutine(animCoroutine);
+            animCoroutine = null;
+        }
+    }
+
     // IPointerClickHandler (패널 자체 클릭은 무시, 플로팅 버튼에서 처리)
     public void OnPointerClick(PointerEventData eventData) { }
 }

@@ -245,11 +245,18 @@ public class CompanionDetailPanel : MonoBehaviour
     {
         if (_currentCompanion == null) return;
 
-        // 동료 정보
-        if (companionIcon != null && _currentCompanion.portrait != null)
+        // 동료 정보 — ★ 레벨업 패널에서는 원본 일러스트 우선 사용
+        if (companionIcon != null)
         {
-            companionIcon.sprite = _currentCompanion.portrait;
-            companionIcon.color = Color.white;
+            Sprite displaySprite = _currentCompanion.fullIllust != null
+                ? _currentCompanion.fullIllust
+                : _currentCompanion.portrait;
+
+            if (displaySprite != null)
+            {
+                companionIcon.sprite = displaySprite;
+                companionIcon.color = Color.white;
+            }
         }
         if (companionNameText != null)
             companionNameText.text = _currentCompanion.companionName;
@@ -530,6 +537,14 @@ public class CompanionDetailPanel : MonoBehaviour
                        && selected != null
                        && miniSlot.GetData().companionID == selected.companionID;
             miniSlot.SetSelected(isThis);
+
+            // ★ 현재 선택된 동료의 레벨/별 텍스트도 갱신
+            if (isThis)
+            {
+                int stars = GetCompanionStars(selected);
+                miniSlot.Setup(selected, _currentLevel, stars);
+                miniSlot.SetSelected(true);
+            }
         }
     }
 
@@ -681,6 +696,9 @@ public class CompanionDetailPanel : MonoBehaviour
             {
                 entry.level = _currentLevel;
                 entry.exp = _currentExp;
+                // ★ 별(stars) 데이터도 함께 저장 — 승성 후 리로드 시 소실 방지
+                int stars = GetCompanionStars(_currentCompanion);
+                if (stars > 0) entry.stars = stars;
                 break;
             }
         }

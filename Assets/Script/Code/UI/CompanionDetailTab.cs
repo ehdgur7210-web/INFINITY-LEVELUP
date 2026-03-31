@@ -92,11 +92,12 @@ public class CompanionDetailTab : MonoBehaviour
     {
         if (_companion == null) return;
 
-        // 좌측 대형 초상화
+        // 좌측 대형 초상화 — fullIllust 우선, 없으면 portrait
         if (bigPortraitImage != null)
         {
-            bigPortraitImage.sprite = _companion.portrait;
-            bigPortraitImage.color = _companion.portrait != null ? Color.white : new Color(1, 1, 1, 0.1f);
+            Sprite img = _companion.fullIllust != null ? _companion.fullIllust : _companion.portrait;
+            bigPortraitImage.sprite = img;
+            bigPortraitImage.color = img != null ? Color.white : new Color(1, 1, 1, 0.1f);
         }
 
         // 우측 프로필
@@ -130,24 +131,25 @@ public class CompanionDetailTab : MonoBehaviour
     {
         if (_companion == null) return;
 
-        // 레벨 성장 × 별 보너스
-        float levelMult = 1f + statGrowthRate * (_level - 1);
-        float starMult = 1f + starStatBonus * (_stars - 1);
+        // ★ 레벨 성장: 레벨당 5% 증가 (Lv.36 → 2.75배)
+        // ★ 별 보너스: 별당 5% 증가 (5성 → 1.2배)
+        float levelMult = 1f + 0.05f * (_level - 1);
+        float starMult = 1f + 0.05f * Mathf.Max(0, _stars - 1);
         float totalMult = levelMult * starMult;
 
         float atk = _companion.attackPower * totalMult;
-        float hp = atk * 10f;              // TODO: CompanionData에 hp 필드 추가 시 교체
+        float hp = _companion.maxHealth * totalMult;
         float atkSpd = _companion.attackSpeed;
-        float critRate = 5f + _level * 0.5f + _stars * 1f;
-        float critDmg = 150f + _level * 2f + _stars * 5f;
-        float skillDmg = 100f + _level * 3f + _stars * 5f;
+        float critRate = 5f + _level * 0.3f + _stars * 0.5f;
+        float critDmg = 150f + _level * 1f + _stars * 3f;
+        float skillDmg = 100f + _level * 1.5f + _stars * 3f;
 
-        if (atkValueText != null) atkValueText.text = FormatStat(atk);
-        if (hpValueText != null) hpValueText.text = FormatStat(hp);
-        if (atkSpdValueText != null) atkSpdValueText.text = $"{1f / atkSpd:F2}초";
-        if (critRateValueText != null) critRateValueText.text = $"{critRate:F2}%";
-        if (critDmgValueText != null) critDmgValueText.text = $"{critDmg:F0}%";
-        if (skillDmgValueText != null) skillDmgValueText.text = $"{skillDmg:F0}%";
+        if (atkValueText != null) atkValueText.text = $"공격력 : <color=#FFD700>{FormatStat(atk)}</color>";
+        if (hpValueText != null) hpValueText.text = $"체  력 : <color=#66FF66>{FormatStat(hp)}</color>";
+        if (atkSpdValueText != null) atkSpdValueText.text = $"공격속도 : <color=#88CCFF>{1f / Mathf.Max(0.1f, atkSpd):F2}초</color>";
+        if (critRateValueText != null) critRateValueText.text = $"치명타확률 : <color=#FF8888>{critRate:F2}%</color>";
+        if (critDmgValueText != null) critDmgValueText.text = $"치명타데미지 : <color=#FF6666>{critDmg:F0}%</color>";
+        if (skillDmgValueText != null) skillDmgValueText.text = $"스킬데미지 : <color=#CC88FF>{skillDmg:F0}%</color>";
     }
 
     // ─────────────────────────────────────────────────────────────

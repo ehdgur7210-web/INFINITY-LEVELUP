@@ -139,10 +139,13 @@ public class InventoryManager : MonoBehaviour
 
     private static readonly HashSet<ItemType> EtcFilter = new HashSet<ItemType>
     {
+        ItemType.Material,          // ★ 동료 경험치 북 등 재료
+        ItemType.Consumable,        // ★ 소모품
         ItemType.FarmVegetable, ItemType.FarmFruit,
         ItemType.GachaTicket_5Star, ItemType.GachaTicket_3to5Star,
         ItemType.OfflineReward_2h, ItemType.OfflineReward_4h,
-        ItemType.OfflineReward_8h, ItemType.OfflineReward_12h
+        ItemType.OfflineReward_8h, ItemType.OfflineReward_12h,
+        ItemType.Misc,              // ★ 기타 아이템
     };
 
     // ═══════════════════════════════════════════════════════════════
@@ -541,10 +544,9 @@ public class InventoryManager : MonoBehaviour
         switch (tab)
         {
             case InvenTabType.Equip:
-                if (!equipSlotsBuilt && equipDataReady)
+                // ★ 장비 탭은 열 때마다 항상 최신 데이터로 빌드
+                if (equipDataReady)
                     BuildEquipSlots();
-                else if (equipSlotsBuilt)
-                    RefreshEquipSlotDisplay();
                 break;
             case InvenTabType.Companion:
                 BuildCompanionSlots();
@@ -621,11 +623,15 @@ public class InventoryManager : MonoBehaviour
     /// <summary>외부에서 장비 슬롯 UI 강제 갱신 (강화/레벨업/가챠 후 호출)</summary>
     public void RefreshEquipDisplay()
     {
-        // 어떤 탭이든 장비 슬롯 재빌드 플래그 설정
+        // ★ 장비 슬롯 재빌드 플래그 설정 — 다음에 장비 탭 열 때 재빌드
         equipSlotsBuilt = false;
 
+        // ★ 현재 장비 탭이면 즉시 갱신
         if (currentTab == InvenTabType.Equip)
-            RefreshEquipSlotDisplay();
+            BuildEquipSlots();
+
+        // ★ 장비 패널(EquipPanelSlot)도 즉시 갱신
+        EquipmentManager.Instance?.CacheEquipPanelSlots();
     }
 
     /// <summary>강제 전체 인벤토리 갱신 (가챠 후 등)</summary>
@@ -949,9 +955,9 @@ public class InventoryManager : MonoBehaviour
 
     private void RefreshCurrentTabIfGeneral()
     {
-        if (currentTab == InvenTabType.Companion)
-            BuildGeneralSlots(InvenTabType.Companion);
-        else if (currentTab == InvenTabType.Etc)
+        // ★ 동료 탭은 리빌드하지 않음 — 아이템 추가(경험치 북 등)로 동료 슬롯이
+        //   재생성되면 열려있는 동료 상세 패널이 사라지는 버그 방지
+        if (currentTab == InvenTabType.Etc)
             BuildGeneralSlots(InvenTabType.Etc);
     }
 
@@ -1348,5 +1354,32 @@ public class InventoryManager : MonoBehaviour
         ActivateContainer(currentTab);
 
         Debug.Log($"[InventoryManager] 인벤토리 로드 완료: {items.Length}개");
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    //  ★ 디버그: 재료 아이템 추가 (Inspector ContextMenu)
+    // ═══════════════════════════════════════════════════════════════
+
+    /// <summary>모든 Material 타입 아이템을 10개씩 추가 (테스트용)</summary>
+    [ContextMenu("Debug: Add 10 Material Items")]
+    private void DebugAddMaterialItems()
+    {
+        if (ItemDatabase.Instance == null)
+        {
+            Debug.LogWarning("[InventoryManager] ItemDatabase 없음");
+            return;
+        }
+
+        int added = 0;
+        foreach (var item in ItemDatabase.Instance.allItems)
+        {
+            if (item != null && item.itemType == ItemType.Material)
+            {
+                AddItem(item, 10);
+                added++;
+                Debug.Log($"[Debug] Material 추가: {item.itemName} x10");
+            }
+        }
+        Debug.Log($"[InventoryManager] 디버그: Material {added}종 x10개 추가 완료");
     }
 }

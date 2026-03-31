@@ -549,6 +549,9 @@ public class SaveLoadManager : MonoBehaviour
             ResourceBarManager.Instance.fragments = data.fragments;
             ResourceBarManager.Instance.cropPoints = data.cropPoints; // ★ 작물 포인트 복원
             ResourceBarManager.Instance.UpdateAllResourceUI();
+
+            // ★ 가챠 UI 티켓 연동 (로드 완료 후)
+            GachaUI.Instance?.UpdateTicketDisplay();
         }
 
         // ── VIP ──
@@ -575,7 +578,7 @@ public class SaveLoadManager : MonoBehaviour
         if (CompanionHotbarManager.Instance != null && data.companionHotbarIDs != null)
         {
             CompanionHotbarManager.Instance.LoadHotbarSaveData(data.companionHotbarIDs);
-            CompanionHotbarManager.Instance.autoSummonEnabled = data.autoSummonEnabled;
+            CompanionHotbarManager.Instance.SetAutoSummon(data.autoSummonEnabled);
             Debug.Log($"[LOAD-CHECK] 동료 핫바 {data.companionHotbarIDs.Length}슬롯 로드 완료 (오토: {data.autoSummonEnabled})");
         }
 
@@ -1047,9 +1050,9 @@ public class SaveData
     public MailSaveData mailData;
     public AchievementSaveEntry[] achievementSaveData;
 
-    public int equipmentTickets = 100;
-    public int companionTickets = 50;
-    public int relicTickets = 30;
+    public int equipmentTickets = 0;
+    public int companionTickets = 0;
+    public int relicTickets = 0;
     public int crystals = 0;
     public int essences = 0;
     public int fragments = 0;

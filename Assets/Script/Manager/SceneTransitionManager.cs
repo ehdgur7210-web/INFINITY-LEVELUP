@@ -143,10 +143,14 @@ public class SceneTransitionManager : MonoBehaviour
         yield return null;
         yield return null; // 씬 오브젝트 초기화 완료 대기
 
-        // ── 플레이어 위치 적용 ──
-        if (pendingPlayerPosition.HasValue)
+        // ── 플레이어 위치 적용 (플레이어 존재 시에만) ──
+        if (pendingPlayerPosition.HasValue && persistentPlayer != null)
         {
             MovePlayerToPosition(pendingPlayerPosition.Value);
+            pendingPlayerPosition = null;
+        }
+        else
+        {
             pendingPlayerPosition = null;
         }
 

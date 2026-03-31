@@ -38,7 +38,12 @@ public class MailReward
 {
     public enum RewardType
     {
-        Item, Gold, Gem, Ticket, Crystal, Essence, Fragment
+        Item, Gold, Gem,
+        Ticket,              // 기존 호환 (= 장비 티켓)
+        Crystal, Essence, Fragment,
+        EquipmentTicket,     // ★ 장비 뽑기 티켓 (Ticket과 동일)
+        CompanionTicket,     // ★ 동료 뽑기 티켓
+        RelicTicket,         // ★ 유물 뽑기 티켓
     }
 
     public RewardType rewardType;
@@ -350,8 +355,19 @@ public class MailManager : MonoBehaviour
                 break;
 
             case MailReward.RewardType.Ticket:
+            case MailReward.RewardType.EquipmentTicket:
                 if (ResourceBarManager.Instance != null)
                     ResourceBarManager.Instance.AddEquipmentTickets(reward.amount);
+                break;
+
+            case MailReward.RewardType.CompanionTicket:
+                if (ResourceBarManager.Instance != null)
+                    ResourceBarManager.Instance.AddCompanionTickets(reward.amount);
+                break;
+
+            case MailReward.RewardType.RelicTicket:
+                if (ResourceBarManager.Instance != null)
+                    ResourceBarManager.Instance.AddRelicTickets(reward.amount);
                 break;
 
             case MailReward.RewardType.Crystal:
@@ -380,6 +396,22 @@ public class MailManager : MonoBehaviour
         {
             mailList.Remove(mail);
         }
+    }
+
+    /// <summary>읽은 메일 전체 삭제 (보상 미수령 메일은 보존)</summary>
+    public int DeleteReadMails()
+    {
+        int deleted = 0;
+        for (int i = mailList.Count - 1; i >= 0; i--)
+        {
+            Mail mail = mailList[i];
+            if (mail.isRead && (!mail.hasReward || mail.isRewardClaimed))
+            {
+                mailList.RemoveAt(i);
+                deleted++;
+            }
+        }
+        return deleted;
     }
 
     // 쿠폰 코드 사용

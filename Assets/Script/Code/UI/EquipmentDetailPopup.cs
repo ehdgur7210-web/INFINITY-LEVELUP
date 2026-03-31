@@ -240,19 +240,17 @@ public class EquipmentDetailPopup : MonoBehaviour
         int matNeeded = currentEquip.GetRequiredMaterials(curLv);
         int matHave = currentSlot.itemCount - 1;
 
-        // 골드 확인
-        if (GameManager.Instance == null || !GameManager.Instance.SpendGold(goldNeeded))
+        // ★ 재료 먼저 검증 — 골드 차감 전에 확인하여 환불 race condition 방지
+        if (matHave < matNeeded)
         {
-            UIManager.Instance?.ShowMessage("골드가 부족합니다!", Color.red);
+            UIManager.Instance?.ShowMessage("재료가 부족합니다!", Color.red);
             return;
         }
 
-        // 재료 소모 (동일 아이템 n개)
-        if (matHave < matNeeded)
+        // 골드 확인 및 차감
+        if (GameManager.Instance == null || !GameManager.Instance.SpendGold(goldNeeded))
         {
-            // 골드 환불
-            GameManager.Instance?.AddGold(goldNeeded);
-            UIManager.Instance?.ShowMessage("재료가 부족합니다!", Color.red);
+            UIManager.Instance?.ShowMessage("골드가 부족합니다!", Color.red);
             return;
         }
 

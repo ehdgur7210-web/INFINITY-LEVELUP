@@ -122,6 +122,9 @@ public class AchievementSystem : MonoBehaviour
         }
     }
 
+    public void ShowAchievementUI() => OpenAchievementUI();
+    public void HideAchievementUI() => CloseAchievementUI();
+
     /// <summary>
     /// ⭐ 업적 UI 열기
     /// </summary>

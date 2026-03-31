@@ -26,7 +26,9 @@ public class CompanionData : ScriptableObject
     public int maxStars = 12;
 
     [Header("이미지")]
-    public Sprite portrait;             // 결과 화면 / 인벤토리 표시되는 초상화
+    public Sprite portrait;             // 슬롯 / 승성 / 상세에 표시되는 스프라이트 아이콘
+    [Tooltip("레벨업 패널에 표시할 원본 일러스트 (없으면 portrait 사용)")]
+    public Sprite fullIllust;           // ★ 레벨업 화면 전용 원본 이미지
     public GameObject worldPrefab;      // 게임월드에 소환할 3D/2D 프리팹
 
     [Header("전투 스탯")]
