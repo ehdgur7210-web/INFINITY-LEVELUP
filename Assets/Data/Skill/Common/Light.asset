@@ -26,7 +26,7 @@ MonoBehaviour:
   baseValue: 100
   valuePerLevel: 20
   duration: 0
-  cooldown: 5
+  cooldown: 1
   manaCost: 1
   castTime: 1
   range: 10
@@ -34,4 +34,4 @@ MonoBehaviour:
   prerequisiteSkills: []
   effectPrefab: {fileID: 0}
   skillSound: {fileID: 0}
-  attackEffectPrefab: {fileID: 3199097379747760540, guid: 8e8ce613594aa80489bb70c1a7e27c61, type: 3}
+  attackEffectPrefab: {fileID: 6636304635825448881, guid: ca6ec2d9f9f614440ab12ce512db0bfb, type: 3}

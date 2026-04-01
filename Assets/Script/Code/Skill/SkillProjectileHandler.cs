@@ -143,11 +143,21 @@ public class SkillProjectileHandler : MonoBehaviour
 
         if (bullet != null)
         {
+            // Bullet2D 먼저 체크
             Bullet2D bulletScript = bullet.GetComponent<Bullet2D>();
             if (bulletScript != null)
             {
                 bulletScript.SetDamage((int)damageValue);
                 bulletScript.Initialize(aimDirection);
+            }
+            else
+            {
+                // Cartoon Coffee Projectile 체크
+                Projectile ccProjectile = bullet.GetComponent<Projectile>();
+                if (ccProjectile != null)
+                {
+                    ccProjectile.Initialize(aimDirection, (int)damageValue);
+                }
             }
 
             if (debugMode)
@@ -210,24 +220,30 @@ public class SkillProjectileHandler : MonoBehaviour
 
         if (fireball != null)
         {
-            FireballProjectile fb = fireball.GetComponent<FireballProjectile>();
-
-            // 1. 변수를 if문 밖(상위)에서 미리 선언합니다.
             float explosionRadius = skillData.areaRadius > 0 ? skillData.areaRadius : 1.5f;
 
+            // FireballProjectile 먼저 체크
+            FireballProjectile fb = fireball.GetComponent<FireballProjectile>();
             if (fb != null)
             {
-                // ★ 기존 FireballProjectile의 Initialize 시그니처: (Vector2 dir, int dmg, float radius)
                 fb.Initialize(aimDirection, (int)damageValue, explosionRadius);
             }
             else
             {
-                Debug.LogWarning($"[SkillProjectileHandler] {fireball.name}에 FireballProjectile 컴포넌트 없음!");
+                // Cartoon Coffee Projectile 체크
+                Projectile ccProjectile = fireball.GetComponent<Projectile>();
+                if (ccProjectile != null)
+                {
+                    ccProjectile.Initialize(aimDirection, (int)damageValue);
+                }
+                else
+                {
+                    Debug.LogWarning($"[SkillProjectileHandler] {fireball.name}에 투사체 컴포넌트 없음!");
+                }
             }
 
             if (debugMode)
             {
-                // 2. 이제 여기서도 explosionRadius를 인식할 수 있습니다!
                 Debug.Log($"[SkillProjectileHandler] Magic: {skillData.skillName} - 데미지 {(int)damageValue}, 범위 {explosionRadius}");
             }
         }
