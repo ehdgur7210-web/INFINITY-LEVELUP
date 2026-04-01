@@ -145,6 +145,7 @@ public class OptionUI : MonoBehaviour
         if (Instance == null)
         {
             Instance = this;
+            Debug.Log("[ManagerInit] OptionUI가 생성되었습니다.");
         }
         else
         {

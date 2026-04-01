@@ -120,6 +120,7 @@ public class CompanionDetailPanel : MonoBehaviour
     {
         if (Instance != null && Instance != this) { Destroy(gameObject); return; }
         Instance = this;
+        Debug.Log("[ManagerInit] CompanionDetailPanel가 생성되었습니다.");
 
         if (closeButton != null)
             closeButton.onClick.AddListener(Close);

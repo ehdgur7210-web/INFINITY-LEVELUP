@@ -76,6 +76,7 @@ public class GachaEquipmentTierManager : MonoBehaviour
     {
         if (Instance == null) Instance = this;
         else { Destroy(gameObject); return; }
+        Debug.Log("[ManagerInit] GachaEquipmentTierManager가 생성되었습니다.");
     }
 
     void Start()

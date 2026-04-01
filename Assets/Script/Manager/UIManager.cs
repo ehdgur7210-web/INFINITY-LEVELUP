@@ -129,7 +129,8 @@ public class UIManager : MonoBehaviour
         if (Instance == null)
         {
             Instance = this;
-            
+            Debug.Log("[ManagerInit] UIManager가 생성되었습니다.");
+
         }
         else
         {

@@ -42,6 +42,7 @@ public class InGameDebugLogger : MonoBehaviour
         if (Instance == null)
         {
             Instance = this;
+            Debug.Log("[ManagerInit] InGameDebugLogger가 생성되었습니다.");
             DontDestroyOnLoad(gameObject);
         }
         else

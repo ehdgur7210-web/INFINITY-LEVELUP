@@ -36,6 +36,7 @@ public class DamagePopupManager : MonoBehaviour
         if (Instance == null)
         {
             Instance = this;
+            Debug.Log("[ManagerInit] DamagePopupManager가 생성되었습니다.");
         }
         else
         {

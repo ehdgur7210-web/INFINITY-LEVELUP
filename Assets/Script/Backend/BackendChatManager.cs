@@ -97,6 +97,7 @@ public class BackendChatManager : MonoBehaviour
     {
         if (Instance != null && Instance != this) { Destroy(gameObject); return; }
         Instance = this;
+        Debug.Log("[ManagerInit] BackendChatManager가 생성되었습니다.");
         DontDestroyOnLoad(gameObject);
     }
 

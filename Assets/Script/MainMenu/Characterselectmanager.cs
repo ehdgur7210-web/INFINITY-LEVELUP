@@ -140,6 +140,7 @@ public class CharacterSelectManager : MonoBehaviour
     {
         if (Instance != null && Instance != this) { Destroy(gameObject); return; }
         Instance = this;
+        Debug.Log("[ManagerInit] CharacterSelectManager가 생성되었습니다.");
     }
 
     void Start()

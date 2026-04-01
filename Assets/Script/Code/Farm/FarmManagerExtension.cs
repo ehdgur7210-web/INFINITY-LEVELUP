@@ -44,6 +44,7 @@ public class FarmManagerExtension : MonoBehaviour
         if (Instance == null)
         {
             Instance = this;
+            Debug.Log("[ManagerInit] FarmManagerExtension가 생성되었습니다.");
             DontDestroyOnLoad(transform.root.gameObject);
         }
         else

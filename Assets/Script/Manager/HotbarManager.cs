@@ -14,7 +14,11 @@ public class HotbarManager : MonoBehaviour
 
     void Awake()
     {
-        if (Instance == null) Instance = this;
+        if (Instance == null)
+        {
+            Instance = this;
+            Debug.Log("[ManagerInit] HotbarManager가 생성되었습니다.");
+        }
         else { enabled = false; Destroy(gameObject); return; }
     }
 

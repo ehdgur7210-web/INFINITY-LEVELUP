@@ -92,6 +92,7 @@ public class FarmSceneController : MonoBehaviour
     {
         if (Instance == null) Instance = this;
         else { Destroy(gameObject); return; }
+        Debug.Log("[ManagerInit] FarmSceneController가 생성되었습니다.");
     }
 
     void Start()

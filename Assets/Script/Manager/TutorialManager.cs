@@ -65,6 +65,7 @@ public class TutorialManager : MonoBehaviour
         if (Instance == null)
         {
             Instance = this;
+            Debug.Log("[ManagerInit] TutorialManager가 생성되었습니다.");
             DontDestroyOnLoad(transform.root.gameObject);
         }
         else

@@ -157,6 +157,7 @@ public class InventoryManager : MonoBehaviour
         if (Instance == null)
         {
             Instance = this;
+            Debug.Log("[ManagerInit] InventoryManager가 생성되었습니다.");
         }
         else
         {
@@ -243,15 +244,46 @@ public class InventoryManager : MonoBehaviour
     //  장비 슬롯 빌드 — 단순 반복문
     // ═══════════════════════════════════════════════════════════════
 
+    // ── 장비 슬롯 풀링 ──────────────────────────────────────────
+    private List<GameObject> equipSlotPool = new List<GameObject>();
+    private int equipSlotPoolUsed = 0;
+
+    private GameObject GetOrCreateEquipSlot(GameObject prefab)
+    {
+        // 풀에 여유 슬롯이 있으면 재사용
+        if (equipSlotPoolUsed < equipSlotPool.Count)
+        {
+            GameObject go = equipSlotPool[equipSlotPoolUsed];
+            equipSlotPoolUsed++;
+            go.SetActive(true);
+            return go;
+        }
+
+        // 풀 부족 → 새로 생성
+        GameObject newGo = Instantiate(prefab, equipmentContainer, false);
+        equipSlotPool.Add(newGo);
+        equipSlotPoolUsed++;
+        return newGo;
+    }
+
+    private void ReturnAllEquipSlotsToPool()
+    {
+        for (int i = 0; i < equipSlotPoolUsed; i++)
+        {
+            if (i < equipSlotPool.Count && equipSlotPool[i] != null)
+                equipSlotPool[i].SetActive(false);
+        }
+        equipSlotPoolUsed = 0;
+    }
+
     private void BuildEquipSlots()
     {
         GameObject prefab = equipSlotPrefab != null ? equipSlotPrefab : slotPrefab;
         if (prefab == null || equipmentContainer == null) return;
         if (ItemDatabase.Instance == null) return;
 
-        // 기존 슬롯 전부 제거
-        foreach (Transform child in equipmentContainer)
-            Destroy(child.gameObject);
+        // ★ 풀로 반환 (Destroy 대신)
+        ReturnAllEquipSlotsToPool();
         equipSlots.Clear();
 
         // 전체 장비 수집 (allEquipments + allItems 중 EquipmentData)
@@ -279,16 +311,16 @@ public class InventoryManager : MonoBehaviour
             return a.itemID.CompareTo(b.itemID);
         });
 
-        // 슬롯 Instantiate — EquipmentSlot 프리팹 사용
+        // ★ 풀에서 슬롯 가져오기 (Instantiate 대신 재사용)
         foreach (var eq in allEquips)
         {
             if (eq == null) continue;
             if (!EquipFilter.Contains(eq.itemType)) continue;
 
-            GameObject slotObj = Instantiate(prefab, equipmentContainer, false);
-            // 로컬 좌표 리셋 — 프리팹 원본 위치가 컨테이너 밖이면 탈출 방지
+            GameObject slotObj = GetOrCreateEquipSlot(prefab);
             slotObj.transform.localPosition = Vector3.zero;
             slotObj.transform.localScale = Vector3.one;
+            slotObj.transform.SetAsLastSibling();
 
             // 새 EquipmentSlot 컴포넌트 우선
             EquipmentSlot newSlot = slotObj.GetComponent<EquipmentSlot>();
@@ -321,7 +353,7 @@ public class InventoryManager : MonoBehaviour
         // LayoutGroup 강제 리빌드 — 슬롯 위치 재계산
         LayoutRebuilder.ForceRebuildLayoutImmediate(equipmentContainer);
 
-        Debug.Log($"[InventoryManager] 장비슬롯 생성: {equipSlots.Count}개, parent={equipmentContainer.name}, 위치={equipmentContainer.anchoredPosition}");
+        Debug.Log($"[InventoryManager] 장비슬롯 빌드: {equipSlots.Count}개 (풀: {equipSlotPool.Count}개)");
     }
 
     // ═══════════════════════════════════════════════════════════════
@@ -854,7 +886,7 @@ public class InventoryManager : MonoBehaviour
             Debug.Log($"[InventoryManager] 아이템 추가: {item.itemName} x{count}");
 
         if (item is EquipmentData)
-            return AddEquipItem(item, count, 0, 0);
+            return AddEquipItem(item, count, 0, 0, refreshUI);
 
         return AddGeneralItem(item, count, 0, 0);
     }
@@ -871,7 +903,7 @@ public class InventoryManager : MonoBehaviour
         return AddGeneralItem(item, count, enhanceLevel, 0);
     }
 
-    private bool AddEquipItem(ItemData item, int count, int enhance, int level)
+    private bool AddEquipItem(ItemData item, int count, int enhance, int level, bool refreshUI = true)
     {
         int id = item.itemID;
 
@@ -895,9 +927,10 @@ public class InventoryManager : MonoBehaviour
 
         Debug.Log($"[InventoryManager] 장비 해금/추가: {item.itemName} x{count} (총 {equipUnlockMap[id].count}개)");
 
-        // 장비 추가 시 즉시 슬롯 재빌드
+        // refreshUI=false면 데이터만 갱신, UI 재빌드는 호출자가 나중에 처리
         equipSlotsBuilt = false;
-        BuildEquipSlots();
+        if (refreshUI)
+            BuildEquipSlots();
 
         return true;
     }
@@ -1114,7 +1147,11 @@ public class InventoryManager : MonoBehaviour
         equipUnlockMap.Clear();
         generalItemData.Clear();
 
-        foreach (var slot in equipSlots) if (slot != null) Destroy(slot.gameObject);
+        // 장비 풀 오브젝트 전부 파괴
+        foreach (var go in equipSlotPool) if (go != null) Destroy(go);
+        equipSlotPool.Clear();
+        equipSlotPoolUsed = 0;
+
         foreach (var slot in companionSlotList) if (slot != null) Destroy(slot.gameObject);
         foreach (var slot in etcSlotList) if (slot != null) Destroy(slot.gameObject);
         foreach (var slot in companionSlots) if (slot != null) Destroy(slot.gameObject);

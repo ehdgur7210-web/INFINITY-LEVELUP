@@ -55,6 +55,7 @@ public class SoundManager : MonoBehaviour
         if (Instance == null)
         {
             Instance = this;
+            Debug.Log("[ManagerInit] SoundManager가 생성되었습니다.");
             DontDestroyOnLoad(gameObject);
 
             InitializeSoundManager();

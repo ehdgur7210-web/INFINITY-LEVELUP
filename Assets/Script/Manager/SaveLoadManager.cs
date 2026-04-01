@@ -66,6 +66,7 @@ public class SaveLoadManager : MonoBehaviour
         }
 
         Instance = this;
+        Debug.Log("[ManagerInit] SaveLoadManager가 생성되었습니다.");
 
         // GameDataBridge에 설정값 주입
         GameDataBridge.DataResetVersion = dataResetVersion;

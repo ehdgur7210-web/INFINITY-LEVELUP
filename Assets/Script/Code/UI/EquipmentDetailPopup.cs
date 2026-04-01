@@ -68,6 +68,7 @@ public class EquipmentDetailPopup : MonoBehaviour
     {
         if (Instance == null) Instance = this;
         else { Destroy(gameObject); return; }
+        Debug.Log("[ManagerInit] EquipmentDetailPopup가 생성되었습니다.");
     }
 
     void Start()

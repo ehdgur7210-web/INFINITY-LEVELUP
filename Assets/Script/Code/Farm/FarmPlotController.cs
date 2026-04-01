@@ -315,6 +315,7 @@ public class FarmCharacterMover : MonoBehaviour
     {
         if (Instance != null && Instance != this) { Destroy(gameObject); return; }
         Instance = this;
+        Debug.Log("[ManagerInit] FarmCharacterMover가 생성되었습니다.");
         if (characterAnimator == null)
             characterAnimator = GetComponentInChildren<Animator>();
     }

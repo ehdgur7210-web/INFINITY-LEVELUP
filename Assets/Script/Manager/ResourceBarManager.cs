@@ -57,6 +57,7 @@ public class ResourceBarManager : MonoBehaviour
         if (Instance == null)
         {
             Instance = this;
+            Debug.Log("[ManagerInit] ResourceBarManager가 생성되었습니다.");
         }
         else
         {

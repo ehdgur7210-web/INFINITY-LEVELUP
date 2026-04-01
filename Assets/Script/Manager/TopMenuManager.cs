@@ -107,6 +107,7 @@ public class TopMenuManager : MonoBehaviour
         if (Instance == null)
         {
             Instance = this;
+            Debug.Log("[ManagerInit] TopMenuManager가 생성되었습니다.");
         }
         else
         {

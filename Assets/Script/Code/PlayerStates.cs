@@ -127,6 +127,7 @@ public class PlayerStats : MonoBehaviour, IHitable
         if (Instance == null)
         {
             Instance = this;
+            Debug.Log("[ManagerInit] PlayerStats가 생성되었습니다.");
         }
         else
         {

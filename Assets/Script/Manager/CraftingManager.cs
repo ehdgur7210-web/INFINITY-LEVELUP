@@ -35,6 +35,7 @@ public class CraftingManager : MonoBehaviour
         if (Instance == null)
         {
             Instance = this;
+            Debug.Log("[ManagerInit] CraftingManager가 생성되었습니다.");
         }
         else
         {

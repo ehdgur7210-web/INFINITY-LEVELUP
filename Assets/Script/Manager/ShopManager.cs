@@ -71,6 +71,7 @@ public class ShopManager : MonoBehaviour
         if (Instance == null)
         {
             Instance = this;
+            Debug.Log("[ManagerInit] ShopManager가 생성되었습니다.");
         }
         else
         {

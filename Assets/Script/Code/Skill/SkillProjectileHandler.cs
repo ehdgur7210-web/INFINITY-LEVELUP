@@ -36,6 +36,7 @@ public class SkillProjectileHandler : MonoBehaviour
         if (Instance == null)
         {
             Instance = this;
+            Debug.Log("[ManagerInit] SkillProjectileHandler가 생성되었습니다.");
         }
         else
         {

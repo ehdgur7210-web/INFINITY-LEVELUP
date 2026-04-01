@@ -65,6 +65,15 @@ public class GachaResultUI : MonoBehaviour
     private AudioSource audioSource;
     public AudioClip revealSound;
 
+    // ── 슬롯 풀링 ────────────────────────────────────────────────
+    [Header("슬롯 풀링")]
+    [Tooltip("미리 생성할 슬롯 개수 (100~200 권장)")]
+    public int slotPoolSize = 150;
+
+    private List<GameObject> slotPool = new List<GameObject>();
+    private int slotPoolUsedCount = 0;
+    private bool isPoolInitialized = false;
+
     // ── 내부 상태 ────────────────────────────────────────────────
     private List<GachaResultSlotUI> activeSlots = new List<GachaResultSlotUI>();
 
@@ -77,6 +86,7 @@ public class GachaResultUI : MonoBehaviour
         if (Instance == null)
         {
             Instance = this;
+            Debug.Log("[ManagerInit] GachaResultUI가 생성되었습니다.");
             Debug.Log("[GachaResultUI] Instance 등록");
         }
         else if (Instance != this)
@@ -115,6 +125,81 @@ public class GachaResultUI : MonoBehaviour
     void OnDestroy()
     {
         if (Instance == this) Instance = null;
+    }
+
+    // ════════════════════════════════════════════════════════════
+    //  ★ 슬롯 풀 초기화 (GachaManager.Init에서 호출)
+    // ════════════════════════════════════════════════════════════
+
+    public void InitSlotPool()
+    {
+        if (isPoolInitialized) return;
+        if (slotPrefab == null || scrollContent == null)
+        {
+            Debug.LogError("[GachaResultUI] InitSlotPool 실패: slotPrefab 또는 scrollContent가 null!");
+            return;
+        }
+
+        for (int i = 0; i < slotPoolSize; i++)
+        {
+            GameObject go = Instantiate(slotPrefab, scrollContent);
+            go.SetActive(false);
+            go.name = $"PooledSlot_{i}";
+
+            GachaResultSlotUI slotUI = go.GetComponent<GachaResultSlotUI>();
+            if (slotUI == null)
+            {
+                slotUI = go.AddComponent<GachaResultSlotUI>();
+                AutoBindSlotComponents(slotUI, go);
+            }
+
+            slotPool.Add(go);
+        }
+
+        isPoolInitialized = true;
+        Debug.Log($"[GachaResultUI] 슬롯 풀 초기화 완료: {slotPoolSize}개");
+    }
+
+    private GameObject GetSlotFromPool()
+    {
+        if (slotPoolUsedCount < slotPool.Count)
+        {
+            GameObject go = slotPool[slotPoolUsedCount];
+            slotPoolUsedCount++;
+            go.SetActive(true);
+            return go;
+        }
+
+        // 풀 부족 시 동적 생성
+        if (slotPrefab != null && scrollContent != null)
+        {
+            GameObject go = Instantiate(slotPrefab, scrollContent);
+            go.name = $"PooledSlot_{slotPool.Count}";
+
+            GachaResultSlotUI slotUI = go.GetComponent<GachaResultSlotUI>();
+            if (slotUI == null)
+            {
+                slotUI = go.AddComponent<GachaResultSlotUI>();
+                AutoBindSlotComponents(slotUI, go);
+            }
+
+            slotPool.Add(go);
+            slotPoolUsedCount++;
+            Debug.Log($"[GachaResultUI] 풀 확장: {slotPool.Count}개");
+            return go;
+        }
+
+        return null;
+    }
+
+    private void ReturnAllSlotsToPool()
+    {
+        for (int i = 0; i < slotPoolUsedCount; i++)
+        {
+            if (i < slotPool.Count && slotPool[i] != null)
+                slotPool[i].SetActive(false);
+        }
+        slotPoolUsedCount = 0;
     }
 
     // ════════════════════════════════════════════════════════════
@@ -158,12 +243,12 @@ public class GachaResultUI : MonoBehaviour
 
     private IEnumerator SpawnSlotsRoutine(List<EquipmentData> results, ItemRarity threshold)
     {
-        // Content의 기존 자식 제거
-        if (scrollContent != null)
-        {
-            foreach (Transform child in scrollContent)
-                Destroy(child.gameObject);
-        }
+        // 풀이 초기화되지 않았으면 지금 초기화
+        if (!isPoolInitialized)
+            InitSlotPool();
+
+        // 풀 슬롯 전부 반환 (이전 결과 정리)
+        ReturnAllSlotsToPool();
 
         // 스크롤을 맨 왼쪽으로 리셋
         ScrollRect sr = GetComponentInChildren<ScrollRect>();
@@ -209,18 +294,14 @@ public class GachaResultUI : MonoBehaviour
             EquipmentData data = grouped[i].Item1;
             int count = grouped[i].Item2;
 
-            if (slotPrefab == null || scrollContent == null) break;
+            // ★ 풀에서 슬롯 가져오기 (Instantiate 대신)
+            GameObject slotGO = GetSlotFromPool();
+            if (slotGO == null) break;
 
-            GameObject slotGO = Instantiate(slotPrefab, scrollContent);
             slotGO.name = $"Slot_{i}_{data.itemName}";
+            slotGO.transform.SetAsLastSibling();
 
             GachaResultSlotUI slotUI = slotGO.GetComponent<GachaResultSlotUI>();
-            if (slotUI == null)
-            {
-                slotUI = slotGO.AddComponent<GachaResultSlotUI>();
-                AutoBindSlotComponents(slotUI, slotGO);
-            }
-
             slotUI.Setup(data, threshold, 0f, count);
             activeSlots.Add(slotUI);
 
@@ -346,18 +427,12 @@ public class GachaResultUI : MonoBehaviour
         foreach (var slot in activeSlots)
         {
             if (slot != null)
-            {
                 slot.ClearEffects();
-                Destroy(slot.gameObject);
-            }
         }
         activeSlots.Clear();
 
-        if (scrollContent != null)
-        {
-            foreach (Transform child in scrollContent)
-                Destroy(child.gameObject);
-        }
+        // ★ Destroy 대신 풀로 반환
+        ReturnAllSlotsToPool();
     }
 }
 

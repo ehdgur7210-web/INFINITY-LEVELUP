@@ -79,6 +79,7 @@ public class FarmManager : MonoBehaviour
         if (Instance == null)
         {
             Instance = this;
+            Debug.Log("[ManagerInit] FarmManager가 생성되었습니다.");
             Debug.Log($"[FarmManager] Instance 설정: {gameObject.name} / allCrops:{allCrops?.Count ?? 0}개");
         }
         else if (Instance != this)

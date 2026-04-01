@@ -55,7 +55,7 @@ public class OfflineRewardManager : MonoBehaviour
         if (Instance == null)
         {
             Instance = this;
-
+            Debug.Log("[ManagerInit] OfflineRewardManager가 생성되었습니다.");
         }
         else
         {

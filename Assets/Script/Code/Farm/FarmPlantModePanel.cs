@@ -206,6 +206,7 @@ public class FarmPlantModePanel : MonoBehaviour
         // 싱글톤 설정
         if (Instance != null && Instance != this) { Destroy(gameObject); return; }
         Instance = this;
+        Debug.Log("[ManagerInit] FarmPlantModePanel가 생성되었습니다.");
 
         // ★ 시작 시 오버레이 전체를 비활성화 (밭 클릭 전까지는 숨겨져 있음)
         //   이로 인해 Start()가 지연되므로 버튼 리스너는 OpenForPlot()에서 등록

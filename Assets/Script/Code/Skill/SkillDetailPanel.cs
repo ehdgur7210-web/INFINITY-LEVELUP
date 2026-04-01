@@ -39,6 +39,7 @@ public class SkillDetailPanel : MonoBehaviour
     void Awake()
     {
         Instance = this;
+        Debug.Log("[ManagerInit] SkillDetailPanel가 생성되었습니다.");
         if (detailRoot != null)
             detailRoot.SetActive(false);
     }

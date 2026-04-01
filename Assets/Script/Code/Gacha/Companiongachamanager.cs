@@ -108,6 +108,7 @@ public class CompanionGachaManager : MonoBehaviour
     {
         if (Instance == null) Instance = this;
         else { Destroy(gameObject); return; }
+        Debug.Log("[ManagerInit] CompanionGachaManager가 생성되었습니다.");
     }
 
     void Start()

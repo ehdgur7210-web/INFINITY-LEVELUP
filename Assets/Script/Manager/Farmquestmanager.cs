@@ -46,6 +46,7 @@ public class FarmQuestManager : MonoBehaviour
     {
         if (Instance == null) Instance = this;
         else { Destroy(gameObject); return; }
+        Debug.Log("[ManagerInit] FarmQuestManager가 생성되었습니다.");
 
         float hours = questDatabase != null ? questDatabase.refreshHours : 1f;
         nextRefreshTime = DateTime.Now.AddHours(hours);

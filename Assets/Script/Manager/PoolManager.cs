@@ -42,6 +42,7 @@ public class PoolManager : MonoBehaviour
         if (Instance == null)
         {
             Instance = this;
+            Debug.Log("[ManagerInit] PoolManager가 생성되었습니다.");
             // ★ 핵심: 부모(ManagerRoot)에서 분리 먼저!
             transform.SetParent(null);
             DontDestroyOnLoad(gameObject);

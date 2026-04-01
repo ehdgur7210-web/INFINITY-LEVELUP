@@ -76,7 +76,10 @@ public class VipManager : MonoBehaviour
     private void Awake()
     {
         if (Instance == null)
+        {
             Instance = this;
+            Debug.Log("[ManagerInit] VipManager가 생성되었습니다.");
+        }
         else
         {
             Destroy(gameObject);

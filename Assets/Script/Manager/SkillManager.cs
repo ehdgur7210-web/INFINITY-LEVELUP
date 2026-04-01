@@ -80,6 +80,7 @@ public class SkillManager : MonoBehaviour
         if (Instance == null)
         {
             Instance = this;
+            Debug.Log("[ManagerInit] SkillManager가 생성되었습니다.");
         }
         else
         {

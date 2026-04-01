@@ -48,6 +48,7 @@ public class ManagerRoot : MonoBehaviour
         }
 
         Instance = this;
+        Debug.Log("[ManagerInit] ManagerRoot가 생성되었습니다.");
         Debug.Log($"[ManagerRoot] 씬 로컬 등록 완료 (자식 {transform.childCount}개 매니저) — DontDestroyOnLoad 없음");
     }
 

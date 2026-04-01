@@ -157,6 +157,7 @@ public class AuctionUI : MonoBehaviour
         // ★ 씬 소속 컴포넌트 = 씬 재로드마다 새로 생성됨
         // 이전 Instance는 파괴된 오브젝트 → 나(새 오브젝트)로 교체
         Instance = this;
+        Debug.Log("[ManagerInit] AuctionUI가 생성되었습니다.");
     }
 
     void Start()

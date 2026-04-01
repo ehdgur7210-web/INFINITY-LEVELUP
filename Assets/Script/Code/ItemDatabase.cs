@@ -48,6 +48,7 @@ public class ItemDatabase : MonoBehaviour
         if (Instance == null)
         {
             Instance = this;
+            Debug.Log("[ManagerInit] ItemDatabase가 생성되었습니다.");
             transform.SetParent(null);
             DontDestroyOnLoad(gameObject); // 씬이 바뀌어도 유지
         }

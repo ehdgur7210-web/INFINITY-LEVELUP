@@ -23,7 +23,11 @@ public class EquipmentManager : MonoBehaviour
 
     void Awake()
     {
-        if (Instance == null) Instance = this;
+        if (Instance == null)
+        {
+            Instance = this;
+            Debug.Log("[ManagerInit] EquipmentManager가 생성되었습니다.");
+        }
         else { enabled = false; Destroy(gameObject); return; }
     }
 

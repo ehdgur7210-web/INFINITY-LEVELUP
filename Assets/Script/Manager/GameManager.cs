@@ -61,6 +61,7 @@ public class GameManager : MonoBehaviour
         }
 
         Instance = this;
+        Debug.Log("[ManagerInit] GameManager가 생성되었습니다.");
         Debug.Log("[GameManager] Awake 완료 (씬 로컬, DontDestroyOnLoad 없음)");
     }
 

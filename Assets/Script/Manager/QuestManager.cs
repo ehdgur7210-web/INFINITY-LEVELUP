@@ -27,6 +27,7 @@ public class QuestManager : MonoBehaviour
     {
         if (Instance == null) Instance = this;
         else { enabled = false; Destroy(gameObject); return; }
+        Debug.Log("[ManagerInit] QuestManager가 생성되었습니다.");
     }
 
     void Start()

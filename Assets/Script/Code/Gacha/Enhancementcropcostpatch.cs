@@ -31,6 +31,7 @@ public class EnhancementCropCostPatch : MonoBehaviour
     {
         if (Instance == null) Instance = this;
         else { Destroy(gameObject); return; }
+        Debug.Log("[ManagerInit] EnhancementCropCostPatch가 생성되었습니다.");
     }
 
     // ════════════════════════════════════════════════════════════════════════════════════════════════

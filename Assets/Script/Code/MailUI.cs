@@ -58,6 +58,7 @@ public class MailUI : MonoBehaviour
     void Awake()
     {
         Instance = this;
+        Debug.Log("[ManagerInit] MailUI가 생성되었습니다.");
     }
 
     void OnEnable()

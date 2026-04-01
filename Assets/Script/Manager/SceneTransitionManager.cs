@@ -73,6 +73,7 @@ public class SceneTransitionManager : MonoBehaviour
         if (Instance == null)
         {
             Instance = this;
+            Debug.Log("[ManagerInit] SceneTransitionManager가 생성되었습니다.");
             // ★ SceneTransitionManager는 독립 오브젝트로 DontDestroyOnLoad 유지
             // 페이드/로딩 UI가 씬 전환 중에도 살아있어야 하기 때문
             DontDestroyOnLoad(gameObject);

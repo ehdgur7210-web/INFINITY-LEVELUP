@@ -96,6 +96,7 @@ public class FarmCropExtension : MonoBehaviour
         if (Instance == null)
         {
             Instance = this;
+            Debug.Log("[ManagerInit] FarmCropExtension가 생성되었습니다.");
             DontDestroyOnLoad(transform.root.gameObject);
         }
         else Destroy(gameObject);

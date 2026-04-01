@@ -70,6 +70,7 @@ public class FarmBuildingManager : MonoBehaviour
         if (Instance == null)
         {
             Instance = this;
+            Debug.Log("[ManagerInit] FarmBuildingManager가 생성되었습니다.");
             DontDestroyOnLoad(transform.root.gameObject);
             AutoFillDefaultLevels();
         }

@@ -21,6 +21,7 @@ public class CropPointShop : MonoBehaviour
         if (Instance == null)
         {
             Instance = this;
+            Debug.Log("[ManagerInit] CropPointShop가 생성되었습니다.");
             DontDestroyOnLoad(gameObject);
         }
         else

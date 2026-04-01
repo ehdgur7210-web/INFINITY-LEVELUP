@@ -79,6 +79,7 @@ public class FarmInventoryUI : MonoBehaviour
     {
         if (Instance != null && Instance != this) { Destroy(gameObject); return; }
         Instance = this;
+        Debug.Log("[ManagerInit] FarmInventoryUI가 생성되었습니다.");
 
         // ★ 상세 패널 하위 요소 자동 탐색 (Inspector 미연결 시 안전장치)
         AutoFindDetailComponents();

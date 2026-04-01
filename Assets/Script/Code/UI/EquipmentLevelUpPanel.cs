@@ -124,6 +124,7 @@ public class EquipmentLevelUpPanel : MonoBehaviour
     {
         if (Instance == null) Instance = this;
         else { Destroy(gameObject); return; }
+        Debug.Log("[ManagerInit] EquipmentLevelUpPanel가 생성되었습니다.");
 
         // ★ 초기 숨김은 Awake에서 처리 (Start 타이밍 문제 방지)
         if (levelUpPanel != null) levelUpPanel.SetActive(false);

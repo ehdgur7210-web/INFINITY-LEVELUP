@@ -78,7 +78,10 @@ public class EquipmentSkillSystem : MonoBehaviour
     void Awake()
     {
         if (Instance == null)
+        {
             Instance = this;
+            Debug.Log("[ManagerInit] EquipmentSkillSystem가 생성되었습니다.");
+        }
         else
         {
             Destroy(gameObject);

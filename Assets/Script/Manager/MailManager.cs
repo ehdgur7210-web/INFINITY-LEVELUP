@@ -108,6 +108,7 @@ public class MailManager : MonoBehaviour
         if (Instance == null)
         {
             Instance = this;
+            Debug.Log("[ManagerInit] MailManager가 생성되었습니다.");
 
         }
         else

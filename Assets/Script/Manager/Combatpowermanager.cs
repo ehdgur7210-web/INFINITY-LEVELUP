@@ -113,7 +113,11 @@ public class CombatPowerManager : MonoBehaviour
 
     void Awake()
     {
-        if (Instance == null) Instance = this;
+        if (Instance == null)
+        {
+            Instance = this;
+            Debug.Log("[ManagerInit] CombatPowerManager가 생성되었습니다.");
+        }
         else { enabled = false; Destroy(gameObject); return; }
     }
 

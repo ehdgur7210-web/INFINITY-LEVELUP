@@ -160,7 +160,11 @@ public class RankingManager : MonoBehaviour
 
     void Awake()
     {
-        if (Instance == null) Instance = this;
+        if (Instance == null)
+        {
+            Instance = this;
+            Debug.Log("[ManagerInit] RankingManager가 생성되었습니다.");
+        }
         else { Destroy(gameObject); return; }
     }
 

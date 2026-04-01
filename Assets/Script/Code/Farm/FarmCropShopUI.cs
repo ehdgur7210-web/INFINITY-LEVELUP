@@ -127,6 +127,7 @@ public class FarmCropShopUI : MonoBehaviour
     void Awake()
     {
         Instance = this;
+        Debug.Log("[ManagerInit] FarmCropShopUI가 생성되었습니다.");
         closeButton?.onClick.AddListener(CloseShop);
 
         tabVegetable?.onClick.AddListener(() => SwitchTab(ShopTab.Vegetable));

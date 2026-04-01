@@ -76,7 +76,11 @@ public class EnhancementSystem : MonoBehaviour
 
     void Awake()
     {
-        if (Instance == null) Instance = this;
+        if (Instance == null)
+        {
+            Instance = this;
+            Debug.Log("[ManagerInit] EnhancementSystem가 생성되었습니다.");
+        }
         else { Destroy(gameObject); return; }
     }
 

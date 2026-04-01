@@ -62,7 +62,11 @@ public class SelectionPanel : MonoBehaviour
 
     void Awake()
     {
-        if (Instance == null) Instance = this;
+        if (Instance == null)
+        {
+            Instance = this;
+            Debug.Log("[ManagerInit] SelectionPanel가 생성되었습니다.");
+        }
         else { Destroy(gameObject); return; }
     }
 

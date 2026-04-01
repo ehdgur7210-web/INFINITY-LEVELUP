@@ -30,6 +30,7 @@ public class BackendManager : MonoBehaviour
             return;
         }
         Instance = this;
+        Debug.Log("[ManagerInit] BackendManager가 생성되었습니다.");
         DontDestroyOnLoad(gameObject);
     }
 

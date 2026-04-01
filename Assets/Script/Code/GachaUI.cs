@@ -34,6 +34,7 @@ public class GachaUI : MonoBehaviour
         if (Instance == null)
         {
             Instance = this;
+            Debug.Log("[ManagerInit] GachaUI가 생성되었습니다.");
         }
         else
         {

@@ -122,6 +122,7 @@ public class GachaManager : MonoBehaviour
         if (Instance == null)
         {
             Instance = this;
+            Debug.Log("[ManagerInit] GachaManager가 생성되었습니다.");
             transform.SetParent(null);
         }
         else
@@ -156,9 +157,21 @@ public class GachaManager : MonoBehaviour
         }
     }
 
+    private bool isInitialized = false;
+
     void Start()
     {
         if (Instance != this) return;
+        Init();
+    }
+
+    /// <summary>
+    /// 게임 시작 시 호출 — 가챠 풀 설정 + UI 슬롯 풀링 초기화
+    /// </summary>
+    public void Init()
+    {
+        if (isInitialized) return;
+
         UpdateGachaPool();
 
         if (gachaPanel != null)
@@ -166,6 +179,39 @@ public class GachaManager : MonoBehaviour
 
         ValidateGachaPool();
         SetupAnimationSystem();
+
+        // ★ GachaResultUI 슬롯 풀 초기화 (Awake가 아닌 게임 시작 시 1회)
+        InitGachaResultPool();
+
+        isInitialized = true;
+        Debug.Log("[GachaManager] Init 완료 — 슬롯 풀링 포함");
+    }
+
+    private void InitGachaResultPool()
+    {
+        // GachaResultUI가 비활성이면 찾아서 활성화
+        if (GachaResultUI.Instance == null)
+        {
+            var found = FindObjectOfType<GachaResultUI>(true);
+            if (found != null)
+            {
+                found.gameObject.SetActive(true);
+                Debug.Log("[GachaManager] GachaResultUI 강제 활성화 → 풀 초기화용");
+            }
+        }
+
+        if (GachaResultUI.Instance != null)
+        {
+            GachaResultUI.Instance.InitSlotPool();
+
+            // ★ 풀 초기화 후 결과 패널 닫기
+            if (GachaResultUI.Instance.resultPanel != null)
+                GachaResultUI.Instance.resultPanel.SetActive(false);
+        }
+        else
+        {
+            Debug.LogWarning("[GachaManager] GachaResultUI를 찾을 수 없어 슬롯 풀 초기화 불가");
+        }
     }
 
     void Update() { }
@@ -259,13 +305,13 @@ public class GachaManager : MonoBehaviour
         if (result != null)
         {
             Debug.Log($"[GachaManager] 가챠 결과: {result.itemName} ({result.rarity})");
-            InventoryManager.Instance?.AddItem(result, 1);
+            InventoryManager.Instance?.AddItem(result, 1, false);
             IncrementGachaCount();
 
             ShowGachaResults(new List<EquipmentData> { result });
             RefreshGachaUI();
 
-            // 즉시 저장 + 인벤토리 갱신
+            // 즉시 저장 + 인벤토리 갱신 (AddItem에서 refreshUI=false → 여기서 1회만 빌드)
             SaveLoadManager.Instance?.SaveGame();
             InventoryManager.Instance?.RefreshEquipDisplay();
         }
@@ -288,7 +334,7 @@ public class GachaManager : MonoBehaviour
             if (result != null)
             {
                 results.Add(result);
-                InventoryManager.Instance?.AddItem(result, 1);
+                InventoryManager.Instance?.AddItem(result, 1, false);
                 IncrementGachaCount();
             }
         }
@@ -525,7 +571,8 @@ public class GachaManager : MonoBehaviour
         }
 
         EquipmentData guaranteed = legendaries[Random.Range(0, legendaries.Count)];
-        InventoryManager.Instance?.AddItem(guaranteed, 1);
+        InventoryManager.Instance?.AddItem(guaranteed, 1, false);
+        InventoryManager.Instance?.RefreshEquipDisplay();
 
         Debug.Log($"[GachaManager] ⭐ 천장 보장! 전설 지급: {guaranteed.itemName}");
         UIManager.Instance?.ShowMessage($"천장 달성! [{guaranteed.itemName}] 획득!", Color.yellow);

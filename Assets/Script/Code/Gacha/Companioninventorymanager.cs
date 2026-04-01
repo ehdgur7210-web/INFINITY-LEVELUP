@@ -40,6 +40,7 @@ public class CompanionInventoryManager : MonoBehaviour
     {
         if (Instance == null) Instance = this;
         else { Destroy(gameObject); return; }
+        Debug.Log("[ManagerInit] CompanionInventoryManager가 생성되었습니다.");
         Debug.Log($"[CompanionInventory] ★ Awake — Instance 등록 완료 (GO: {gameObject.name})");
     }
 

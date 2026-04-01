@@ -34,4 +34,4 @@ MonoBehaviour:
   prerequisiteSkills: []
   effectPrefab: {fileID: 0}
   skillSound: {fileID: 0}
-  attackEffectPrefab: {fileID: 5382110612795435293, guid: 5adc950ac4628974b8c58bcbe4b6ceea, type: 3}
+  attackEffectPrefab: {fileID: 4105813955506528357, guid: 3c3491a83d123114590de701f1b2e117, type: 3}

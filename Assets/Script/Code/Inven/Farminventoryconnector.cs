@@ -49,7 +49,11 @@ public class FarmInventoryConnector : MonoBehaviour
 
     void Awake()
     {
-        if (Instance == null) Instance = this;
+        if (Instance == null)
+        {
+            Instance = this;
+            Debug.Log("[ManagerInit] FarmInventoryConnector가 생성되었습니다.");
+        }
         else { Destroy(gameObject); return; }
     }
 

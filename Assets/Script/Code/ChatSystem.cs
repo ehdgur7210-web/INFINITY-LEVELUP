@@ -161,7 +161,10 @@ public class ChatSystem : MonoBehaviour
     void Awake()
     {
         if (Instance == null)
+        {
             Instance = this;
+            Debug.Log("[ManagerInit] ChatSystem가 생성되었습니다.");
+        }
         else
         {
             enabled = false;
