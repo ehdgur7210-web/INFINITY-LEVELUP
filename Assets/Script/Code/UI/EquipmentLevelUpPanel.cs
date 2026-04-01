@@ -455,7 +455,9 @@ public class EquipmentLevelUpPanel : MonoBehaviour
     {
         if (currentEquip == null) return;
 
-        int maxLv = currentEquip.maxItemLevel;
+        // ★ 레벨 상한 = 기본 20 + (강화수치 × 10)
+        int enhLevel = currentSlot != null ? currentSlot.enhanceLevel : 0;
+        int maxLv = 20 + (enhLevel * 10);
         bool isMaxLevel = currentLevel >= maxLv;
 
         // ── 좌측: 장비 정보 ──
@@ -554,9 +556,12 @@ public class EquipmentLevelUpPanel : MonoBehaviour
     {
         if (currentSlot == null || currentEquip == null) return;
 
-        if (currentLevel >= currentEquip.maxItemLevel)
+        // ★ 레벨 상한 = 기본 20 + (강화수치 × 10)
+        int enhLevel = currentSlot != null ? currentSlot.enhanceLevel : 0;
+        int maxLv = 20 + (enhLevel * 10);
+        if (currentLevel >= maxLv)
         {
-            UIManager.Instance?.ShowMessage("이미 최대 레벨입니다!", Color.yellow);
+            UIManager.Instance?.ShowMessage($"최대 레벨! (강화 +{enhLevel} → Lv.{maxLv})", Color.yellow);
             return;
         }
 

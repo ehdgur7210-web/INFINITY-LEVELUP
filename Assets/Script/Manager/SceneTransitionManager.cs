@@ -321,7 +321,8 @@ public class SceneTransitionManager : MonoBehaviour
         // WaveSpawner 정지
         if (WaveSpawner.Instance != null)
         {
-            WaveSpawner.Instance.KillAllAliveMonsters();
+            // ★ 보상 없이 조용히 풀에 반환 (999999 데미지 제거)
+            WaveSpawner.Instance.ClearAllAliveMonsters();
             WaveSpawner.Instance.StopAllCoroutines();
         }
 

@@ -38,20 +38,14 @@ public class GachaResultSlotUI : MonoBehaviour
     private EquipmentData equip;         // 이 슬롯에 담긴 장비 데이터
     private bool hasEffect;     // 이펙트 재생 여부
     private List<GameObject> spawnedFX = new List<GameObject>(); // 생성된 이펙트 오브젝트 목록
+    private bool isRevealed = false;     // 등장 애니메이션 완료/진행 여부
+
+    /// <summary>이 슬롯이 이미 등장했는지 여부</summary>
+    public bool IsRevealed => isRevealed;
 
     // ════════════════════════════════════════════════════════════
-    //  초기화: 슬롯에 장비 데이터 세팅
-    //  GachaResultUI에서 슬롯 생성 직후 호출
+    //  초기화
     // ════════════════════════════════════════════════════════════
-
-    /// <summary>
-    /// 슬롯을 초기화합니다.
-    /// </summary>
-    /// <param name="data">표시할 장비 데이터</param>
-    /// <param name="effectThreshold">이 등급 이상이면 이펙트 재생</param>
-    /// <param name="delay">나타나기까지 대기 시간 (초)</param>
-    /// <summary>이 슬롯에 표시할 수량 (중복 그룹핑 시 사용)</summary>
-    private int displayCount = 1;
 
     public void Setup(EquipmentData data, ItemRarity effectThreshold, float delay)
     {
@@ -62,16 +56,35 @@ public class GachaResultSlotUI : MonoBehaviour
     {
         equip = data;
         revealDelay = delay;
-        displayCount = count;
-        hasEffect = (data.rarity >= effectThreshold); // 기준 등급 이상이면 이펙트
+        hasEffect = (data.rarity >= effectThreshold);
+        isRevealed = false;
 
-        // 시작 시 크기를 0으로 (팝업 애니 전에 안 보이게)
         transform.localScale = Vector3.zero;
-
-        // UI 텍스트/이미지 세팅
         ApplyUI(data);
+        StartCoroutine(RevealRoutine());
+    }
 
-        // 딜레이 후 등장 애니메이션 시작
+    /// <summary>
+    /// 슬롯을 세팅하되 등장 애니메이션은 시작하지 않음 (스크롤 기반 등장용)
+    /// </summary>
+    public void SetupDeferred(EquipmentData data, ItemRarity effectThreshold)
+    {
+        equip = data;
+        hasEffect = (data.rarity >= effectThreshold);
+        isRevealed = false;
+
+        transform.localScale = Vector3.zero;
+        ApplyUI(data);
+    }
+
+    /// <summary>
+    /// 뷰포트에 진입 시 호출 — 등장 애니메이션 시작
+    /// </summary>
+    public void Reveal(float delay = 0f)
+    {
+        if (isRevealed) return;
+        isRevealed = true;
+        revealDelay = delay;
         StartCoroutine(RevealRoutine());
     }
 
@@ -86,9 +99,9 @@ public class GachaResultSlotUI : MonoBehaviour
             iconImage.color = Color.white;
         }
 
-        // 아이템 이름 + 수량 (2개 이상이면 x수량 표시)
+        // 아이템 이름
         if (itemNameText != null)
-            itemNameText.text = displayCount > 1 ? $"{data.itemName} x{displayCount}" : data.itemName;
+            itemNameText.text = data.itemName;
 
         // 등급 텍스트 + 색상
         if (rarityText != null)

@@ -19,7 +19,7 @@ MonoBehaviour:
   rarity: 0
   itemIcon: {fileID: 21300000, guid: 90b39206af7fb6e449f180bef1eb3608, type: 3}
   background: {fileID: 0}
-  maxStack: 99
+  maxStack: 9999
   isConsumable: 0
   sellPrice: 10000
   buyPrice: 20000

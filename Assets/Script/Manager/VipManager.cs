@@ -50,11 +50,53 @@ public class VipManager : MonoBehaviour
     /// <summary>VIP 만료일 문자열 (예: "2025-12-31T23:59:59")</summary>
     public string ExpireDate { get; private set; } = "";
 
-    /// <summary>무료 선물 수령 여부</summary>
+    /// <summary>무료 선물 수령 여부 (하위 호환용)</summary>
     public bool IsFreeGiftClaimed { get; private set; } = false;
+
+    /// <summary>유료 선물 구매 여부 (하위 호환용)</summary>
+    public bool IsPaidGiftPurchased { get; private set; } = false;
+
+    /// <summary>등급별 무료 선물 수령 기록 (예: "1,2" = VIP1,2 수령완료)</summary>
+    public string ClaimedFreeLevels { get; private set; } = "";
+
+    /// <summary>등급별 유료 선물 구매 기록</summary>
+    public string ClaimedPaidLevels { get; private set; } = "";
+
+    /// <summary>해당 등급의 무료 선물을 수령했는지</summary>
+    public bool IsFreeLevelClaimed(int level)
+    {
+        if (string.IsNullOrEmpty(ClaimedFreeLevels)) return false;
+        foreach (var s in ClaimedFreeLevels.Split(','))
+            if (int.TryParse(s, out int v) && v == level) return true;
+        return false;
+    }
+
+    /// <summary>해당 등급의 유료 선물을 구매했는지</summary>
+    public bool IsPaidLevelClaimed(int level)
+    {
+        if (string.IsNullOrEmpty(ClaimedPaidLevels)) return false;
+        foreach (var s in ClaimedPaidLevels.Split(','))
+            if (int.TryParse(s, out int v) && v == level) return true;
+        return false;
+    }
+
+    private void MarkFreeClaimed(int level)
+    {
+        if (IsFreeLevelClaimed(level)) return;
+        ClaimedFreeLevels = string.IsNullOrEmpty(ClaimedFreeLevels) ? level.ToString() : $"{ClaimedFreeLevels},{level}";
+    }
+
+    private void MarkPaidClaimed(int level)
+    {
+        if (IsPaidLevelClaimed(level)) return;
+        ClaimedPaidLevels = string.IsNullOrEmpty(ClaimedPaidLevels) ? level.ToString() : $"{ClaimedPaidLevels},{level}";
+    }
 
     /// <summary>서버 데이터 로드 완료 여부</summary>
     public bool IsDataLoaded { get; private set; } = false;
+
+    /// <summary>서버 행의 inDate (UPDATE 시 사용)</summary>
+    private string _serverInDate = null;
 
     // ─────────────────────────────────────────
     // 이벤트 (VipUI가 구독해서 UI 갱신)
@@ -129,9 +171,15 @@ public class VipManager : MonoBehaviour
             {
                 // 첫 번째 행 파싱 후 저장 (유저당 1행)
                 ParseData(rows[0]);
+
+                // ★ inDate 저장 (UPDATE 시 행 특정에 사용)
+                JsonData rawRows = callback.Rows();
+                if (rawRows != null && rawRows.Count > 0 && rawRows[0].ContainsKey("inDate"))
+                    _serverInDate = rawRows[0]["inDate"].ToString();
+
                 IsDataLoaded = true;
                 OnVipDataChanged?.Invoke();
-                Debug.Log($"[VipManager] 로드 완료 - VIP{CurrentVipLevel}, 경험치: {CurrentVipExp}");
+                Debug.Log($"[VipManager] 로드 완료 - VIP{CurrentVipLevel}, 경험치: {CurrentVipExp}, inDate={_serverInDate}");
             }
         });
     }
@@ -180,33 +228,59 @@ public class VipManager : MonoBehaviour
 
     /// <summary>
     /// 현재 VIP 데이터를 서버에 저장합니다.
-    /// vip_level을 Primary Key로 사용해서 업데이트합니다.
+    /// ★ inDate로 행을 특정해서 업데이트 (vip_level WHERE 사용 시 등급 변경 후 불일치 버그)
     /// </summary>
     private void SaveToServer(Action onSuccess = null, Action onFail = null)
     {
-        // 저장할 데이터
+        // ★ 로그인 상태 확인 (미로그인 시 서버 저장 스킵)
+        string userInDate = null;
+        try { userInDate = Backend.UserInDate; } catch { }
+        if (string.IsNullOrEmpty(userInDate))
+        {
+            Debug.Log("[VipManager] 서버 미로그인 → 서버 저장 스킵 (로컬은 이미 저장됨)");
+            return;
+        }
+
         Param param = new Param();
         param.Add("vip_level", CurrentVipLevel);
         param.Add("vip_exp", CurrentVipExp);
         param.Add("expire_date", ExpireDate);
         param.Add("free_gift_claimed", IsFreeGiftClaimed);
 
-        // Where: vip_level이 Primary Key이므로 이걸로 행 특정
-        Where where = new Where();
-        where.Equal("vip_level", CurrentVipLevel);
-
-        Backend.GameData.Update(tableName, where, param, callback =>
+        if (!string.IsNullOrEmpty(_serverInDate))
         {
-            if (!callback.IsSuccess())
+            // ★ inDate로 정확한 행 특정 → 등급이 바뀌어도 안전
+            Backend.GameData.UpdateV2(tableName, _serverInDate, Backend.UserInDate, param, callback =>
             {
-                Debug.LogError($"[VipManager] 저장 실패: {callback.GetMessage()}");
-                onFail?.Invoke();
-                return;
-            }
-
-            Debug.Log("[VipManager] 저장 완료");
-            onSuccess?.Invoke();
-        });
+                if (!callback.IsSuccess())
+                {
+                    Debug.LogError($"[VipManager] 저장 실패: {callback.GetMessage()}");
+                    onFail?.Invoke();
+                    return;
+                }
+                Debug.Log("[VipManager] 저장 완료 (inDate)");
+                onSuccess?.Invoke();
+            });
+        }
+        else
+        {
+            // inDate 미확보 → Insert 폴백
+            Backend.GameData.Insert(tableName, param, callback =>
+            {
+                if (!callback.IsSuccess())
+                {
+                    Debug.LogError($"[VipManager] 저장 실패 (Insert): {callback.GetMessage()}");
+                    onFail?.Invoke();
+                    return;
+                }
+                // 새 행의 inDate 저장
+                JsonData result = callback.GetReturnValuetoJSON();
+                if (result != null && result.ContainsKey("inDate"))
+                    _serverInDate = result["inDate"].ToString();
+                Debug.Log("[VipManager] 저장 완료 (Insert)");
+                onSuccess?.Invoke();
+            });
+        }
     }
 
     // ─────────────────────────────────────────
@@ -240,7 +314,10 @@ public class VipManager : MonoBehaviour
         if (CurrentVipExp >= next.requiredVipExp)
         {
             CurrentVipLevel++;
-            Debug.Log($"[VipManager] VIP 등급 상승! → VIP{CurrentVipLevel}");
+            // ★ 새 등급 선물 초기화 (등급마다 1회씩 수령 가능)
+            IsFreeGiftClaimed = false;
+            IsPaidGiftPurchased = false;
+            Debug.Log($"[VipManager] VIP 등급 상승! → VIP{CurrentVipLevel} (선물 초기화)");
             CheckLevelUp(); // 연속 등급업 체크
         }
     }
@@ -260,49 +337,48 @@ public class VipManager : MonoBehaviour
     /// 무료 선물 수령을 처리합니다.
     /// 이미 수령했거나 VIP 기간이 만료되면 실패합니다.
     /// </summary>
-    public void ClaimFreeGift()
+    /// <summary>특정 등급의 무료 선물 수령 (VipUI에서 탭 등급 전달)</summary>
+    public void ClaimFreeGift(int level = -1)
     {
-        if (IsFreeGiftClaimed)
+        if (level <= 0) level = CurrentVipLevel;
+
+        if (level > CurrentVipLevel)
         {
-            UIManager.Instance?.ShowMessage("이미 선물을 수령했습니다.", Color.yellow);
+            UIManager.Instance?.ShowMessage("등급이 부족합니다.", Color.red);
             return;
         }
 
-        if (CurrentVipLevel <= 0)
+        if (IsFreeLevelClaimed(level))
         {
-            UIManager.Instance?.ShowMessage("VIP 등급이 필요합니다.", Color.red);
+            UIManager.Instance?.ShowMessage("이미 수령한 선물입니다.", Color.yellow);
             return;
         }
 
         if (!IsVipActive())
         {
-            UIManager.Instance?.ShowMessage("VIP 기간이 만료되었습니다. 기간을 연장해주세요.", Color.red);
+            UIManager.Instance?.ShowMessage("VIP 기간이 만료되었습니다.", Color.red);
             return;
         }
 
-        IsFreeGiftClaimed = true;
+        // ★ 등급별 수령 기록
+        MarkFreeClaimed(level);
+        IsFreeGiftClaimed = (level == CurrentVipLevel); // 하위 호환
 
-        VipData data = GetCurrentVipData();
+        VipData data = GetVipData(level);
         if (data != null)
         {
             if (data.giftInfo.freeRewards != null && data.giftInfo.freeRewards.Length > 0)
-            {
-                // ★ 보상 목록에서 지급
                 GiveRewards(data.giftInfo.freeRewards);
-            }
             else
-            {
-                // 보상 목록 미설정 시 기존 폴백 (골드)
-                int goldReward = data.giftInfo.paidGiftPrice * 10;
-                AddGoldSafe(goldReward);
-            }
-            Debug.Log($"[VipManager] 무료 선물 수령: {data.giftInfo.freeGiftDescription}");
+                AddGoldSafe(data.giftInfo.paidGiftPrice * 10);
+
+            Debug.Log($"[VipManager] VIP{level} 무료 선물 수령 완료");
         }
 
         OnFreeGiftClaimed?.Invoke();
         OnVipDataChanged?.Invoke();
         SaveLoadManager.Instance?.SaveGame();
-        UIManager.Instance?.ShowMessage("선물을 수령했습니다!", Color.green);
+        UIManager.Instance?.ShowMessage($"VIP{level} 선물을 수령했습니다!", Color.green);
         SaveToServer();
     }
 
@@ -316,6 +392,18 @@ public class VipManager : MonoBehaviour
     /// </summary>
     public void PurchaseVipGift(int vipLevel)
     {
+        if (!IsVipActive())
+        {
+            UIManager.Instance?.ShowMessage("VIP 기간을 먼저 연장해주세요!", Color.red);
+            return;
+        }
+
+        if (IsPaidLevelClaimed(vipLevel))
+        {
+            UIManager.Instance?.ShowMessage("이미 구매한 선물입니다.", Color.yellow);
+            return;
+        }
+
         VipData data = GetVipData(vipLevel);
         if (data == null)
         {
@@ -335,21 +423,23 @@ public class VipManager : MonoBehaviour
             $"VIP{vipLevel} 선물을 {price} 다이아로 구매하시겠습니까?",
             onConfirm: () =>
             {
+                if (IsPaidLevelClaimed(vipLevel)) return;
                 if (!TrySpendGem(price, dryRun: false)) return;
+
+                MarkPaidClaimed(vipLevel);
 
                 if (data.giftInfo.paidRewards != null && data.giftInfo.paidRewards.Length > 0)
                 {
-                    // ★ 보상 목록에서 지급
                     GiveRewards(data.giftInfo.paidRewards);
                 }
                 else
                 {
-                    // 보상 목록 미설정 시 기존 폴백 (골드)
                     AddGoldSafe(data.giftInfo.paidGiftOriginalValue);
                 }
 
                 AddVipExp(data.vipLevel * 50);
                 OnVipPurchased?.Invoke(vipLevel);
+                OnVipDataChanged?.Invoke();
                 SaveLoadManager.Instance?.SaveGame();
                 UIManager.Instance?.ShowMessage($"VIP{vipLevel} 선물 구매 완료!", Color.green);
             }
@@ -369,7 +459,16 @@ public class VipManager : MonoBehaviour
             $"VIP 기간을 {days}일 연장하시겠습니까?\n({gemCost} 다이아)",
             onConfirm: () =>
             {
-                if (!TrySpendGem(gemCost, dryRun: false)) return;
+                Debug.Log($"[VipManager] ★ 연장 콜백 진입! 현재 젬={GameManager.Instance?.PlayerGem}, gemCost={gemCost}");
+
+                if (!TrySpendGem(gemCost, dryRun: false))
+                {
+                    Debug.LogError($"[VipManager] ❌ 젬 부족으로 연장 실패! 필요={gemCost}, 보유={GameManager.Instance?.PlayerGem}");
+                    UIManager.Instance?.ShowMessage("다이아가 부족합니다.", Color.red);
+                    return;
+                }
+
+                Debug.Log($"[VipManager] ✅ 젬 차감 성공! 남은 젬={GameManager.Instance?.PlayerGem}");
 
                 // 기간 연장: 현재 만료일이 미래면 그 위에 추가, 과거/빈값이면 지금부터
                 DateTime baseDate = DateTime.UtcNow;
@@ -388,8 +487,9 @@ public class VipManager : MonoBehaviour
                 if (CurrentVipLevel <= 0)
                     CurrentVipLevel = 1;
 
-                // 무료 선물 초기화 (새 기간)
+                // 선물 초기화 (새 기간)
                 IsFreeGiftClaimed = false;
+                IsPaidGiftPurchased = false;
 
                 // ★ SaveData에도 즉시 반영 (GameDataBridge 경유)
                 if (GameDataBridge.CurrentData != null)
@@ -398,7 +498,10 @@ public class VipManager : MonoBehaviour
                     GameDataBridge.CurrentData.vipExp = CurrentVipExp;
                     GameDataBridge.CurrentData.vipExpireDate = ExpireDate;
                     GameDataBridge.CurrentData.vipFreeGiftClaimed = IsFreeGiftClaimed;
+                    GameDataBridge.CurrentData.vipPaidGiftPurchased = IsPaidGiftPurchased;
                 }
+
+                Debug.Log($"[VipManager] ✅ VipLevel={CurrentVipLevel}, ExpireDate={ExpireDate}, IsVipActive={IsVipActive()}");
 
                 // UI 즉시 갱신
                 OnVipDataChanged?.Invoke();
@@ -406,7 +509,7 @@ public class VipManager : MonoBehaviour
 
                 string remaining = GetRemainingTimeString();
                 UIManager.Instance?.ShowMessage($"VIP {days}일 연장 완료! ({remaining})", Color.green);
-                Debug.Log($"[VipManager] 연장 후 남은 기간: {remaining}");
+                Debug.Log($"[VipManager] ✅ 연장 완료! 남은 기간: {remaining}, VipLevel={CurrentVipLevel}");
 
                 // 서버에도 저장 (비동기, 실패해도 로컬은 이미 저장됨)
                 SaveToServer();
@@ -516,10 +619,9 @@ public class VipManager : MonoBehaviour
     {
         if (string.IsNullOrEmpty(ExpireDate)) return TimeSpan.Zero;
 
-        // ★ UTC 시간으로 명시적 파싱 (시간대 불일치 방지)
+        // ★ RoundtripKind만 사용 (AssumeUniversal과 동시 사용 불가)
         if (DateTime.TryParse(ExpireDate, null,
-                System.Globalization.DateTimeStyles.RoundtripKind |
-                System.Globalization.DateTimeStyles.AssumeUniversal,
+                System.Globalization.DateTimeStyles.RoundtripKind,
                 out DateTime expireDateTime))
         {
             // UTC로 통일하여 비교
@@ -606,15 +708,19 @@ public class VipManager : MonoBehaviour
     // ─────────────────────────────────────────
 
     /// <summary>SaveLoadManager에서 호출 — 로컬 세이브 데이터를 VipManager에 적용</summary>
-    public void ApplyLocalData(int level, int exp, string expireDate, bool giftClaimed)
+    public void ApplyLocalData(int level, int exp, string expireDate, bool giftClaimed, bool paidPurchased = false,
+        string claimedFree = "", string claimedPaid = "")
     {
         CurrentVipLevel = level;
         CurrentVipExp = exp;
         ExpireDate = expireDate;
         IsFreeGiftClaimed = giftClaimed;
+        IsPaidGiftPurchased = paidPurchased;
+        ClaimedFreeLevels = claimedFree ?? "";
+        ClaimedPaidLevels = claimedPaid ?? "";
         IsDataLoaded = true;
         OnVipDataChanged?.Invoke();
-        Debug.Log($"[VipManager] 로컬 데이터 적용: VIP{level}, EXP={exp}");
+        Debug.Log($"[VipManager] 로컬 데이터 적용: VIP{level}, EXP={exp}, FreeClaimed={ClaimedFreeLevels}, PaidClaimed={ClaimedPaidLevels}");
     }
 
     /// <summary>GameDataBridge에서 VIP 데이터 로드 (Start 시 폴백)</summary>

@@ -26,7 +26,17 @@ public class WaveSpawner : MonoBehaviour
     [Tooltip("씬의 Background 오브젝트 (SpriteRenderer). 미설정 시 자동 탐색")]
     [SerializeField] private SpriteRenderer backgroundRenderer;
 
-    public int CurrentWaveIndex { get; set; } = 0;
+    private int _currentWaveIndex = 0;
+    public int CurrentWaveIndex
+    {
+        get => _currentWaveIndex;
+        set
+        {
+            if (value != _currentWaveIndex)
+                Debug.LogWarning($"[WaveSpawner] ★★ CurrentWaveIndex 변경: {_currentWaveIndex} → {value}\n{UnityEngine.StackTraceUtility.ExtractStackTrace()}");
+            _currentWaveIndex = value;
+        }
+    }
     public int CurrentChapter => (CurrentWaveIndex / wavesPerStage) + 1;
     public int CurrentStageWave => (CurrentWaveIndex % wavesPerStage) + 1;
     public string StageLabel => $"{CurrentChapter}-{CurrentStageWave}";
@@ -35,6 +45,12 @@ public class WaveSpawner : MonoBehaviour
 
     /// <summary>ApplySaveData에서 웨이브 복원 완료 시 true</summary>
     private bool _saveDataApplied = false;
+
+    /// <summary>
+    /// ApplySaveData 시점에 WaveSpawner가 아직 없을 때 임시 보관용.
+    /// GameDataBridge가 SaveGame으로 덮어써져도 안전하게 복원 가능.
+    /// </summary>
+    public static int PendingWaveIndex { get; set; } = -1;
 
     private Wave currentWave;
     private List<GameObject> aliveMonsters = new List<GameObject>();
@@ -48,6 +64,17 @@ public class WaveSpawner : MonoBehaviour
             Debug.Log("[ManagerInit] WaveSpawner가 생성되었습니다.");
         }
         else { Destroy(gameObject); return; }
+    }
+
+    void OnDestroy()
+    {
+        // ★ 파괴 전 현재 웨이브를 GameDataBridge에 보관 (종료 시 SaveGame에서 참조 가능)
+        if (Instance == this)
+        {
+            if (GameDataBridge.CurrentData != null && _currentWaveIndex > 0)
+                GameDataBridge.CurrentData.offlineCurrentWave = _currentWaveIndex;
+            Instance = null;
+        }
     }
 
     void Start()
@@ -76,21 +103,39 @@ public class WaveSpawner : MonoBehaviour
 
         if (!_saveDataApplied)
         {
-            // 세이브 데이터 없거나 타임아웃 → GameDataBridge에서 직접 복원 시도
-            if (GameDataBridge.HasData && GameDataBridge.CurrentData.offlineCurrentWave > 0)
+            Debug.LogWarning($"[WaveSpawner] ⚠ ApplySaveData 타임아웃! PendingWaveIndex={PendingWaveIndex}, GameDataBridge.offlineCurrentWave={GameDataBridge.CurrentData?.offlineCurrentWave ?? -1}");
+
+            // ★ 1순위: PendingWaveIndex (ApplySaveData에서 보관한 값 — SaveGame 덮어쓰기에 안전)
+            if (PendingWaveIndex >= 0)
+            {
+                CurrentWaveIndex = PendingWaveIndex;
+                PendingWaveIndex = -1;
+                Debug.Log($"[WaveSpawner] ★ PendingWaveIndex로 복원 성공: Wave {CurrentWaveIndex} ({StageLabel})");
+            }
+            // 2순위: GameDataBridge 폴백
+            else if (GameDataBridge.HasData && GameDataBridge.CurrentData.offlineCurrentWave > 0)
             {
                 CurrentWaveIndex = GameDataBridge.CurrentData.offlineCurrentWave;
-                Debug.Log($"[WaveSpawner] GameDataBridge 폴백 복원: Wave {CurrentWaveIndex} ({StageLabel})");
+                Debug.Log($"[WaveSpawner] ★ GameDataBridge 폴백 복원 성공: Wave {CurrentWaveIndex} ({StageLabel})");
+            }
+            else
+            {
+                Debug.LogError($"[WaveSpawner] ❌ 웨이브 복원 실패! CurrentWaveIndex={CurrentWaveIndex} (0이면 초기화 버그)");
             }
         }
 
-        Debug.Log($"[WaveSpawner] 웨이브 시작: {StageLabel} (index={CurrentWaveIndex})");
+        // ★ 복원된 스테이지 UI 즉시 갱신
+        if (UIManager.Instance != null)
+            UIManager.Instance.UpdateStageUI(CurrentChapter, CurrentStageWave);
+
+        Debug.Log($"[WaveSpawner] ▶ 웨이브 시작: {StageLabel} (index={CurrentWaveIndex}, _saveDataApplied={_saveDataApplied})");
         StartCoroutine(StartWave());
     }
 
     /// <summary>SaveLoadManager.ApplySaveData()에서 호출</summary>
     public void ApplyWaveIndex(int waveIndex)
     {
+        Debug.Log($"[WaveSpawner] ★ ApplyWaveIndex 호출: {waveIndex} (이전={CurrentWaveIndex})\n{UnityEngine.StackTraceUtility.ExtractStackTrace()}");
         CurrentWaveIndex = waveIndex;
         _saveDataApplied = true;
         Debug.Log($"[WaveSpawner] 스테이지 복원: {StageLabel} (index={waveIndex})");
@@ -161,6 +206,10 @@ public class WaveSpawner : MonoBehaviour
 
         OnWaveCleared?.Invoke(CurrentChapter, CurrentStageWave);
         CurrentWaveIndex++;
+
+        // ★ 웨이브 클리어 시 즉시 저장 (종료해도 스테이지 유지)
+        SaveLoadManager.Instance?.SaveGame();
+
         yield return new WaitForSeconds(timeBetweenWaves);
         StartCoroutine(StartWave());
     }
@@ -284,7 +333,7 @@ public class WaveSpawner : MonoBehaviour
     ///   플레이어 사망 → 스테이지 복귀 시 사용.
     ///   몬스터에게 보상/경험치/드롭을 주지 않고 화면만 정리함.
     /// </summary>
-    private void ClearAllAliveMonsters()
+    public void ClearAllAliveMonsters()
     {
         foreach (GameObject m in aliveMonsters)
         {
@@ -315,6 +364,8 @@ public class WaveSpawner : MonoBehaviour
 
     public void RestartFromWaveIndex(int waveIndex)
     {
+        Debug.LogWarning($"[WaveSpawner] ⚠ RestartFromWaveIndex 호출! waveIndex={waveIndex}, 현재={CurrentWaveIndex} ({StageLabel})\n{UnityEngine.StackTraceUtility.ExtractStackTrace()}");
+
         StopAllCoroutines();
 
         // ★ 전체공격(KillAllAliveMonsters) 대신 조용히 풀 반환

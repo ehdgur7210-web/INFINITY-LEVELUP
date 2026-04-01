@@ -26,6 +26,12 @@ public class GachaManager : MonoBehaviour
     [Header("가챠 설정")]
     public int ticketCostPerGacha = 1;      // 1회당 티켓 소모량
 
+    [Header("VIP 경험치 보상")]
+    [Tooltip("10연차 완료 시 VIP 경험치")]
+    public int vipExpPerTenGacha = 50;
+    [Tooltip("100연차 완료 시 VIP 경험치")]
+    public int vipExpPerHundredGacha = 200;
+
     [Header("가챠 풀 (레벨별)")]
     public List<GachaItem> gachaPoolLv1 = new List<GachaItem>();
     public List<GachaItem> gachaPoolLv2 = new List<GachaItem>();
@@ -204,9 +210,23 @@ public class GachaManager : MonoBehaviour
         {
             GachaResultUI.Instance.InitSlotPool();
 
-            // ★ 풀 초기화 후 결과 패널 닫기
-            if (GachaResultUI.Instance.resultPanel != null)
-                GachaResultUI.Instance.resultPanel.SetActive(false);
+            // ★ 풀 초기화 후 CanvasGroup으로 숨김 (SetActive(false) 사용 금지 — Start() 미호출 방지)
+            GameObject rp = GachaResultUI.Instance.resultPanel;
+            if (rp != null)
+            {
+                if (rp == GachaResultUI.Instance.gameObject)
+                {
+                    CanvasGroup cg = rp.GetComponent<CanvasGroup>();
+                    if (cg == null) cg = rp.AddComponent<CanvasGroup>();
+                    cg.alpha = 0f;
+                    cg.blocksRaycasts = false;
+                    cg.interactable = false;
+                }
+                else
+                {
+                    rp.SetActive(false);
+                }
+            }
         }
         else
         {
@@ -339,6 +359,10 @@ public class GachaManager : MonoBehaviour
             }
         }
 
+        // ★ VIP 경험치 지급
+        if (vipExpPerTenGacha > 0)
+            VipManager.Instance?.AddVipExp(vipExpPerTenGacha);
+
         // 10연차 결과 즉시 저장
         SaveLoadManager.Instance?.SaveGame();
 
@@ -406,6 +430,10 @@ public class GachaManager : MonoBehaviour
             else if (item.rarity == ItemRarity.Epic) epic++;
             else if (item.rarity == ItemRarity.Rare) rare++;
         }
+
+        // ★ VIP 경험치 지급
+        if (vipExpPerHundredGacha > 0)
+            VipManager.Instance?.AddVipExp(vipExpPerHundredGacha);
 
         SaveLoadManager.Instance?.SaveGame();
         ShowGachaResults(results);

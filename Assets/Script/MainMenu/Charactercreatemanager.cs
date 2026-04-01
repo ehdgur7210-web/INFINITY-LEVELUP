@@ -265,6 +265,13 @@ public class CharacterCreateManager : MonoBehaviour
         if (string.IsNullOrEmpty(charName)) { ShowError("캐릭터 이름을 입력해주세요."); return; }
         if (charName.Length < 2) { ShowError("이름은 2자 이상이어야 합니다."); return; }
 
+        // ★ 이름 중복 체크 (다른 슬롯에 같은 이름이 있거나, 삭제된 세이브 파일이 남아있으면 차단)
+        if (IsNameAlreadyUsed(charName))
+        {
+            ShowError($"'{charName}'은(는) 이미 사용된 이름입니다.\n다른 이름을 입력해주세요.");
+            return;
+        }
+
         int targetSlot = GameDataBridge.CharacterSlots.createTargetSlot;
 
         // ★ 기존 캐릭터가 있는 슬롯이면 확인 다이얼로그
@@ -351,6 +358,44 @@ public class CharacterCreateManager : MonoBehaviour
 
         Hide();
         if (selectManager != null) selectManager.Show();
+    }
+
+    /// <summary>이름이 이미 사용 중인지 확인 (기존 슬롯 + 잔여 세이브 파일)</summary>
+    private bool IsNameAlreadyUsed(string name)
+    {
+        int targetSlot = GameDataBridge.CharacterSlots.createTargetSlot;
+        var slots = GameDataBridge.CharacterSlots.slots;
+
+        // 1. 다른 슬롯에 같은 이름이 존재하는지
+        if (slots != null)
+        {
+            for (int i = 0; i < slots.Length; i++)
+            {
+                if (i == targetSlot) continue;
+                if (slots[i] != null && slots[i].exists
+                    && string.Equals(slots[i].charName, name, System.StringComparison.OrdinalIgnoreCase))
+                {
+                    return true;
+                }
+            }
+        }
+
+        // 2. 삭제됐지만 세이브 파일이 남아있는지 (파일 경로 직접 체크)
+        string saveDir = Application.persistentDataPath + "/Saves/";
+        string lowerName = name.ToLower();
+        if (System.IO.Directory.Exists(saveDir))
+        {
+            foreach (string file in System.IO.Directory.GetFiles(saveDir))
+            {
+                if (System.IO.Path.GetFileName(file).ToLower().Contains(lowerName))
+                {
+                    Debug.LogWarning($"[CharacterCreate] '{name}' 이름의 잔여 세이브 파일 발견: {file}");
+                    return true;
+                }
+            }
+        }
+
+        return false;
     }
 
     private void OnBackClicked()

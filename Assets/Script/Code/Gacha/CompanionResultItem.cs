@@ -74,7 +74,7 @@ public class CompanionResultItem : MonoBehaviour
         Color rc = ri < rarityColors.Length ? rarityColors[ri] : Color.white;
 
         if (borderImage != null) borderImage.color = rc;
-        if (nameText != null) nameText.text = displayCount > 1 ? $"{cd.companionName} x{displayCount}" : cd.companionName;
+        if (nameText != null) nameText.text = cd.companionName;
         if (rarityText != null)
         {
             rarityText.text = ri < rarityNames.Length ? rarityNames[ri] : "";

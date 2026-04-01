@@ -221,7 +221,18 @@ public class UIManager : MonoBehaviour
         if (stageText != null)
         {
             stageText.text = $"Stage {chapter}-{stageWave}";
-            stageText.color = (stageWave == wavesPerStage) ? Color.red : Color.white; // 보스웨이브=빨강
+            stageText.color = (stageWave == wavesPerStage) ? Color.red : Color.white;
+        }
+
+        // ★ 씬 내 모든 "Stage" 관련 TMP도 동기화 (복사된 텍스트 대응)
+        var allTMP = FindObjectsOfType<TMPro.TextMeshProUGUI>(true);
+        foreach (var tmp in allTMP)
+        {
+            if (tmp != stageText && tmp.text.StartsWith("Stage "))
+            {
+                tmp.text = $"Stage {chapter}-{stageWave}";
+                tmp.color = (stageWave == wavesPerStage) ? Color.red : Color.white;
+            }
         }
 
         if (waveProgressText != null)

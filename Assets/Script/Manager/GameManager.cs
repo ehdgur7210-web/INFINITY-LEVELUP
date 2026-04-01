@@ -53,8 +53,8 @@ public class GameManager : MonoBehaviour
 
     void Awake()
     {
-        // ★ 씬 로컬 싱글톤 — DontDestroyOnLoad 없음
-        if (Instance != null && Instance != this)
+        // ★ 씬 로컬 싱글톤 — 이전 씬 Instance 교체 허용
+        if (Instance != null && Instance != this && Instance.gameObject.scene.isLoaded)
         {
             Destroy(gameObject);
             return;

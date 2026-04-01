@@ -56,7 +56,19 @@ public class TutorialManager : MonoBehaviour
         {
             if (!_isTutorialActive || _activeSteps == null || _currentStep >= _activeSteps.Count)
                 return false;
-            return _activeSteps[_currentStep].advanceType == TutorialAdvanceType.ClickFocusTarget;
+
+            var step = _activeSteps[_currentStep];
+
+            // ClickFocusTarget은 항상 차단
+            if (step.advanceType == TutorialAdvanceType.ClickFocusTarget)
+                return true;
+
+            // WaitForAction + focusTargetName 설정 시에도 차단
+            if (step.advanceType == TutorialAdvanceType.WaitForAction
+                && !string.IsNullOrEmpty(step.focusTargetName))
+                return true;
+
+            return false;
         }
     }
 
@@ -362,10 +374,19 @@ public class TutorialManager : MonoBehaviour
                 _waitCoroutine = StartCoroutine(WaitForAnyClick());
                 break;
             case TutorialAdvanceType.WaitForAction:
-                // ★ 액션 대기 — 게임 내 상호작용이 필요하므로 Canvas 레이캐스트 해제
-                // 팁 텍스트만 표시하고, 터치는 게임UI/월드까지 완전 통과
-                focusMask?.ClearFocus();
-                DisableCanvasRaycast();
+                // ★ 액션 대기 — focusTargetName이 있으면 해당 영역만 구멍 뚫기
+                if (!string.IsNullOrEmpty(step.focusTargetName))
+                {
+                    // SetupFocus에서 이미 포커스 마스크 설정됨 → 유지
+                    // 포커스 영역 내 클릭만 허용, 나머지 차단
+                    Debug.Log($"[Tutorial] WaitForAction + 포커스 마스크: {step.focusTargetName}");
+                }
+                else
+                {
+                    // focusTargetName 없으면 기존 동작 — 완전 자유 조작
+                    focusMask?.ClearFocus();
+                    DisableCanvasRaycast();
+                }
                 break;
         }
 

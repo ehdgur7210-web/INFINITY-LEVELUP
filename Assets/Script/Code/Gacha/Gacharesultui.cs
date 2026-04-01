@@ -76,6 +76,8 @@ public class GachaResultUI : MonoBehaviour
 
     // ── 내부 상태 ────────────────────────────────────────────────
     private List<GachaResultSlotUI> activeSlots = new List<GachaResultSlotUI>();
+    private ScrollRect cachedScrollRect;
+    private int lastRevealedIndex = -1;  // 스크롤 기반 등장에서 마지막으로 등장시킨 인덱스
 
     // ════════════════════════════════════════════════════════════
     //  초기화
@@ -105,11 +107,23 @@ public class GachaResultUI : MonoBehaviour
         if (closeButton != null)
             closeButton.onClick.AddListener(ClosePanel);
 
-        // ★ resultPanel이 자기 자신(GachaResultBack)이면 끄지 않음
-        //   (GO가 꺼지면 Instance가 null이 되어 다음 호출 시 동작 불가)
-        //   resultPanel이 별도 자식이면 정상적으로 숨김
-        if (resultPanel != null && resultPanel != gameObject)
-            resultPanel.SetActive(false);
+        // ★ 시작 시 결과 패널 숨기기
+        if (resultPanel != null)
+        {
+            if (resultPanel != gameObject)
+            {
+                resultPanel.SetActive(false);
+            }
+            else
+            {
+                // resultPanel이 자기 자신이면 CanvasGroup으로 숨김 (Instance 유지)
+                CanvasGroup cg = resultPanel.GetComponent<CanvasGroup>();
+                if (cg == null) cg = resultPanel.AddComponent<CanvasGroup>();
+                cg.alpha = 0f;
+                cg.blocksRaycasts = false;
+                cg.interactable = false;
+            }
+        }
 
         if (scrollContent == null)
             Debug.LogError("[GachaResultUI] scrollContent(Content)가 연결되지 않았습니다!");
@@ -220,7 +234,12 @@ public class GachaResultUI : MonoBehaviour
         ClearSlots();
 
         if (resultPanel != null)
+        {
             resultPanel.SetActive(true);
+            // CanvasGroup이 있으면 보이게
+            CanvasGroup cg = resultPanel.GetComponent<CanvasGroup>();
+            if (cg != null) { cg.alpha = 1f; cg.blocksRaycasts = true; cg.interactable = true; }
+        }
         else
             Debug.LogError("[GachaResultUI] resultPanel이 null! Inspector 연결 확인!");
 
@@ -250,51 +269,23 @@ public class GachaResultUI : MonoBehaviour
         // 풀 슬롯 전부 반환 (이전 결과 정리)
         ReturnAllSlotsToPool();
 
-        // 스크롤을 맨 왼쪽으로 리셋
-        ScrollRect sr = GetComponentInChildren<ScrollRect>();
-        if (sr != null)
-            sr.horizontalNormalizedPosition = 0f;
-
-        // ★ 중복 아이템 그룹핑 (이름+등급 기준)
-        var grouped = new List<System.Tuple<EquipmentData, int>>();
-        var countMap = new Dictionary<string, int>();
-        var dataMap = new Dictionary<string, EquipmentData>();
-        var orderList = new List<string>();
-
-        foreach (var data in results)
+        // 스크롤 리셋
+        cachedScrollRect = GetComponentInChildren<ScrollRect>();
+        if (cachedScrollRect != null)
         {
-            if (data == null) continue;
-            string key = $"{data.itemName}_{data.rarity}";
-            if (countMap.ContainsKey(key))
-            {
-                countMap[key]++;
-            }
-            else
-            {
-                countMap[key] = 1;
-                dataMap[key] = data;
-                orderList.Add(key);
-            }
+            cachedScrollRect.horizontalNormalizedPosition = 0f;
+            cachedScrollRect.verticalNormalizedPosition = 1f;
+            cachedScrollRect.onValueChanged.RemoveListener(OnScrollValueChanged);
         }
 
-        foreach (var key in orderList)
-            grouped.Add(new System.Tuple<EquipmentData, int>(dataMap[key], countMap[key]));
+        lastRevealedIndex = -1;
 
-        if (debugMode)
-            Debug.Log($"[GachaResultUI] 그룹핑: {results.Count}개 → {grouped.Count}종류");
-
-        // ★ 대량 뽑기 최적화
-        float interval = slotRevealInterval;
-        int batchSize = 1;
-        if (grouped.Count >= 50) { interval = 0f; batchSize = 10; }
-        else if (grouped.Count >= 20) { interval = 0.02f; batchSize = 5; }
-
-        for (int i = 0; i < grouped.Count; i++)
+        // ★ 그룹핑 없이 개별 슬롯 생성 (Deferred — 아직 안 보임)
+        for (int i = 0; i < results.Count; i++)
         {
-            EquipmentData data = grouped[i].Item1;
-            int count = grouped[i].Item2;
+            EquipmentData data = results[i];
+            if (data == null) continue;
 
-            // ★ 풀에서 슬롯 가져오기 (Instantiate 대신)
             GameObject slotGO = GetSlotFromPool();
             if (slotGO == null) break;
 
@@ -302,25 +293,87 @@ public class GachaResultUI : MonoBehaviour
             slotGO.transform.SetAsLastSibling();
 
             GachaResultSlotUI slotUI = slotGO.GetComponent<GachaResultSlotUI>();
-            slotUI.Setup(data, threshold, 0f, count);
+            slotUI.SetupDeferred(data, threshold);
             activeSlots.Add(slotUI);
-
-            // ★ 배치 단위로 대기
-            if ((i + 1) % batchSize == 0)
-            {
-                if (interval > 0f)
-                    yield return new WaitForSeconds(interval);
-                else
-                    yield return null;
-            }
         }
 
-        // ★ 대량 뽑기 시 효과음 1회만
+        // 레이아웃 갱신 대기 (위치 계산 필요)
+        yield return null;
+        LayoutRebuilder.ForceRebuildLayoutImmediate(scrollContent as RectTransform);
+        yield return null;
+
+        // ★ 현재 뷰포트에 보이는 슬롯들 순차 등장
+        RevealVisibleSlots();
+
+        // ★ 스크롤 이벤트 등록 — 스크롤할 때 새로 보이는 슬롯 등장
+        if (cachedScrollRect != null)
+            cachedScrollRect.onValueChanged.AddListener(OnScrollValueChanged);
+
+        // 대량 뽑기 시 효과음 1회
         if (results.Count > 10)
             PlaySlotSound(ItemRarity.Rare, threshold);
 
         if (debugMode)
-            Debug.Log($"[GachaResultUI] 슬롯 생성 완료: {activeSlots.Count}개 (원본 {results.Count}개)");
+            Debug.Log($"[GachaResultUI] 슬롯 생성 완료: {activeSlots.Count}개");
+    }
+
+    // ════════════════════════════════════════════════════════════
+    //  스크롤 기반 슬롯 등장
+    // ════════════════════════════════════════════════════════════
+
+    private void OnScrollValueChanged(Vector2 _)
+    {
+        RevealVisibleSlots();
+    }
+
+    /// <summary>
+    /// 뷰포트 안(+여유 영역)에 있는 미등장 슬롯들을 순차 등장시킴
+    /// </summary>
+    private void RevealVisibleSlots()
+    {
+        if (cachedScrollRect == null || activeSlots.Count == 0) return;
+
+        RectTransform viewportRT = cachedScrollRect.viewport != null
+            ? cachedScrollRect.viewport
+            : cachedScrollRect.GetComponent<RectTransform>();
+
+        // 뷰포트 월드 좌표 경계
+        Vector3[] vpCorners = new Vector3[4];
+        viewportRT.GetWorldCorners(vpCorners);
+        float vpLeft = vpCorners[0].x;
+        float vpRight = vpCorners[2].x;
+        float vpBottom = vpCorners[0].y;
+        float vpTop = vpCorners[2].y;
+
+        // 여유 영역 (뷰포트 크기의 50% 만큼 미리 등장)
+        float marginX = (vpRight - vpLeft) * 0.5f;
+        float marginY = (vpTop - vpBottom) * 0.5f;
+
+        int revealCount = 0;
+        for (int i = 0; i < activeSlots.Count; i++)
+        {
+            GachaResultSlotUI slot = activeSlots[i];
+            if (slot == null || slot.IsRevealed) continue;
+
+            RectTransform slotRT = slot.GetComponent<RectTransform>();
+            Vector3[] slotCorners = new Vector3[4];
+            slotRT.GetWorldCorners(slotCorners);
+
+            float slotLeft = slotCorners[0].x;
+            float slotRight = slotCorners[2].x;
+            float slotBottom = slotCorners[0].y;
+            float slotTop = slotCorners[2].y;
+
+            // 뷰포트 + 여유 영역과 겹치는지 체크
+            bool visible = slotRight >= (vpLeft - marginX) && slotLeft <= (vpRight + marginX)
+                        && slotTop >= (vpBottom - marginY) && slotBottom <= (vpTop + marginY);
+
+            if (visible)
+            {
+                slot.Reveal(revealCount * 0.06f);  // 순차 딜레이
+                revealCount++;
+            }
+        }
     }
 
     // ════════════════════════════════════════════════════════════
@@ -401,10 +454,29 @@ public class GachaResultUI : MonoBehaviour
     {
         SoundManager.Instance?.PlayButtonClick();
         StopAllCoroutines();
+
+        // 스크롤 리스너 해제
+        if (cachedScrollRect != null)
+            cachedScrollRect.onValueChanged.RemoveListener(OnScrollValueChanged);
+
         ClearSlots();
 
         if (resultPanel != null)
-            resultPanel.SetActive(false);
+        {
+            if (resultPanel != gameObject)
+            {
+                resultPanel.SetActive(false);
+            }
+            else
+            {
+                // CanvasGroup으로 숨김 (Instance 유지)
+                CanvasGroup cg = resultPanel.GetComponent<CanvasGroup>();
+                if (cg == null) cg = resultPanel.AddComponent<CanvasGroup>();
+                cg.alpha = 0f;
+                cg.blocksRaycasts = false;
+                cg.interactable = false;
+            }
+        }
 
         // 결과 확인 후 저장
         SaveLoadManager.Instance?.SaveGame();

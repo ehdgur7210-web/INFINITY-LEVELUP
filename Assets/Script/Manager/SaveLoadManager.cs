@@ -58,8 +58,9 @@ public class SaveLoadManager : MonoBehaviour
 
     void Awake()
     {
-        // ★ 씬 로컬 싱글톤 — DontDestroyOnLoad 없음
-        if (Instance != null && Instance != this)
+        // ★ 씬 로컬 싱글톤 — 이전 씬의 Instance가 아직 파괴 안 됐을 수 있으므로
+        //   scene.isLoaded로 유효성 검사 (언로딩 중인 씬의 Instance는 교체)
+        if (Instance != null && Instance != this && Instance.gameObject.scene.isLoaded)
         {
             Destroy(gameObject);
             return;
@@ -142,6 +143,14 @@ public class SaveLoadManager : MonoBehaviour
         // → 여기서는 CurrentData를 각 매니저 Instance에 주입(Apply)만 수행
         if (GameDataBridge.HasData)
         {
+            var cd = GameDataBridge.CurrentData;
+            string sc = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name;
+            Debug.Log($"[LOAD-DEBUG] ★ ApplySaveData 시작 씬={sc}" +
+                $" | 장비={cd.equipmentData?.slots?.Count ?? -1}개" +
+                $" | 인벤={cd.inventoryItems?.Length ?? -1}개" +
+                $" | 동료={cd.companions?.Length ?? -1}개" +
+                $" | 골드={cd.playerGold} | 젬={cd.playerGem} | Lv={cd.playerLevel}" +
+                $" | 웨이브={cd.offlineCurrentWave}");
             ApplySaveData(GameDataBridge.CurrentData);
             Debug.Log("[SaveLoadManager] ★ 모든 매니저에 저장 데이터 적용 완료");
         }
@@ -167,7 +176,13 @@ public class SaveLoadManager : MonoBehaviour
             // ★ 항상 활성 캐릭터 슬롯에 저장 (인자 무시)
             int slot = GameDataBridge.ActiveSlot;
             SaveData data = CollectSaveData();
-            Debug.Log($"[SAVE-CHECK] 저장 시점 harvests 수: {GameDataBridge.CurrentData?.farmData?.inventoryData?.harvests?.Count}");
+            string scene = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name;
+            Debug.Log($"[SAVE-DEBUG] ★ SaveGame 호출 씬={scene}" +
+                $" | 장비={data.equipmentData?.slots?.Count ?? -1}개" +
+                $" | 인벤={data.inventoryItems?.Length ?? -1}개" +
+                $" | 동료={data.companions?.Length ?? -1}개" +
+                $" | 골드={data.playerGold} | 젬={data.playerGem} | Lv={data.playerLevel}" +
+                $" | 웨이브={data.offlineCurrentWave}");
             GameDataBridge.SetData(data);       // 인메모리 갱신
             GameDataBridge.WriteToFile(slot);    // JSON 파일 기록
 
@@ -219,6 +234,10 @@ public class SaveLoadManager : MonoBehaviour
         SaveData data = new SaveData();
         data.saveTime = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
 
+        // ★ FarmScene에서는 MainScene 전용 매니저를 읽지 않음 (빈 데이터로 덮어쓰기 방지)
+        string currentScene = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name;
+        bool isMainScene = currentScene == "MainScene";
+
         // ★ 플레이타임 누적 (세션 경과 + 이전 저장분)
         data.playTime = savedPlayTime + (Time.realtimeSinceStartup - sessionStartTime);
 
@@ -257,8 +276,8 @@ public class SaveLoadManager : MonoBehaviour
             data.playerMaxMana = GameDataBridge.CurrentData.playerMaxMana;
         }
 
-        // ── 인벤토리 ──
-        if (InventoryManager.Instance != null)
+        // ── 인벤토리 (MainScene 전용) ──
+        if (isMainScene && InventoryManager.Instance != null)
             data.inventoryItems = InventoryManager.Instance.GetInventoryData();
         else if (GameDataBridge.CurrentData?.inventoryItems != null)
             data.inventoryItems = GameDataBridge.CurrentData.inventoryItems;
@@ -268,8 +287,8 @@ public class SaveLoadManager : MonoBehaviour
             data.questData = QuestManager.Instance.GetQuestData();
         else if (GameDataBridge.CurrentData?.questData != null)
             data.questData = GameDataBridge.CurrentData.questData;
-        // ── 장비 ──
-        if (EquipmentManager.Instance != null)
+        // ── 장비 (MainScene 전용) ──
+        if (isMainScene && EquipmentManager.Instance != null)
             data.equipmentData = EquipmentManager.Instance.GetEquipmentSaveData();
         else if (GameDataBridge.CurrentData?.equipmentData != null)
             data.equipmentData = GameDataBridge.CurrentData.equipmentData;
@@ -302,8 +321,8 @@ public class SaveLoadManager : MonoBehaviour
             data.cropPoints = GameDataBridge.CurrentData.cropPoints;
         }
 
-        // ── 가챠 ──
-        if (GachaManager.Instance != null)
+        // ── 가챠 (MainScene 전용) ──
+        if (isMainScene && GachaManager.Instance != null)
         {
             data.gachaLevel = GachaManager.Instance.currentLevel;
             data.gachaCount = GachaManager.Instance.currentGachaCount;
@@ -314,14 +333,14 @@ public class SaveLoadManager : MonoBehaviour
             data.gachaCount = GameDataBridge.CurrentData.gachaCount;
         }
 
-        // ── 동료 ──
-        if (CompanionInventoryManager.Instance != null)
+        // ── 동료 (MainScene 전용) ──
+        if (isMainScene && CompanionInventoryManager.Instance != null)
             data.companions = CompanionInventoryManager.Instance.GetSaveData();
         else if (GameDataBridge.CurrentData?.companions != null)
             data.companions = GameDataBridge.CurrentData.companions;
 
-        // ── 동료 핫바 ──
-        if (CompanionHotbarManager.Instance != null)
+        // ── 동료 핫바 (MainScene 전용) ──
+        if (isMainScene && CompanionHotbarManager.Instance != null)
         {
             data.companionHotbarIDs = CompanionHotbarManager.Instance.GetHotbarSaveData();
             data.autoSummonEnabled = CompanionHotbarManager.Instance.autoSummonEnabled;
@@ -339,6 +358,9 @@ public class SaveLoadManager : MonoBehaviour
             data.vipExp = VipManager.Instance.CurrentVipExp;
             data.vipExpireDate = VipManager.Instance.ExpireDate;
             data.vipFreeGiftClaimed = VipManager.Instance.IsFreeGiftClaimed;
+            data.vipPaidGiftPurchased = VipManager.Instance.IsPaidGiftPurchased;
+            data.vipClaimedFreeLevels = VipManager.Instance.ClaimedFreeLevels;
+            data.vipClaimedPaidLevels = VipManager.Instance.ClaimedPaidLevels;
         }
         else if (GameDataBridge.CurrentData != null)
         {
@@ -346,6 +368,7 @@ public class SaveLoadManager : MonoBehaviour
             data.vipExp = GameDataBridge.CurrentData.vipExp;
             data.vipExpireDate = GameDataBridge.CurrentData.vipExpireDate;
             data.vipFreeGiftClaimed = GameDataBridge.CurrentData.vipFreeGiftClaimed;
+            data.vipPaidGiftPurchased = GameDataBridge.CurrentData.vipPaidGiftPurchased;
         }
 
         // ── 농장 ──
@@ -393,7 +416,6 @@ public class SaveLoadManager : MonoBehaviour
             data.offlineExpRate            = OfflineRewardManager.Instance.expPerMinute;
             data.offlineGemRate            = OfflineRewardManager.Instance.gemPerMinute;
             data.offlineEquipTicketRate    = OfflineRewardManager.Instance.equipmentTicketsPerMinute;
-            data.offlineCurrentWave        = WaveSpawner.Instance != null ? WaveSpawner.Instance.CurrentWaveIndex : 0;
         }
         else if (GameDataBridge.CurrentData != null)
         {
@@ -404,7 +426,31 @@ public class SaveLoadManager : MonoBehaviour
             data.offlineExpRate            = GameDataBridge.CurrentData.offlineExpRate;
             data.offlineGemRate            = GameDataBridge.CurrentData.offlineGemRate;
             data.offlineEquipTicketRate    = GameDataBridge.CurrentData.offlineEquipTicketRate;
-            data.offlineCurrentWave        = GameDataBridge.CurrentData.offlineCurrentWave;
+        }
+
+        // ── 스테이지/웨이브 (오프라인 보상과 독립적으로 저장) ──
+        // ★ PendingWaveIndex가 있으면 최우선 (아직 WaveSpawner에 적용 전인 복원 대기 값)
+        if (WaveSpawner.PendingWaveIndex >= 0)
+        {
+            data.offlineCurrentWave = WaveSpawner.PendingWaveIndex;
+            Debug.Log($"[SaveLoadManager] ★ 웨이브 저장 (PendingWaveIndex): {data.offlineCurrentWave}");
+        }
+        else if (WaveSpawner.Instance != null && WaveSpawner.Instance.CurrentWaveIndex > 0)
+        {
+            data.offlineCurrentWave = WaveSpawner.Instance.CurrentWaveIndex;
+            Debug.Log($"[SaveLoadManager] ★ 웨이브 저장 (WaveSpawner): {data.offlineCurrentWave}");
+        }
+        else if (GameDataBridge.HasData && GameDataBridge.CurrentData.offlineCurrentWave > 0)
+        {
+            data.offlineCurrentWave = GameDataBridge.CurrentData.offlineCurrentWave;
+            Debug.Log($"[SaveLoadManager] ★ 웨이브 보존 (GameDataBridge 폴백): {data.offlineCurrentWave}");
+        }
+        else
+        {
+            // WaveSpawner가 있고 index가 0이면 실제 1-1 스테이지
+            if (WaveSpawner.Instance != null)
+                data.offlineCurrentWave = WaveSpawner.Instance.CurrentWaveIndex;
+            Debug.Log($"[SaveLoadManager] 웨이브 저장: {data.offlineCurrentWave} (기본)");
         }
 
         // ── 튜토리얼 ──
@@ -557,7 +603,9 @@ public class SaveLoadManager : MonoBehaviour
 
         // ── VIP ──
         if (VipManager.Instance != null)
-            VipManager.Instance.ApplyLocalData(data.vipLevel, data.vipExp, data.vipExpireDate, data.vipFreeGiftClaimed);
+            VipManager.Instance.ApplyLocalData(data.vipLevel, data.vipExp, data.vipExpireDate,
+                data.vipFreeGiftClaimed, data.vipPaidGiftPurchased,
+                data.vipClaimedFreeLevels, data.vipClaimedPaidLevels);
 
         // ── 가챠 ──
         if (GachaManager.Instance != null)
@@ -597,6 +645,8 @@ public class SaveLoadManager : MonoBehaviour
             if (ItemDatabase.Instance != null && ItemDatabase.Instance.IsReady)
             {
                 EquipmentManager.Instance.LoadEquipmentSaveData(data.equipmentData);
+                // ★ 장비 스킬 동기화 — 빈 슬롯의 잔류 스킬 클리어 포함
+                EquipmentSkillSystem.Instance?.RefreshAllEquippedSkills();
                 RestoreFullHealth();
             }
             else
@@ -618,9 +668,18 @@ public class SaveLoadManager : MonoBehaviour
             OfflineRewardManager.Instance.LoadOfflineData(data);
 
         // ── 스테이지/웨이브 복원 ──
+        Debug.Log($"[SaveLoadManager] ★ 웨이브 복원 시도: data.offlineCurrentWave={data.offlineCurrentWave}, WaveSpawner={WaveSpawner.Instance != null}");
         if (WaveSpawner.Instance != null)
         {
             WaveSpawner.Instance.ApplyWaveIndex(data.offlineCurrentWave);
+            Debug.Log($"[SaveLoadManager] ★ 웨이브 복원 완료: {WaveSpawner.Instance.StageLabel}");
+        }
+        else
+        {
+            // ★ WaveSpawner가 아직 없으면 PendingWaveIndex에 보관
+            // SaveGame이 중간에 GameDataBridge를 덮어써도 이 값은 안전
+            WaveSpawner.PendingWaveIndex = data.offlineCurrentWave;
+            Debug.LogWarning($"[SaveLoadManager] ⚠ WaveSpawner 없음 → PendingWaveIndex={data.offlineCurrentWave} 보관");
         }
 
         // ── 튜토리얼 ──
@@ -1086,6 +1145,9 @@ public class SaveData
     public int vipExp = 0;
     public string vipExpireDate = "";
     public bool vipFreeGiftClaimed = false;
+    public bool vipPaidGiftPurchased = false;
+    public string vipClaimedFreeLevels = "";
+    public string vipClaimedPaidLevels = "";
 
     // ── 오프라인 보상 ──
     public string lastLogoutTime;

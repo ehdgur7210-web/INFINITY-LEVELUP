@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: TutorialStep 13
   m_EditorClassIdentifier: 
   tipMessage: "\"\uC528\uC557\uC744 \uC120\uD0DD\uD558\uC138\uC694!\""
-  focusTargetName: "\uC528\uC557"
+  focusTargetName: 
   focusPadding: {x: 40, y: 40}
   advanceType: 3
   requiredAction: PlantSeed

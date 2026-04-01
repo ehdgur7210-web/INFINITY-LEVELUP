@@ -23,7 +23,7 @@ public class ItemData : ScriptableObject
     public Sprite background;
 
     [Header("스택")]
-    public int maxStack = 99;
+    public int maxStack = 9999;
     public bool isConsumable = false;
 
     [Header("가격")]

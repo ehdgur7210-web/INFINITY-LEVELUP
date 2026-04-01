@@ -427,22 +427,25 @@ public class VipUI : MonoBehaviour
             freeGiftIcon.sprite = data.giftInfo.freeGiftIcon;
         }
 
-        // 수령 버튼 상태: 내 등급 탭 + VIP 활성 + 미수령일 때만
-        bool isMyLevel = vipLevel == VipManager.Instance.CurrentVipLevel;
-        bool isClaimed = VipManager.Instance.IsFreeGiftClaimed;
+        // ★ 등급별 무료 선물 수령 체크
         bool isActive = VipManager.Instance.IsVipActive();
+        bool canClaimLevel = vipLevel <= VipManager.Instance.CurrentVipLevel;
+        bool isFreeClaimed = VipManager.Instance.IsFreeLevelClaimed(vipLevel);
 
         if (freeGiftClaimButton != null)
         {
-            freeGiftClaimButton.interactable = isMyLevel && !isClaimed && isActive;
+            // 수령 가능: VIP 활성 + 해당 등급 이하 + 미수령
+            bool canClaim = isActive && canClaimLevel && !isFreeClaimed;
+            freeGiftClaimButton.gameObject.SetActive(!isFreeClaimed); // ★ 수령 완료 시 버튼 숨김
+            freeGiftClaimButton.interactable = canClaim;
         }
 
         if (freeGiftButtonText != null)
         {
-            if (!isActive && isMyLevel)
+            if (!isActive)
                 freeGiftButtonText.text = "기간만료";
-            else if (isClaimed)
-                freeGiftButtonText.text = "수령완료";
+            else if (!canClaimLevel)
+                freeGiftButtonText.text = "등급부족";
             else
                 freeGiftButtonText.text = "수령하기";
         }
@@ -474,10 +477,13 @@ public class VipUI : MonoBehaviour
             discountText.text = data.giftInfo.discountPercent + " OFF";
         }
 
-        // 구매 버튼: 내 등급 탭 + VIP 활성일 때만
+        // ★ 등급별 유료 구매 체크
+        bool isPaidClaimed = VipManager.Instance.IsPaidLevelClaimed(vipLevel);
         if (paidGiftBuyButton != null)
         {
-            paidGiftBuyButton.interactable = isMyLevel && isActive;
+            bool canBuy = isActive && canClaimLevel && !isPaidClaimed;
+            paidGiftBuyButton.gameObject.SetActive(!isPaidClaimed); // ★ 구매 완료 시 버튼 숨김
+            paidGiftBuyButton.interactable = canBuy;
         }
     }
 
@@ -652,7 +658,7 @@ public class VipUI : MonoBehaviour
         {
             freeGiftClaimButton.onClick.AddListener(() =>
             {
-                VipManager.Instance?.ClaimFreeGift();
+                VipManager.Instance?.ClaimFreeGift(_selectedTabVipLevel);
             });
         }
 

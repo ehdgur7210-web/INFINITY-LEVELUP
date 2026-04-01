@@ -95,7 +95,8 @@ public class CompanionDetailPanel : MonoBehaviour
     [SerializeField] private GameObject companionSlotPrefab;
 
     [Header("===== 레벨업 설정 =====")]
-    [SerializeField] private int maxLevel = 100;
+    [SerializeField] private int baseLevelCap = 20;
+    [SerializeField] private int levelPerStar = 10;
     [SerializeField] private int baseExpRequired = 100;
     [SerializeField] private float expScale = 1.5f;
     [SerializeField] private int baseGoldCost = 500;
@@ -118,7 +119,7 @@ public class CompanionDetailPanel : MonoBehaviour
 
     private void Awake()
     {
-        if (Instance != null && Instance != this) { Destroy(gameObject); return; }
+        if (Instance != null && Instance != this && Instance.gameObject.scene.isLoaded) { Destroy(gameObject); return; }
         Instance = this;
         Debug.Log("[ManagerInit] CompanionDetailPanel가 생성되었습니다.");
 
@@ -262,7 +263,7 @@ public class CompanionDetailPanel : MonoBehaviour
         if (companionNameText != null)
             companionNameText.text = _currentCompanion.companionName;
         if (companionLevelText != null)
-            companionLevelText.text = $"Lv.{_currentLevel}";
+            companionLevelText.text = $"Lv.{_currentLevel} / {GetMaxLevel()}";
         if (companionGradeText != null)
         {
             int stars = GetCompanionStars(_currentCompanion);
@@ -308,7 +309,7 @@ public class CompanionDetailPanel : MonoBehaviour
             goldCostText.text = $"비용: {goldCost:N0} 골드";
 
         // 버튼 상태
-        bool canLevel = _currentLevel < maxLevel && totalExpGain > 0;
+        bool canLevel = _currentLevel < GetMaxLevel() && totalExpGain > 0;
         if (levelUpButton != null) levelUpButton.interactable = canLevel;
         if (maxLevelUpButton != null) maxLevelUpButton.interactable = canLevel;
     }
@@ -388,7 +389,8 @@ public class CompanionDetailPanel : MonoBehaviour
 
     private void OnLevelUpClicked()
     {
-        if (_currentCompanion == null || _currentLevel >= maxLevel) return;
+        int currentMaxLevel = GetMaxLevel();
+        if (_currentCompanion == null || _currentLevel >= currentMaxLevel) return;
 
         int totalExp = GetTotalMaterialExp();
         if (totalExp <= 0)
@@ -404,7 +406,7 @@ public class CompanionDetailPanel : MonoBehaviour
 
         _currentExp += totalExp;
         int required = GetRequiredExp(_currentLevel);
-        while (_currentExp >= required && _currentLevel < maxLevel)
+        while (_currentExp >= required && _currentLevel < currentMaxLevel)
         {
             _currentExp -= required;
             _currentLevel++;
@@ -423,7 +425,8 @@ public class CompanionDetailPanel : MonoBehaviour
 
     private void OnMaxLevelUpClicked()
     {
-        if (_currentCompanion == null || _currentLevel >= maxLevel) return;
+        int currentMaxLevel = GetMaxLevel();
+        if (_currentCompanion == null || _currentLevel >= currentMaxLevel) return;
 
         int totalExp = GetTotalMaterialExp();
         if (totalExp <= 0)
@@ -437,7 +440,7 @@ public class CompanionDetailPanel : MonoBehaviour
         int tempExp = _currentExp + totalExp;
         int totalGold = 0;
 
-        while (tempLevel < maxLevel)
+        while (tempLevel < currentMaxLevel)
         {
             int req = GetRequiredExp(tempLevel);
             if (tempExp < req) break;
@@ -458,7 +461,7 @@ public class CompanionDetailPanel : MonoBehaviour
 
         _currentExp += totalExp;
         int startLevel = _currentLevel;
-        while (_currentLevel < maxLevel)
+        while (_currentLevel < currentMaxLevel)
         {
             int req = GetRequiredExp(_currentLevel);
             if (_currentExp < req) break;
@@ -640,6 +643,13 @@ public class CompanionDetailPanel : MonoBehaviour
     // ─────────────────────────────────────────────────────────────
     //  공식
     // ─────────────────────────────────────────────────────────────
+
+    /// <summary>★ 레벨 상한 = 기본 20 + (별 × 10)</summary>
+    private int GetMaxLevel()
+    {
+        int stars = _currentCompanion != null ? GetCompanionStars(_currentCompanion) : 0;
+        return baseLevelCap + (stars * levelPerStar);
+    }
 
     private int GetRequiredExp(int level)
     {

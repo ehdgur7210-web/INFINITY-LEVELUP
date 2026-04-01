@@ -40,7 +40,7 @@ public class ManagerRoot : MonoBehaviour
 
         // ★ 씬 로컬 싱글톤 — DontDestroyOnLoad 없음
         // 같은 씬에 2개 이상 배치된 경우만 중복 제거
-        if (Instance != null && Instance != this)
+        if (Instance != null && Instance != this && Instance.gameObject.scene.isLoaded)
         {
             Debug.LogWarning("[ManagerRoot] 같은 씬에 ManagerRoot 중복 감지 → 파괴");
             Destroy(gameObject);

@@ -118,7 +118,7 @@ public class SkillComboSystem : MonoBehaviour
 
     void Awake()
     {
-        if (Instance != null && Instance != this) { Destroy(gameObject); return; }
+        if (Instance != null && Instance != this && Instance.gameObject.scene.isLoaded) { Destroy(gameObject); return; }
         Instance = this;
         Debug.Log("[ManagerInit] SkillComboSystem가 생성되었습니다.");
     }
@@ -224,17 +224,73 @@ public class SkillComboSystem : MonoBehaviour
                   (combo >= ComboType.FiveOfAKind ? $" (Lv.{comboLevel})" : ""));
     }
 
-    /// <summary>슬롯에 해당 레어리티의 스킬을 랜덤 배정</summary>
+    [Header("===== 강화 → 스킬 등급 확률 =====")]
+    [Tooltip("강화 1당 상위 등급 확률 증가 (%) — 기본 3이면 강화+10 = +30% 상위 확률")]
+    [SerializeField] private float enhanceBoostPerLevel = 3f;
+
+    /// <summary>슬롯에 랜덤 등급의 스킬을 배정 (강화 수치 → 상위 등급 확률 증가)</summary>
     private void RandomizeSlotSkill(EquipmentType eqType, int slotIndex)
     {
-        if (EquipmentManager.Instance == null) return;
+        if (EquipmentManager.Instance == null || EquipmentSkillSystem.Instance == null) return;
         EquipmentData eq = EquipmentManager.Instance.GetEquippedItem(eqType);
         if (eq == null) return;
 
-        // 현재 장비의 레어리티에 맞는 스킬을 EquipmentSkillSystem에서 가져옴
-        // (이미 장착 시 배정된 스킬 — 셔플은 레벨만 사용하고 스킬 자체는 유지)
-        // 스킬 자체를 교체하려면 RaritySkillMapping에서 랜덤 레어리티 선택
-        // → 장비 레어리티 기반으로 유지 (원래 장비 시스템과 호환)
+        RaritySkillMapping mapping = EquipmentSkillSystem.Instance.GetSkillMappingForSlot(eqType);
+        if (mapping == null) return;
+
+        int maxRarity = (int)eq.rarity;
+        int enhLevel = EquipmentManager.Instance.GetEnhanceLevel(eqType);
+
+        // ★ 강화 수치에 따른 가중치 계산
+        // 강화 없으면: 하위 등급 확률 높음
+        // 강화 높으면: 상위 등급 확률 높음
+        float enhBoost = enhLevel * enhanceBoostPerLevel; // 강화+10 → 30% 보너스
+        int selectedRarity = GetWeightedRarity(maxRarity, enhBoost);
+
+        SkillData skill = mapping.GetSkillByRarity((ItemRarity)selectedRarity);
+        if (skill == null)
+            skill = mapping.GetSkillByRarity(eq.rarity);
+        if (skill == null) return;
+
+        currentSlotLevels[slotIndex] = selectedRarity + 1;
+
+        if (SkillManager.Instance != null)
+            SkillManager.Instance.SwapEquipmentSkillOnHotbarAtIndex(null, skill, slotIndex);
+    }
+
+    /// <summary>
+    /// 가중치 기반 등급 선택.
+    /// 기본: 하위 등급일수록 확률 높음.
+    /// enhBoost가 높으면 상위 등급 확률 증가.
+    /// </summary>
+    private int GetWeightedRarity(int maxRarity, float enhBoost)
+    {
+        if (maxRarity <= 0) return 0;
+
+        // 각 등급별 가중치 (0=Common, 1=Uncommon, ...)
+        // 기본 가중치: Common=100, Uncommon=60, Rare=30, Epic=15, Legendary=5
+        float[] baseWeights = { 100f, 60f, 30f, 15f, 5f };
+
+        float totalWeight = 0f;
+        float[] weights = new float[maxRarity + 1];
+
+        for (int i = 0; i <= maxRarity && i < baseWeights.Length; i++)
+        {
+            // 상위 등급일수록 enhBoost의 영향이 큼
+            float boost = 1f + (enhBoost / 100f) * (i + 1);
+            weights[i] = baseWeights[i] * boost;
+            totalWeight += weights[i];
+        }
+
+        float roll = Random.Range(0f, totalWeight);
+        float cumulative = 0f;
+        for (int i = maxRarity; i >= 0; i--) // 상위부터 체크
+        {
+            cumulative += weights[i];
+            if (roll < cumulative) return i;
+        }
+
+        return 0;
     }
 
     // ═══════════════════════════════════════════════════════════════

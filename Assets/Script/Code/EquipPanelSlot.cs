@@ -51,7 +51,9 @@ public class EquipPanelSlot : MonoBehaviour, IDropHandler, IPointerClickHandler,
 
         if (itemIconImage != null)
             itemIconImage.gameObject.SetActive(true);
-        ClearSlot();
+
+        // ★ ClearSlot 대신 장착 데이터 즉시 표시
+        RefreshFromManager();
     }
 
     void OnEnable()

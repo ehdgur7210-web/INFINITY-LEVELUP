@@ -262,7 +262,11 @@ public class EquipmentSkillSystem : MonoBehaviour
     /// </summary>
     public void RefreshAllEquippedSkills()
     {
-        Debug.Log("[EquipmentSkillSystem] 모든 장착 장비 스킬 새로고침 시작");
+        int hotbarCount = SkillManager.Instance?.hotbarSlots?.Length ?? 0;
+        Debug.Log($"[EquipmentSkillSystem] 모든 장착 장비 스킬 새로고침 시작 (핫바 슬롯: {hotbarCount}개)");
+
+        if (hotbarCount < NUM_EQUIPMENT_SLOTS)
+            Debug.LogError($"[EquipmentSkillSystem] ❌ 핫바 슬롯이 {hotbarCount}개뿐! 최소 {NUM_EQUIPMENT_SLOTS}개 필요. Inspector에서 SkillManager.hotbarSlots 확인!");
 
         if (EquipmentManager.Instance == null)
         {
@@ -276,7 +280,7 @@ public class EquipmentSkillSystem : MonoBehaviour
             EquipmentData equippedItem = EquipmentManager.Instance.GetEquippedItem(type);
             if (equippedItem != null)
             {
-                Debug.Log($"[EquipmentSkillSystem] 새로고침: {type} → {equippedItem.itemName} ({equippedItem.rarity})");
+                Debug.Log($"[EquipmentSkillSystem] 새로고침: {type} → {equippedItem.itemName} ({equippedItem.rarity}) → 핫바[{GetHotbarSlotIndex(type, equippedItem.rarity)}]");
                 OnEquipmentEquipped(type, equippedItem);
             }
             else
@@ -287,7 +291,7 @@ public class EquipmentSkillSystem : MonoBehaviour
             }
         }
 
-        Debug.Log("[EquipmentSkillSystem] 새로고침 완료");
+        Debug.Log($"[EquipmentSkillSystem] 새로고침 완료 — 활성 스킬: {activeSkills.Count}개");
     }
 
     [ContextMenu("Debug: Print Active Skills")]

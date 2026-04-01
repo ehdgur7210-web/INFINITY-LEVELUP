@@ -77,7 +77,7 @@ public class FarmInventoryUI : MonoBehaviour
 
     void Awake()
     {
-        if (Instance != null && Instance != this) { Destroy(gameObject); return; }
+        if (Instance != null && Instance != this && Instance.gameObject.scene.isLoaded) { Destroy(gameObject); return; }
         Instance = this;
         Debug.Log("[ManagerInit] FarmInventoryUI가 생성되었습니다.");
 

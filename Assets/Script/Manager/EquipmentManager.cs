@@ -127,7 +127,8 @@ public class EquipmentManager : MonoBehaviour
             var old = equippedItems[type];
 
             ApplyEquipmentStats(old.equipment, old.enhanceLevel, false);
-            InventoryManager.Instance?.AddItem(old.equipment, 1);
+            // ★ 강화 레벨 보존하여 인벤토리에 반환
+            InventoryManager.Instance?.AddItemWithEnhancement(old.equipment, 1, old.enhanceLevel);
             EquipmentSkillSystem.Instance?.OnEquipmentUnequipped(type);
         }
 
@@ -171,7 +172,8 @@ public class EquipmentManager : MonoBehaviour
         ApplyEquipmentStats(entry.equipment, entry.enhanceLevel, false);
         equippedItems.Remove(type);
 
-        InventoryManager.Instance?.AddItem(entry.equipment, 1);
+        // ★ 강화 레벨 보존하여 인벤토리에 반환
+        InventoryManager.Instance?.AddItemWithEnhancement(entry.equipment, 1, entry.enhanceLevel);
         ClearEquipmentSlotUI(type);
 
         OnEquipmentChanged?.Invoke(type, null, 0);
@@ -230,14 +232,12 @@ public class EquipmentManager : MonoBehaviour
         // ★ CacheEquipPanelSlots 후에도 null일 수 있으므로 방어
         if (cachedPanelSlots == null) return;
 
+        // ★ 같은 slotType의 모든 슬롯에 강화 레벨 반영
         foreach (var slot in cachedPanelSlots)
         {
             if (slot == null) continue;
             if (slot.slotType == type)
-            {
                 slot.UpdateEnhanceLevel(newLevel);
-                break;
-            }
         }
 
         OnEquipmentChanged?.Invoke(type, entry.equipment, newLevel);
@@ -353,14 +353,12 @@ public class EquipmentManager : MonoBehaviour
             CacheEquipPanelSlots();
         if (cachedPanelSlots == null) return;
 
+        // ★ 같은 slotType의 모든 슬롯 업데이트 (복사된 슬롯이 여러 개 있을 수 있음)
         foreach (var slot in cachedPanelSlots)
         {
             if (slot == null) continue;
             if (slot.slotType == type)
-            {
                 slot.EquipItem(eq, enhLevel);
-                break;
-            }
         }
     }
 
@@ -370,14 +368,12 @@ public class EquipmentManager : MonoBehaviour
             CacheEquipPanelSlots();
         if (cachedPanelSlots == null) return;
 
+        // ★ 같은 slotType의 모든 슬롯 클리어
         foreach (var slot in cachedPanelSlots)
         {
             if (slot == null) continue;
             if (slot.slotType == type)
-            {
                 slot.UnequipItem();
-                break;
-            }
         }
     }
 

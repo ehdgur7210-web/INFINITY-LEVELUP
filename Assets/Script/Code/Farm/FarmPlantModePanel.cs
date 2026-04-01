@@ -204,7 +204,7 @@ public class FarmPlantModePanel : MonoBehaviour
     void Awake()
     {
         // 싱글톤 설정
-        if (Instance != null && Instance != this) { Destroy(gameObject); return; }
+        if (Instance != null && Instance != this && Instance.gameObject.scene.isLoaded) { Destroy(gameObject); return; }
         Instance = this;
         Debug.Log("[ManagerInit] FarmPlantModePanel가 생성되었습니다.");
 

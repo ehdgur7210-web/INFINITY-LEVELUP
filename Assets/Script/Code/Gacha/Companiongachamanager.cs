@@ -37,6 +37,10 @@ public class CompanionGachaManager : MonoBehaviour
     public int singlePullCost = 1;
     public int tenPullCost = 10;
 
+    [Header("VIP 경험치 보상")]
+    [Tooltip("10연차 완료 시 VIP 경험치")]
+    public int vipExpPerTenPull = 50;
+
     // ═══════════════════════════════════════════════════════════════
     //  UI 참조 (Inspector 연결)
     // ═══════════════════════════════════════════════════════════════
@@ -471,6 +475,11 @@ public class CompanionGachaManager : MonoBehaviour
         }
 
         Debug.Log($"[CompanionGacha] ★ 10연차 완료: {results.Count}개 뽑힘, 인벤 보유: {CompanionInventoryManager.Instance?.GetSaveData()?.Length ?? 0}종");
+
+        // ★ VIP 경험치 지급
+        if (vipExpPerTenPull > 0)
+            VipManager.Instance?.AddVipExp(vipExpPerTenPull);
+
         SaveLoadManager.Instance?.SaveGame();
 
         CompanionData firstLegendary = results.Find(c => ShouldPlayLegendaryAnimation(c));
@@ -571,42 +580,18 @@ public class CompanionGachaManager : MonoBehaviour
         foreach (Transform child in resultGrid)
             Destroy(child.gameObject);
 
-        // ★ 중복 동료 그룹핑 (이름 기준)
-        var countMap = new Dictionary<string, int>();
-        var dataMap = new Dictionary<string, CompanionData>();
-        var orderList = new List<string>();
-
-        foreach (var companion in results)
-        {
-            if (companion == null) continue;
-            string key = companion.companionName;
-            if (countMap.ContainsKey(key))
-            {
-                countMap[key]++;
-            }
-            else
-            {
-                countMap[key] = 1;
-                dataMap[key] = companion;
-                orderList.Add(key);
-            }
-        }
-
-        Debug.Log($"[CompanionGacha] 그룹핑: {results.Count}개 → {orderList.Count}종류");
-
+        // ★ 개별 슬롯 생성 (그룹핑 없음)
         float staggerDelay = 0.08f;
-        for (int i = 0; i < orderList.Count; i++)
+        for (int i = 0; i < results.Count; i++)
         {
-            string key = orderList[i];
-            var companion = dataMap[key];
-            int count = countMap[key];
-            if (resultItemPrefab == null) continue;
+            var companion = results[i];
+            if (companion == null || resultItemPrefab == null) continue;
 
             GameObject go = Instantiate(resultItemPrefab, resultGrid, false);
             go.SetActive(true);
             CompanionResultItem item = go.GetComponent<CompanionResultItem>()
                                       ?? go.AddComponent<CompanionResultItem>();
-            item.Setup(companion, this, staggerDelay * i, count);
+            item.Setup(companion, this, staggerDelay * i, 1);
         }
 
         // resultGrid에 GridLayoutGroup 없으면 자동 추가

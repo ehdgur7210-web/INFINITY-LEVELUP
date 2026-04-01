@@ -124,7 +124,8 @@ public class PlayerStats : MonoBehaviour, IHitable
 
     void Awake()
     {
-        if (Instance == null)
+        // ★ 씬 전환 후 옛 Instance가 파괴됐을 수 있으므로 항상 갱신
+        if (Instance == null || Instance == this || !Instance.gameObject.scene.isLoaded)
         {
             Instance = this;
             Debug.Log("[ManagerInit] PlayerStats가 생성되었습니다.");
@@ -138,6 +139,17 @@ public class PlayerStats : MonoBehaviour, IHitable
         currentHealth = maxHealth;
         currentMana = maxMana;
         IsDead = false;
+    }
+
+    void OnEnable()
+    {
+        // ★ DDOL Player의 PlayerStats가 항상 Instance로 등록되도록
+        Instance = this;
+    }
+
+    void OnDestroy()
+    {
+        if (Instance == this) Instance = null;
     }
 
     void Start()
