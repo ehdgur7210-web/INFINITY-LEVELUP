@@ -20,7 +20,7 @@ MonoBehaviour:
   autoAdvanceDelay: 2
   tipPosition: 0
   isSceneTransitionStep: 0
-  delayBeforeShow: 1.5
+  delayBeforeShow: 1
   rewards:
   - rewardType: 0
     amount: 10000

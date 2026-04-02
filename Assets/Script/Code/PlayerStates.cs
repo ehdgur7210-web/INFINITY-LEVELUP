@@ -296,12 +296,12 @@ public class PlayerStats : MonoBehaviour, IHitable
     /// <summary>
     /// 레벨 성장 공격력 반환 (외부 참조용)
     /// </summary>
-    public float GetTotalAttack() => attackPower + bonusAttack + levelBonusAttack;
+    public float GetTotalAttack() => attackPower + bonusAttack + levelBonusAttack + GetCompanionBonusAttack();
 
     /// <summary>
     /// 레벨 성장 방어력 반환 (외부 참조용)
     /// </summary>
-    public float GetTotalDefense() => defense + bonusDefense + levelBonusDefense;
+    public float GetTotalDefense() => defense + bonusDefense + levelBonusDefense + GetCompanionBonusDefense();
 
     /// <summary>
     /// 레벨 성장 크리티컬 확률 반환 (외부 참조용)
@@ -319,6 +319,84 @@ public class PlayerStats : MonoBehaviour, IHitable
     /// fireRate에 나누기로 적용: 실제간격 = 기본간격 / GetAttackSpeedMultiplier()
     /// </summary>
     public float GetAttackSpeedMultiplier() => 1f + (bonusAttackSpeed / 100f);
+
+    // ═══════════════════════════════════════════════════════════════
+    //  ★ 동료 장착 보너스
+    // ═══════════════════════════════════════════════════════════════
+    //
+    //  등급별 기본 전달 비율:
+    //    Epic      = 50%
+    //    Legendary = 100%
+    //    그 외     = 0% (Common, Rare는 전달 없음)
+    //
+    //  성급(stars) 효과:
+    //    동료 자체 스탯: 성급당 +100% (1성=x1, 2성=x2, 3성=x3 ...)
+    //    캐릭터 전달 비율: 성급당 +10% 추가
+    //      예) Epic 3성: 기본50% + (3-1)*10% = 70%, 동료 스탯 x3
+    //      예) Legendary 2성: 기본100% + (2-1)*10% = 110%, 동료 스탯 x2
+    // ═══════════════════════════════════════════════════════════════
+
+    /// <summary>핫바에 장착된 모든 동료의 공격력 보너스 합산</summary>
+    public float GetCompanionBonusAttack()
+    {
+        return GetCompanionStatBonus(c => c.attackPower);
+    }
+
+    /// <summary>핫바에 장착된 모든 동료의 방어력 보너스 합산</summary>
+    public float GetCompanionBonusDefense()
+    {
+        return GetCompanionStatBonus(c => c.defense);
+    }
+
+    /// <summary>핫바에 장착된 모든 동료의 체력 보너스 합산</summary>
+    public float GetCompanionBonusMaxHp()
+    {
+        return GetCompanionStatBonus(c => c.maxHealth);
+    }
+
+    private float GetCompanionStatBonus(System.Func<CompanionData, float> statSelector)
+    {
+        if (CompanionHotbarManager.Instance == null || CompanionInventoryManager.Instance == null)
+            return 0f;
+
+        float totalBonus = 0f;
+        string[] hotbarIDs = CompanionHotbarManager.Instance.GetHotbarSaveData();
+        if (hotbarIDs == null) return 0f;
+
+        foreach (string id in hotbarIDs)
+        {
+            if (string.IsNullOrEmpty(id)) continue;
+
+            var entry = CompanionInventoryManager.Instance.FindCompanionEntry(id);
+            if (entry == null || entry.data == null) continue;
+
+            CompanionData data = entry.data;
+
+            // 등급별 기본 전달 비율 (%)
+            float baseTransferRate = data.rarity switch
+            {
+                CompanionRarity.Epic      => 50f,
+                CompanionRarity.Legendary => 100f,
+                _                         => 0f
+            };
+
+            if (baseTransferRate <= 0f) continue;
+
+            // 성급 계산 (stars == -1이면 baseStars 사용)
+            int stars = entry.stars >= 1 ? entry.stars : data.baseStars;
+
+            // 동료 스탯 = 기본값 × 성급 (1성=x1, 2성=x2 ...)
+            float companionStat = statSelector(data) * stars;
+
+            // 전달 비율 = 기본 + (성급-1) × 10%
+            float transferRate = baseTransferRate + (stars - 1) * 10f;
+
+            // 캐릭터에 전달되는 보너스
+            totalBonus += companionStat * (transferRate / 100f);
+        }
+
+        return totalBonus;
+    }
 
     #endregion
     // ─────────────────────────────────────────────────────────────────────
@@ -406,7 +484,7 @@ public class PlayerStats : MonoBehaviour, IHitable
     public void RecalculateMaxHp()
     {
         // 레벨 성장 HP도 포함
-        float newMaxHealth = baseMaxHealth + bonusMaxHp + levelBonusMaxHp;
+        float newMaxHealth = baseMaxHealth + bonusMaxHp + levelBonusMaxHp + GetCompanionBonusMaxHp();
         float healthRatio = maxHealth > 0 ? currentHealth / maxHealth : 1f;
 
         maxHealth = newMaxHealth;

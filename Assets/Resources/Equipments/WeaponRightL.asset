@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: WeaponRightL
   m_EditorClassIdentifier: Assembly-CSharp::EquipmentVisualData
   itemID: 9
-  itemName: "\uC624\uAC80R"
+  itemName: "\uC624\uAC80L"
   itemDescription: 
   itemType: 8
   rarity: 4

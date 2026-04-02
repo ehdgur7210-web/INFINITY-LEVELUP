@@ -147,41 +147,40 @@ public class OptionUI : MonoBehaviour
             Instance = this;
             Debug.Log("[ManagerInit] OptionUI가 생성되었습니다.");
         }
-        else
+        else if (Instance != this)
         {
             Destroy(gameObject);
             return;
         }
 
-        // ★ 에디터에서 꺼놓아도 런타임에 초기화되도록
-        // 이 오브젝트가 비활성이었다가 누군가 활성화해준 경우 대응
         if (옵션패널 != null)
             옵션패널.SetActive(false);
     }
 
+    /// <summary>
+    /// ★ 비활성 오브젝트에서도 Instance 접근 가능하도록
+    /// FindObjectOfType(true)로 숨겨진 OptionUI도 탐색
+    /// </summary>
+    public static OptionUI GetInstance()
+    {
+        if (Instance != null) return Instance;
+
+        // 비활성 오브젝트 포함 탐색
+        Instance = FindObjectOfType<OptionUI>(true);
+        if (Instance != null)
+        {
+            Debug.Log("[OptionUI] 비활성 오브젝트에서 Instance 복구");
+        }
+        return Instance;
+    }
+
     void Start()
     {
-        // UI 이벤트 연결
-        SetupUIEvents();
-
-        // CanvasGroup 확인 (페이드 애니메이션용)
-        if (옵션패널 != null)
-        {
-            canvasGroup = 옵션패널.GetComponent<CanvasGroup>();
-            if (canvasGroup == null)
-            {
-                canvasGroup = 옵션패널.AddComponent<CanvasGroup>();
-            }
-        }
-
-        // 게임 설정 로드 (PlayerPrefs)
-        LoadGameSettings();
+        EnsureInitialized();
 
         // 시작 시 옵션 패널 숨김
         if (옵션패널 != null)
-        {
             옵션패널.SetActive(false);
-        }
     }
 
     // ==========================================================
@@ -286,9 +285,36 @@ public class OptionUI : MonoBehaviour
     /// 옵션 패널 열기
     /// SoundManager에서 현재 설정값을 읽어와 UI에 반영
     /// </summary>
+    private bool isInitialized = false;
+
+    /// <summary>Start()가 안 불렸을 때를 위한 수동 초기화</summary>
+    private void EnsureInitialized()
+    {
+        if (isInitialized) return;
+        isInitialized = true;
+
+        SetupUIEvents();
+
+        if (옵션패널 != null)
+        {
+            canvasGroup = 옵션패널.GetComponent<CanvasGroup>();
+            if (canvasGroup == null)
+                canvasGroup = 옵션패널.AddComponent<CanvasGroup>();
+        }
+
+        LoadGameSettings();
+    }
+
     public void OpenOptionPanel()
     {
         if (옵션패널 == null) return;
+
+        // ★ 게임오브젝트가 비활성이면 먼저 활성화 (Awake/Start 호출)
+        if (!gameObject.activeSelf)
+            gameObject.SetActive(true);
+
+        // ★ Start()가 안 불렸을 수 있으니 수동 초기화
+        EnsureInitialized();
 
         // 패널 활성화
         옵션패널.SetActive(true);

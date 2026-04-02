@@ -102,7 +102,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   monsterName: Monster
-  maxHp: 100
+  maxHp: 10000
   currentHp: 0
   damage: 10
   moveSpeed: 2
@@ -239,5 +239,6 @@ MonoBehaviour:
   lowHpColor: {r: 1, g: 0, b: 0, a: 1}
   alwaysVisible: 1
   visibleDuration: 3
-  bossUIPrefab: {fileID: 0}
+  bossBarPrefab: {fileID: 0}
+  hpPerBar: 1000
   bossTitle: "\uAC15\uB825\uD55C"

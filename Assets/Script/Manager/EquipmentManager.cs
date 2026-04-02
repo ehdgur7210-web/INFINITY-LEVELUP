@@ -145,9 +145,6 @@ public class EquipmentManager : MonoBehaviour
         OnEquipmentChanged?.Invoke(type, equipment, enhanceLevel);
         EquipmentSkillSystem.Instance?.OnEquipmentEquipped(type, equipment);
 
-        // ★ 스킬 조합 재판정 (장비 레어리티 변경)
-        SkillComboSystem.Instance?.ForceReshuffle();
-
         // 장착 즉시 전투력 갱신
         CombatPowerManager.Instance?.Recalculate();
 
@@ -178,9 +175,6 @@ public class EquipmentManager : MonoBehaviour
 
         OnEquipmentChanged?.Invoke(type, null, 0);
         EquipmentSkillSystem.Instance?.OnEquipmentUnequipped(type);
-
-        // ★ 스킬 조합 재판정
-        SkillComboSystem.Instance?.ForceReshuffle();
 
         CombatPowerManager.Instance?.Recalculate();
 

@@ -16,7 +16,7 @@ MonoBehaviour:
     \uC785\uAD6C\uB97C \uD130\uCE58\uD558\uC138\uC694!\""
   focusTargetName: "\uB18D\uC7A5Button"
   focusPadding: {x: 40, y: 40}
-  advanceType: 1
+  advanceType: 0
   requiredAction: 
   autoAdvanceDelay: 1
   tipPosition: 0

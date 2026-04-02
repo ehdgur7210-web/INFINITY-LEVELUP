@@ -420,8 +420,8 @@ public class TopMenuManager : MonoBehaviour
         if (IsButtonOnCooldown()) return;
         if (IsBlockedByTutorial(settingsButton)) return;
         ToggleWithBanner("설정",
-            () => OptionUI.Instance?.ShowOptionPanel(),
-            () => OptionUI.Instance?.HideOptionPanel());
+            () => OptionUI.GetInstance()?.ShowOptionPanel(),
+            () => OptionUI.GetInstance()?.HideOptionPanel());
         PlayButtonSound();
     }
     private void OnCraftButtonClicked()

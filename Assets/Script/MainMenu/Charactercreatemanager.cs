@@ -2,6 +2,7 @@
 using UnityEngine.UI;
 using TMPro;
 using System.Collections.Generic;
+using BackEnd;
 
 /// <summary>
 /// ■ 캐릭터 생성 화면 (패널 방식) ■
@@ -265,13 +266,47 @@ public class CharacterCreateManager : MonoBehaviour
         if (string.IsNullOrEmpty(charName)) { ShowError("캐릭터 이름을 입력해주세요."); return; }
         if (charName.Length < 2) { ShowError("이름은 2자 이상이어야 합니다."); return; }
 
-        // ★ 이름 중복 체크 (다른 슬롯에 같은 이름이 있거나, 삭제된 세이브 파일이 남아있으면 차단)
+        // ★ 이름 중복 체크 — 로컬
         if (IsNameAlreadyUsed(charName))
         {
             ShowError($"'{charName}'은(는) 이미 사용된 이름입니다.\n다른 이름을 입력해주세요.");
             return;
         }
 
+        // ★ 이름 중복 체크 — 서버 (뒤끝)
+        if (confirmButton != null) confirmButton.interactable = false;
+        CheckServerNicknameDuplicate(charName);
+        return;
+    }
+
+    /// <summary>서버에 동일 닉네임이 있는지 확인 후 생성 진행</summary>
+    private void CheckServerNicknameDuplicate(string charName)
+    {
+        try
+        {
+            // 뒤끝 동기 호출
+            var bro = Backend.BMember.CheckNicknameDuplication(charName);
+
+            if (confirmButton != null) confirmButton.interactable = true;
+
+            if (!bro.IsSuccess())
+            {
+                ShowError($"'{charName}'은(는) 이미 다른 유저가 사용 중입니다.\n다른 이름을 입력해주세요.");
+                return;
+            }
+
+            ProceedCreateCharacter(charName);
+        }
+        catch (System.Exception)
+        {
+            // 뒤끝 미연결 시 로컬 체크만으로 통과
+            if (confirmButton != null) confirmButton.interactable = true;
+            ProceedCreateCharacter(charName);
+        }
+    }
+
+    private void ProceedCreateCharacter(string charName)
+    {
         int targetSlot = GameDataBridge.CharacterSlots.createTargetSlot;
 
         // ★ 기존 캐릭터가 있는 슬롯이면 확인 다이얼로그

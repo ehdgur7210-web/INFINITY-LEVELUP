@@ -16,7 +16,7 @@ MonoBehaviour:
   itemName: "\uC624\uAC80R"
   itemDescription: 
   itemType: 8
-  rarity: 4
+  rarity: 2
   itemIcon: {fileID: -740634382, guid: 46f4c2953c264e84fa71f8f907567aa6, type: 3}
   background: {fileID: 0}
   maxStack: 99

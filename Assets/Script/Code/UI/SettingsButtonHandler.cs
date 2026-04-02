@@ -71,9 +71,9 @@ public class SettingsButtonHandler : MonoBehaviour
         }
 
         // OptionUI 옵션창 토글
-        if (OptionUI.Instance != null)
+        if (OptionUI.GetInstance() != null)
         {
-            OptionUI.Instance.ToggleOptionPanel();
+            OptionUI.GetInstance().ToggleOptionPanel();
         }
         else
         {
