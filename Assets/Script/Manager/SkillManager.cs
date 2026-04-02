@@ -699,7 +699,17 @@ public class SkillManager : MonoBehaviour
         }
 
         ExecuteSkill(skill);
-        skill.cooldownRemaining = skill.skillData.cooldown;
+
+        // 스킬별 발사간격: fireRate > 0이면 그 값, 아니면 cooldown 사용
+        float baseCooldown = skill.skillData.fireRate > 0
+            ? skill.skillData.fireRate
+            : skill.skillData.cooldown;
+
+        // PlayerStats 공격속도 배율 적용
+        float speedMult = PlayerStats.Instance != null
+            ? PlayerStats.Instance.GetAttackSpeedMultiplier() : 1f;
+        skill.cooldownRemaining = baseCooldown / Mathf.Max(speedMult, 0.1f);
+
         return true;
     }
 

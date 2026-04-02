@@ -48,7 +48,7 @@ public class GachaResultUI : MonoBehaviour
 
     [Header("슬롯 등장 타이밍")]
     [Tooltip("슬롯 하나가 등장하는 간격 (초). 작을수록 빠르게 나열됨")]
-    public float slotRevealInterval = 0.08f;        // 각 슬롯 사이 딜레이
+    public float slotRevealInterval = 0.03f;        // 각 슬롯 사이 딜레이
 
     [Header("레벨별 이펙트 기준 등급")]
     [Tooltip("가챠 레벨 1~2일 때 이펙트 기준 등급")]
@@ -302,10 +302,10 @@ public class GachaResultUI : MonoBehaviour
         LayoutRebuilder.ForceRebuildLayoutImmediate(scrollContent as RectTransform);
         yield return null;
 
-        // ★ 현재 뷰포트에 보이는 슬롯들 순차 등장
-        RevealVisibleSlots();
+        // ★ 자동 스크롤 + 순차 등장 연출
+        yield return StartCoroutine(AutoRevealRoutine());
 
-        // ★ 스크롤 이벤트 등록 — 스크롤할 때 새로 보이는 슬롯 등장
+        // ★ 자동 등장 끝나면 수동 스크롤 시 미등장 슬롯도 등장
         if (cachedScrollRect != null)
             cachedScrollRect.onValueChanged.AddListener(OnScrollValueChanged);
 
@@ -318,7 +318,89 @@ public class GachaResultUI : MonoBehaviour
     }
 
     // ════════════════════════════════════════════════════════════
-    //  스크롤 기반 슬롯 등장
+    //  ★ 자동 스크롤 + 순차 등장 연출
+    //  슬롯을 하나씩 등장시키며 자동으로 아래로 스크롤
+    // ════════════════════════════════════════════════════════════
+
+    [Header("자동 스크롤 연출")]
+    [Tooltip("자동 스크롤 속도 (높을수록 빠르게 따라감)")]
+    public float autoScrollSpeed = 8f;
+
+    private Coroutine autoRevealCoroutine;
+
+    private IEnumerator AutoRevealRoutine()
+    {
+        if (activeSlots.Count == 0) yield break;
+
+        RectTransform contentRT = scrollContent as RectTransform;
+        if (contentRT == null || cachedScrollRect == null) yield break;
+
+        // ★ 전체 슬롯을 인덱스 순서(위→아래, 왼→오)로 등장
+        //    뷰포트 판정 없이 순번대로 강제 등장 + 자동 스크롤
+        for (int i = 0; i < activeSlots.Count; i++)
+        {
+            GachaResultSlotUI slot = activeSlots[i];
+            if (slot == null) continue;
+            if (slot.IsRevealed) continue;
+
+            // 슬롯 등장 (딜레이 없이 즉시)
+            slot.Reveal(0f);
+
+            // 이 슬롯이 보이도록 자동 스크롤
+            yield return StartCoroutine(ScrollToSlot(slot.GetComponent<RectTransform>()));
+
+            // 등장 간격
+            yield return new WaitForSeconds(slotRevealInterval);
+        }
+    }
+
+    /// <summary>
+    /// 특정 슬롯이 뷰포트 안에 보이도록 부드럽게 스크롤
+    /// </summary>
+    private IEnumerator ScrollToSlot(RectTransform slotRT)
+    {
+        if (cachedScrollRect == null || slotRT == null) yield break;
+
+        RectTransform viewportRT = cachedScrollRect.viewport != null
+            ? cachedScrollRect.viewport
+            : cachedScrollRect.GetComponent<RectTransform>();
+        RectTransform contentRT = scrollContent as RectTransform;
+
+        // 슬롯의 Content 기준 로컬 위치
+        float slotLocalY = -slotRT.localPosition.y; // Content 아래로 갈수록 양수
+        float viewportHeight = viewportRT.rect.height;
+        float contentHeight = contentRT.rect.height;
+        float scrollableHeight = contentHeight - viewportHeight;
+
+        if (scrollableHeight <= 0f) yield break;
+
+        // 슬롯이 뷰포트 하단에서 약간 여유를 두고 보이게
+        float targetScrollY = (slotLocalY - viewportHeight + slotRT.rect.height + 20f) / scrollableHeight;
+        targetScrollY = Mathf.Clamp01(targetScrollY);
+
+        // 현재 스크롤 위치 (verticalNormalizedPosition: 1=맨위, 0=맨아래)
+        float targetNormalized = 1f - targetScrollY;
+
+        // 이미 보이는 영역이면 스크롤 불필요
+        if (targetNormalized >= cachedScrollRect.verticalNormalizedPosition) yield break;
+
+        // 부드러운 스크롤
+        float elapsed = 0f;
+        float maxTime = 0.15f;
+        float startVal = cachedScrollRect.verticalNormalizedPosition;
+
+        while (elapsed < maxTime)
+        {
+            elapsed += Time.deltaTime;
+            float t = elapsed / maxTime;
+            cachedScrollRect.verticalNormalizedPosition = Mathf.Lerp(startVal, targetNormalized, t);
+            yield return null;
+        }
+        cachedScrollRect.verticalNormalizedPosition = targetNormalized;
+    }
+
+    // ════════════════════════════════════════════════════════════
+    //  스크롤 기반 슬롯 등장 (수동 스크롤 시)
     // ════════════════════════════════════════════════════════════
 
     private void OnScrollValueChanged(Vector2 _)

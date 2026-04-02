@@ -38,8 +38,11 @@ public class SceneTransitionManager : MonoBehaviour
     public const string SCENE_MENU = "MainMenu";
 
     [Header("페이드 효과")]
-    [SerializeField] private CanvasGroup fadeCanvasGroup;
+    [Tooltip("페이드용 Image (전체화면 Panel). 없으면 자동 생성")]
+    [SerializeField] private Image fadeImage;
     [SerializeField] private float fadeDuration = 0.8f;
+    [Tooltip("페이드 배경 이미지 (없으면 검정)")]
+    [SerializeField] private Sprite fadeBackgroundSprite;
 
     [Header("로딩 화면")]
     [SerializeField] private GameObject loadingPanel;
@@ -101,6 +104,9 @@ public class SceneTransitionManager : MonoBehaviour
 
     private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
     {
+        // ★ 씬 오브젝트 UI 참조 재바인딩 (DDOL이라 씬 전환 시 Missing 방지)
+        RebindSceneUI();
+
         // AudioListener 중복 제거
         RemoveDuplicateAudioListeners();
 
@@ -429,69 +435,158 @@ public class SceneTransitionManager : MonoBehaviour
     }
 
     // ══════════════════════════════════════════════════════
+    //  씬 UI 재바인딩 (DDOL → 씬 오브젝트 참조 복구)
+    // ══════════════════════════════════════════════════════
+
+    /// <summary>
+    /// SceneTransitionManager는 DontDestroyOnLoad이므로
+    /// 씬 전환 시 씬 오브젝트(로딩패널 등) 참조가 Missing이 됨.
+    /// 새 씬에서 이름으로 다시 찾아 연결.
+    /// </summary>
+    private void RebindSceneUI()
+    {
+        // 로딩 패널 (Missing이면 재탐색)
+        if (loadingPanel == null)
+        {
+            GameObject found = GameObject.Find("로딩패널");
+            if (found != null)
+            {
+                loadingPanel = found;
+                loadingPanel.SetActive(false);
+                Debug.Log("[SceneTransitionManager] 로딩패널 재바인딩 완료");
+            }
+        }
+
+        // 로딩 바
+        if (loadingBar == null && loadingPanel != null)
+        {
+            loadingBar = loadingPanel.GetComponentInChildren<Slider>(true);
+        }
+
+        // 로딩 텍스트 / 팁 텍스트
+        if ((loadingText == null || tipText == null) && loadingPanel != null)
+        {
+            // 로딩캔버스 전체에서 검색 (로딩패널의 부모 포함)
+            Transform searchRoot = loadingPanel.transform.parent != null
+                ? loadingPanel.transform.parent : loadingPanel.transform;
+            var texts = searchRoot.GetComponentsInChildren<TextMeshProUGUI>(true);
+            foreach (var t in texts)
+            {
+                string n = t.gameObject.name;
+                if (loadingText == null && (n.Contains("로딩바") || n.Contains("Loading")))
+                    loadingText = t;
+                if (tipText == null && (n.Contains("팁") || n.Contains("Tip")))
+                    tipText = t;
+            }
+        }
+
+        // 페이드 이미지 (Missing이면 자동 생성)
+        if (fadeImage == null)
+        {
+            CreateFadePanel();
+            SetFadeAlpha(0f);
+            if (fadeImage != null) fadeImage.raycastTarget = false;
+        }
+    }
+
+    // ══════════════════════════════════════════════════════
     //  페이드 / 로딩 UI
     // ══════════════════════════════════════════════════════
 
     private void InitializeTransitionManager()
     {
-        if (fadeCanvasGroup == null) CreateFadeCanvas();
+        if (fadeImage == null) CreateFadePanel();
         if (loadingPanel != null) loadingPanel.SetActive(false);
-        if (fadeCanvasGroup != null) fadeCanvasGroup.alpha = 0f;
+
+        // 배경 이미지 적용
+        if (fadeImage != null)
+        {
+            if (fadeBackgroundSprite != null)
+            {
+                fadeImage.sprite = fadeBackgroundSprite;
+                fadeImage.type = Image.Type.Simple;
+                fadeImage.preserveAspect = false;
+            }
+            SetFadeAlpha(0f);
+            fadeImage.raycastTarget = false;
+        }
     }
 
-    private void CreateFadeCanvas()
+    private void CreateFadePanel()
     {
+        // Canvas 생성
         GameObject canvasObj = new GameObject("FadeCanvas");
         canvasObj.transform.SetParent(transform);
 
         Canvas canvas = canvasObj.AddComponent<Canvas>();
         canvas.renderMode = RenderMode.ScreenSpaceOverlay;
         canvas.sortingOrder = 9999;
+
+        // CanvasScaler로 해상도 대응
+        var scaler = canvasObj.AddComponent<CanvasScaler>();
+        scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
+        scaler.referenceResolution = new Vector2(1920, 1080);
+        scaler.matchWidthOrHeight = 0.5f;
+
         canvasObj.AddComponent<GraphicRaycaster>();
 
-        fadeCanvasGroup = canvasObj.AddComponent<CanvasGroup>();
-        fadeCanvasGroup.blocksRaycasts = false;
+        // 페이드 Image (패널) — 전체화면 스트레치
+        GameObject panelObj = new GameObject("FadePanel");
+        panelObj.transform.SetParent(canvasObj.transform, false);
 
-        GameObject imageObj = new GameObject("FadeImage");
-        imageObj.transform.SetParent(canvasObj.transform);
+        fadeImage = panelObj.AddComponent<Image>();
+        fadeImage.color = fadeBackgroundSprite != null ? Color.white : Color.black;
 
-        Image image = imageObj.AddComponent<Image>();
-        image.color = Color.black;
+        if (fadeBackgroundSprite != null)
+        {
+            fadeImage.sprite = fadeBackgroundSprite;
+            fadeImage.type = Image.Type.Simple;
+            fadeImage.preserveAspect = false;
+        }
 
-        RectTransform rt = image.GetComponent<RectTransform>();
+        RectTransform rt = panelObj.GetComponent<RectTransform>();
         rt.anchorMin = Vector2.zero;
         rt.anchorMax = Vector2.one;
-        rt.sizeDelta = Vector2.zero;
+        rt.offsetMin = Vector2.zero;
+        rt.offsetMax = Vector2.zero;
+    }
+
+    private void SetFadeAlpha(float alpha)
+    {
+        if (fadeImage == null) return;
+        Color c = fadeImage.color;
+        c.a = alpha;
+        fadeImage.color = c;
     }
 
     private IEnumerator FadeOut()
     {
-        if (fadeCanvasGroup == null) yield break;
-        fadeCanvasGroup.blocksRaycasts = true;
+        if (fadeImage == null) yield break;
+        fadeImage.raycastTarget = true;
 
         float t = 0f;
         while (t < fadeDuration)
         {
             t += Time.unscaledDeltaTime;
-            fadeCanvasGroup.alpha = Mathf.Lerp(0f, 1f, t / fadeDuration);
+            SetFadeAlpha(Mathf.Lerp(0f, 1f, t / fadeDuration));
             yield return null;
         }
-        fadeCanvasGroup.alpha = 1f;
+        SetFadeAlpha(1f);
     }
 
     private IEnumerator FadeIn()
     {
-        if (fadeCanvasGroup == null) yield break;
+        if (fadeImage == null) yield break;
 
         float t = 0f;
         while (t < fadeDuration)
         {
             t += Time.unscaledDeltaTime;
-            fadeCanvasGroup.alpha = Mathf.Lerp(1f, 0f, t / fadeDuration);
+            SetFadeAlpha(Mathf.Lerp(1f, 0f, t / fadeDuration));
             yield return null;
         }
-        fadeCanvasGroup.alpha = 0f;
-        fadeCanvasGroup.blocksRaycasts = false;
+        SetFadeAlpha(0f);
+        fadeImage.raycastTarget = false;
     }
 
     private void UpdateLoadingBar(float progress)

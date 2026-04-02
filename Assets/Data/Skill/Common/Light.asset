@@ -26,9 +26,10 @@ MonoBehaviour:
   baseValue: 100
   valuePerLevel: 20
   duration: 0
-  cooldown: 1
+  cooldown: 5
   manaCost: 1
   castTime: 1
+  fireRate: 0
   range: 10
   areaRadius: 20
   prerequisiteSkills: []

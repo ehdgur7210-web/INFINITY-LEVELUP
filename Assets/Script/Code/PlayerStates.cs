@@ -100,6 +100,8 @@ public class PlayerStats : MonoBehaviour, IHitable
     public float bonusMaxHp;
     public float bonusSpeed;
     public float bonusCritical;
+    [Tooltip("공격속도 보너스 (%). 장비/버프로 누적. 50이면 50% 빨라짐")]
+    public float bonusAttackSpeed;
 
     // ★★★ 레벨업으로 누적된 스탯 (별도 추적) ★★★
     private float levelBonusAttack;
@@ -311,6 +313,12 @@ public class PlayerStats : MonoBehaviour, IHitable
     /// PlayerController에서 moveSpeed + PlayerStats.Instance.GetTotalSpeedBonus() 형태로 사용
     /// </summary>
     public float GetTotalSpeedBonus() => bonusSpeed + levelBonusSpeed;
+
+    /// <summary>
+    /// 공격속도 배율 반환 (1.0 = 기본, 1.5 = 50% 빠름)
+    /// fireRate에 나누기로 적용: 실제간격 = 기본간격 / GetAttackSpeedMultiplier()
+    /// </summary>
+    public float GetAttackSpeedMultiplier() => 1f + (bonusAttackSpeed / 100f);
 
     #endregion
     // ─────────────────────────────────────────────────────────────────────

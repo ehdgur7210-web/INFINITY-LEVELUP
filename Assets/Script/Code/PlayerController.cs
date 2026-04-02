@@ -337,11 +337,6 @@ public class PlayerController : MonoBehaviour
             aimDirection = (mousePos - (Vector2)transform.position).normalized;
         }
 
-        if (SkillProjectileHandler.Instance != null)
-        {
-            SkillProjectileHandler.Instance.UpdateAimDirection(aimDirection);
-        }
-
         if (characterType == CharacterType.Ranged && weaponPivot != null)
         {
             float angle = Mathf.Atan2(aimDirection.y, aimDirection.x) * Mathf.Rad2Deg;
@@ -366,9 +361,6 @@ public class PlayerController : MonoBehaviour
             // 4방향: 적 방향으로 애니메이션 방향 갱신
             UpdateFacingDirection(aimDirection);
         }
-
-        if (SkillProjectileHandler.Instance != null)
-            SkillProjectileHandler.Instance.UpdateAimDirection(aimDirection);
 
         // weaponPivot 회전을 0으로 고정 (뒤집힘/회전 방지)
         if (weaponPivot != null)
@@ -431,7 +423,10 @@ public class PlayerController : MonoBehaviour
             return;
 
         PerformMeleeAttack();
-        nextMeleeTime = Time.time + meleeAttackCooldown;
+
+        float speedMult = PlayerStats.Instance != null
+            ? PlayerStats.Instance.GetAttackSpeedMultiplier() : 1f;
+        nextMeleeTime = Time.time + (meleeAttackCooldown / Mathf.Max(speedMult, 0.1f));
     }
 
     private void PerformMeleeAttack()
@@ -483,7 +478,11 @@ public class PlayerController : MonoBehaviour
             return;
 
         Fire();
-        nextFireTime = Time.time + fireRate;
+
+        // 공격속도 배율 적용 (bonusAttackSpeed 50% → 1.5배 빠름)
+        float speedMult = PlayerStats.Instance != null
+            ? PlayerStats.Instance.GetAttackSpeedMultiplier() : 1f;
+        nextFireTime = Time.time + (fireRate / Mathf.Max(speedMult, 0.1f));
     }
 
     private void Fire()
@@ -796,6 +795,15 @@ public class PlayerController : MonoBehaviour
                 bulletScript.SetCriticalTier(critTier);
                 bulletScript.Initialize(aimDirection);
             }
+            else
+            {
+                // Cartoon Coffee Projectile 지원
+                Projectile ccProj = bullet.GetComponent<Projectile>();
+                if (ccProj != null)
+                {
+                    ccProj.Initialize(aimDirection, (int)finalDmg, critTier);
+                }
+            }
         }
 
         if (skillData.attackEffectPrefab != null)
@@ -843,10 +851,21 @@ public class PlayerController : MonoBehaviour
 
         if (fireball != null)
         {
+            float radius = skillData.areaRadius > 0 ? skillData.areaRadius : 1.5f;
+
             FireballProjectile fb = fireball.GetComponent<FireballProjectile>();
             if (fb != null)
             {
-                fb.Initialize(aimDirection, (int)finalDmg, skillData.areaRadius > 0 ? skillData.areaRadius : 1.5f);
+                fb.Initialize(aimDirection, (int)finalDmg, radius, critTier);
+            }
+            else
+            {
+                // Cartoon Coffee Projectile 지원
+                Projectile ccProj = fireball.GetComponent<Projectile>();
+                if (ccProj != null)
+                {
+                    ccProj.Initialize(aimDirection, (int)finalDmg, critTier);
+                }
             }
         }
 

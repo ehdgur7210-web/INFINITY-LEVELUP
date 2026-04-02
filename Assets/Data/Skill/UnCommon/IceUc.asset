@@ -29,9 +29,10 @@ MonoBehaviour:
   cooldown: 5
   manaCost: 1
   castTime: 1
+  fireRate: 0
   range: 30
   areaRadius: 30
   prerequisiteSkills: []
   effectPrefab: {fileID: 0}
   skillSound: {fileID: 0}
-  attackEffectPrefab: {fileID: 1867452766579630763, guid: 177e7599d5798764ab1129d01e02ec11, type: 3}
+  attackEffectPrefab: {fileID: 6487449667946602268, guid: 95cc0979409f3534f89f2f761d3ac374, type: 3}

@@ -75,6 +75,10 @@ public class SkillData : ScriptableObject
     public int manaCost;
     public float castTime;
 
+    [Header("발사 속도")]
+    [Tooltip("투사체 발사 간격 (초). 0이면 PlayerController 기본 fireRate 사용")]
+    public float fireRate;
+
     [Header("범위")]
     public float range;
     public float areaRadius;

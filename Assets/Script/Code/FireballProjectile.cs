@@ -23,6 +23,7 @@ public class FireballProjectile : MonoBehaviour
     // 내부 상태
     private Vector2 direction;
     private int damage;
+    private int criticalTier;
     private float explosionRadius;
     private bool hasExploded = false;
     private float spawnTime;
@@ -48,6 +49,7 @@ public class FireballProjectile : MonoBehaviour
     void OnEnable()
     {
         hasExploded = false;
+        criticalTier = 0;
         spawnTime = Time.time;
     }
 
@@ -75,12 +77,13 @@ public class FireballProjectile : MonoBehaviour
     /// <summary>
     /// 파이어볼 초기화
     /// </summary>
-    public void Initialize(Vector2 dir, int dmg, float radius)
+    public void Initialize(Vector2 dir, int dmg, float radius, int critTier = 0)
     {
         // ★ 마법 발사 효과음
         SoundManager.Instance?.PlayMagicCast();
         direction = dir.normalized;
         damage = dmg;
+        criticalTier = critTier;
         explosionRadius = radius;
         spawnTime = Time.time;
         hasExploded = false;
@@ -137,11 +140,20 @@ public class FireballProjectile : MonoBehaviour
 
         foreach (Collider2D enemy in enemies)
         {
-            IHitable hitable = enemy.GetComponent<IHitable>();
-            if (hitable != null)
+            Monster monster = enemy.GetComponent<Monster>();
+            if (monster != null)
             {
-                hitable.Hit(damage);
-                Debug.Log($"[Fireball] {enemy.name}에게 {damage} 데미지");
+                monster.Hit(damage, criticalTier);
+            }
+            else
+            {
+                IHitable hitable = enemy.GetComponent<IHitable>();
+                if (hitable != null)
+                {
+                    hitable.Hit(damage);
+                    if (DamagePopupManager.Instance != null)
+                        DamagePopupManager.Instance.ShowDamage(enemy.transform.position, damage, criticalTier);
+                }
             }
         }
 
