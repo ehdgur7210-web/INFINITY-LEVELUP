@@ -205,7 +205,7 @@ public class Projectile : MonoBehaviour
         if (!isActive) return;
 
         // 플레이어/총알 무시
-        if (other.CompareTag("Player") || other.CompareTag("Bullet") || other.CompareTag("Projectile"))
+        if (other.CompareTag("Player") || other.CompareTag("Bullet") || other.gameObject == gameObject)
             return;
 
         // 몬스터 충돌

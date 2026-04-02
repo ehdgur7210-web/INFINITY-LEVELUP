@@ -1158,6 +1158,10 @@ public class SaveData
     public float offlineEquipTicketRate;
     public int offlineCurrentWave;
 
+    // ── 2배 보상 횟수 ──
+    public int adClaimCount;
+    public string adClaimDate;
+
     // ── 튜토리얼 ──
     public bool tutorialCompleted;
     public int tutorialPhase = 0;  // 0=미시작, 1=Phase1완료, 2=Phase2완료, 3=Phase3완료, 99=전체완료

@@ -116,6 +116,16 @@ public class OfflineRewardManager : MonoBehaviour
 
         accumulatedMinutes = data.accumulatedOfflineMinutes;
 
+        // 2배 보상 횟수 복원
+        lastAdClaimDate = data.adClaimDate ?? "";
+        todayAdClaimCount = data.adClaimCount;
+        // 날짜가 바뀌었으면 리셋
+        if (lastAdClaimDate != DateTime.Now.ToString("yyyy-MM-dd"))
+        {
+            todayAdClaimCount = 0;
+            lastAdClaimDate = DateTime.Now.ToString("yyyy-MM-dd");
+        }
+
         // 오프라인 경과 시간 합산
         string lastSaveStr = data.lastLogoutTime ?? "";
         if (!string.IsNullOrEmpty(lastSaveStr))
@@ -232,55 +242,132 @@ public class OfflineRewardManager : MonoBehaviour
     // ═══════════════════════════════════════════════
     // 수령
     // ═══════════════════════════════════════════════
-    public void ClaimReward() => ApplyReward(1f);
-    public void ClaimRewardWithAd() => ApplyReward(adBonusMultiplier);
+    [Header("2배 보상 (8시간 기준)")]
+    [Tooltip("2배 버튼 시 지급할 시간 (시간 단위)")]
+    [SerializeField] private float adBonusHours = 8f;
+    [Tooltip("하루 최대 2배 보상 사용 횟수")]
+    [SerializeField] private int maxAdClaimPerDay = 3;
 
-    private void ApplyReward(float bonusMultiplier)
+    private int todayAdClaimCount = 0;
+    private string lastAdClaimDate = "";
+
+    public int RemainingAdClaims => maxAdClaimPerDay - GetTodayAdClaimCount();
+
+    public void ClaimReward() => ApplyReward(1f, false);
+    public void ClaimRewardWithAd() => ApplyReward(1f, true);
+
+    private int GetTodayAdClaimCount()
+    {
+        string today = DateTime.Now.ToString("yyyy-MM-dd");
+        if (lastAdClaimDate != today)
+        {
+            todayAdClaimCount = 0;
+            lastAdClaimDate = today;
+        }
+        return todayAdClaimCount;
+    }
+
+    private void ApplyReward(float bonusMultiplier, bool isAdClaim)
     {
         if (!IsClaimable) return;
 
-        OfflineRewardData reward = CalculateCurrentReward();
+        int finalGold, finalExp, finalGem, finalTicket;
+        string label;
 
-        int finalGold = Mathf.RoundToInt(reward.goldReward * bonusMultiplier);
-        int finalExp = Mathf.RoundToInt(reward.expReward * bonusMultiplier);
-        int finalGem = Mathf.RoundToInt(reward.gemReward * bonusMultiplier);
-        int finalTicket = Mathf.RoundToInt(reward.equipmentTicketReward * bonusMultiplier);  // ★ 추가
+        if (isAdClaim)
+        {
+            // ★ 2배 보상: 시간당 레이트 × 8시간 (누적 시간 무관)
+            if (GetTodayAdClaimCount() >= maxAdClaimPerDay)
+            {
+                UIManager.Instance?.ShowMessage(
+                    $"오늘 2배 보상 횟수를 모두 사용했습니다! ({maxAdClaimPerDay}/{maxAdClaimPerDay})", Color.red);
+                return;
+            }
+
+            float adMinutes = adBonusHours * 60f;
+
+            SaveData saved = GameDataBridge.CurrentData;
+            int savedWave = WaveSpawner.Instance?.CurrentWaveIndex ?? (saved?.offlineCurrentWave ?? 0);
+            float waveBonus = 1f + (savedWave * waveRewardBonusPercent / 100f);
+
+            float goldRate  = (saved != null && saved.offlineGoldRate > 0) ? saved.offlineGoldRate : goldPerMinute;
+            float expRate   = (saved != null && saved.offlineExpRate > 0) ? saved.offlineExpRate : expPerMinute;
+            float gemRate   = (saved != null && saved.offlineGemRate > 0) ? saved.offlineGemRate : gemPerMinute;
+            float tickRate  = (saved != null && saved.offlineEquipTicketRate > 0) ? saved.offlineEquipTicketRate : equipmentTicketsPerMinute;
+
+            finalGold   = Mathf.RoundToInt(goldRate * adMinutes * rewardMultiplier * waveBonus);
+            finalExp    = Mathf.RoundToInt(expRate * adMinutes * rewardMultiplier * waveBonus);
+            finalGem    = Mathf.RoundToInt(gemRate * adMinutes * rewardMultiplier * waveBonus);
+            finalTicket = Mathf.RoundToInt(tickRate * adMinutes * rewardMultiplier * waveBonus);
+
+            todayAdClaimCount++;
+            label = $"2배 보상! ({(int)adBonusHours}시간분)\n남은 횟수: {RemainingAdClaims}/{maxAdClaimPerDay}";
+        }
+        else
+        {
+            // ★ 일반 수령: 누적 시간 기반
+            OfflineRewardData reward = CalculateCurrentReward();
+            finalGold   = Mathf.RoundToInt(reward.goldReward * bonusMultiplier);
+            finalExp    = Mathf.RoundToInt(reward.expReward * bonusMultiplier);
+            finalGem    = Mathf.RoundToInt(reward.gemReward * bonusMultiplier);
+            finalTicket = Mathf.RoundToInt(reward.equipmentTicketReward * bonusMultiplier);
+            label = "보상 수령!";
+        }
+
+        // ── 지급 ──
+        Debug.Log($"[RewardManager] 지급 시도 — 골드:{finalGold} EXP:{finalExp} 젬:{finalGem} 티켓:{finalTicket} | GameManager:{GameManager.Instance != null}");
 
         if (GameManager.Instance != null)
         {
             if (finalGold > 0) GameManager.Instance.AddGold(finalGold);
-            if (finalExp > 0) GameManager.Instance.AddExp(finalExp);
+            if (finalExp > 0)
+            {
+                int prevLevel = GameManager.Instance.PlayerLevel;
+                GameManager.Instance.AddExp(finalExp);
+                int newLevel = GameManager.Instance.PlayerLevel;
+                Debug.Log($"[RewardManager] EXP +{finalExp} → Lv.{prevLevel} → Lv.{newLevel}");
+            }
             if (finalGem > 0) GameManager.Instance.AddGem(finalGem);
         }
-
-        // ★ 추가: 장비 티켓 지급
-        if (finalTicket > 0 && ResourceBarManager.Instance != null)
+        else
         {
-            ResourceBarManager.Instance.AddEquipmentTickets(finalTicket);
-            Debug.Log($"[RewardManager] 장비 티켓 +{finalTicket} 지급 완료");
+            Debug.LogError("[RewardManager] GameManager.Instance가 null! 보상 지급 불가!");
         }
 
-        if (reward.itemRewards != null && InventoryManager.Instance != null)
-            foreach (var item in reward.itemRewards)
-                InventoryManager.Instance.AddItem(item.item,
-                    Mathf.RoundToInt(item.amount * bonusMultiplier));
+        if (finalTicket > 0 && ResourceBarManager.Instance != null)
+            ResourceBarManager.Instance.AddEquipmentTickets(finalTicket);
 
-        string multi = bonusMultiplier > 1f ? $" (x{bonusMultiplier})" : "";
+        // 일반 수령일 때만 아이템 보상
+        if (!isAdClaim)
+        {
+            OfflineRewardData reward = CalculateCurrentReward();
+            if (reward.itemRewards != null && InventoryManager.Instance != null)
+                foreach (var item in reward.itemRewards)
+                    InventoryManager.Instance.AddItem(item.item, item.amount);
+        }
+
         UIManager.Instance?.ShowMessage(
-            $"보상 수령!{multi}\n골드:{finalGold} EXP:{finalExp} 젬:{finalGem} 장비티켓:{finalTicket}",  // ★ 티켓 표시 추가
+            $"{label}\n골드:{finalGold} EXP:{finalExp} 젬:{finalGem} 티켓:{finalTicket}",
             Color.yellow);
 
-        reward.appliedMultiplier = bonusMultiplier;
-        OnRewardClaimed?.Invoke(reward);
+        OnRewardClaimed?.Invoke(CalculateCurrentReward());
 
         // ★ 누적 리셋
         accumulatedMinutes = 0f;
         SaveCurrentTime();
-        NotifyUI();
 
+        // 2배 횟수 저장
+        if (GameDataBridge.CurrentData != null)
+        {
+            GameDataBridge.CurrentData.adClaimCount = todayAdClaimCount;
+            GameDataBridge.CurrentData.adClaimDate = lastAdClaimDate;
+        }
+
+        NotifyUI();
         SaveLoadManager.Instance?.SaveGame();
 
-        Debug.Log($"[RewardManager] 수령 완료 - 골드:{finalGold} EXP:{finalExp} 젬:{finalGem} 장비티켓:{finalTicket}");
+        Debug.Log($"[RewardManager] 수령 완료 — 골드:{finalGold} EXP:{finalExp} 젬:{finalGem} 티켓:{finalTicket}" +
+                  (isAdClaim ? $" [2배보상 {todayAdClaimCount}/{maxAdClaimPerDay}]" : ""));
     }
 
     // ═══════════════════════════════════════════════

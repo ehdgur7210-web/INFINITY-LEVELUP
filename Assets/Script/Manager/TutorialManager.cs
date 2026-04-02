@@ -866,6 +866,83 @@ public class TutorialManager : MonoBehaviour
     {
         if (string.IsNullOrEmpty(targetName)) return null;
 
+        // ═══ 특수 패턴 처리 ═══
+
+        // "FarmPlot:N" → plotIndex=N인 FarmPlotController
+        if (targetName.StartsWith("FarmPlot:"))
+        {
+            string idxStr = targetName.Substring("FarmPlot:".Length);
+            if (int.TryParse(idxStr, out int idx))
+            {
+                var plots = FindObjectsOfType<FarmPlotController>(true);
+                foreach (var p in plots)
+                    if (p.plotIndex == idx) return p.gameObject;
+            }
+            return null;
+        }
+
+        // "InvenSlot:N" → 인벤토리 N번째 활성 슬롯 (0부터)
+        if (targetName.StartsWith("InvenSlot:"))
+        {
+            string idxStr = targetName.Substring("InvenSlot:".Length);
+            if (int.TryParse(idxStr, out int idx) && InventoryManager.Instance != null)
+            {
+                var parent = InventoryManager.Instance.GetEquipSlotParent();
+                if (parent != null)
+                {
+                    int count = 0;
+                    for (int i = 0; i < parent.childCount; i++)
+                    {
+                        var child = parent.GetChild(i);
+                        if (child.gameObject.activeSelf)
+                        {
+                            if (count == idx) return child.gameObject;
+                            count++;
+                        }
+                    }
+                }
+            }
+            return null;
+        }
+
+        // "ChildOf:부모이름/자식이름" → 특정 부모 아래 자식 찾기
+        if (targetName.StartsWith("ChildOf:"))
+        {
+            string path = targetName.Substring("ChildOf:".Length);
+            string[] parts = path.Split('/');
+            if (parts.Length == 2)
+            {
+                GameObject parentObj = GameObject.Find(parts[0]);
+                if (parentObj != null)
+                {
+                    Transform child = FindInChildren(parentObj.transform, parts[1]);
+                    if (child != null) return child.gameObject;
+                }
+            }
+            return null;
+        }
+
+        // "Contains:키워드" → 이름에 키워드가 포함된 첫 번째 활성 오브젝트
+        if (targetName.StartsWith("Contains:"))
+        {
+            string keyword = targetName.Substring("Contains:".Length);
+            foreach (GameObject root in SceneManager.GetActiveScene().GetRootGameObjects())
+            {
+                Transform result = FindInChildrenContains(root.transform, keyword);
+                if (result != null) return result.gameObject;
+            }
+            // DontDestroyOnLoad도 탐색
+            var allObj = FindObjectsOfType<Transform>(false);
+            foreach (var t in allObj)
+            {
+                if (t.gameObject.activeInHierarchy && t.name.Contains(keyword))
+                    return t.gameObject;
+            }
+            return null;
+        }
+
+        // ═══ 기본 이름 검색 ═══
+
         // 1. 직접 검색 (활성 오브젝트)
         GameObject found = GameObject.Find(targetName);
         if (found != null) return found;
@@ -877,19 +954,11 @@ public class TutorialManager : MonoBehaviour
             if (result != null) return result.gameObject;
         }
 
-        // 3. ★ FarmPlot 특수 검색: "FarmPlot:N" → plotIndex=N인 FarmPlotController
-        if (targetName.StartsWith("FarmPlot:"))
+        // 3. DontDestroyOnLoad 오브젝트도 검색
+        var ddolObjects = FindObjectsOfType<Transform>(true);
+        foreach (var t in ddolObjects)
         {
-            string idxStr = targetName.Substring("FarmPlot:".Length);
-            int idx;
-            if (int.TryParse(idxStr, out idx))
-            {
-                var plots = FindObjectsOfType<FarmPlotController>(true);
-                foreach (var p in plots)
-                {
-                    if (p.plotIndex == idx) return p.gameObject;
-                }
-            }
+            if (t.name == targetName) return t.gameObject;
         }
 
         return null;
@@ -901,6 +970,17 @@ public class TutorialManager : MonoBehaviour
         for (int i = 0; i < parent.childCount; i++)
         {
             Transform found = FindInChildren(parent.GetChild(i), targetName);
+            if (found != null) return found;
+        }
+        return null;
+    }
+
+    private Transform FindInChildrenContains(Transform parent, string keyword)
+    {
+        if (parent.gameObject.activeInHierarchy && parent.name.Contains(keyword)) return parent;
+        for (int i = 0; i < parent.childCount; i++)
+        {
+            Transform found = FindInChildrenContains(parent.GetChild(i), keyword);
             if (found != null) return found;
         }
         return null;

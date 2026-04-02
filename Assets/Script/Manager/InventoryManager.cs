@@ -673,6 +673,9 @@ public class InventoryManager : MonoBehaviour
         BuildEquipSlots();
     }
 
+    /// <summary>장비 탭 슬롯 부모 반환 (튜토리얼 InvenSlot:N 용)</summary>
+    public Transform GetEquipSlotParent() => equipmentContainer;
+
     /// <summary>현재 탭의 인벤토리 UI를 갱신 (외부 호출용)</summary>
     public void RefreshInventoryUI()
     {

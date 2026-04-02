@@ -54,9 +54,9 @@ public class OfflineRewardUI : MonoBehaviour
     [SerializeField] private GameObject itemSlotPrefab;
 
     [Header("버튼")]
-    [SerializeField] private Button quickMoveButton;    // 닫기
+    [SerializeField] private Button quickMoveButton;    // 2배 보상 (8시간분)
     [SerializeField] private Button claimButton;        // 수령
-    [SerializeField] private Button adClaimButton;      // 2배 (선택)
+    [SerializeField] private Button adClaimButton;      // (미사용)
 
     [Header("수령 버튼 색상")]
     [SerializeField] private Color claimReadyColor = new Color(1f, 0.85f, 0.1f);
@@ -71,9 +71,10 @@ public class OfflineRewardUI : MonoBehaviour
     {
         // ★ 버튼 이벤트 연결
         if (toggleButton != null) toggleButton.onClick.AddListener(TogglePanel);
-        if (quickMoveButton != null) quickMoveButton.onClick.AddListener(ClosePanel);
+        if (quickMoveButton != null) quickMoveButton.onClick.AddListener(OnQuickClaimClicked);
         if (claimButton != null) claimButton.onClick.AddListener(OnClaimClicked);
-        if (adClaimButton != null) adClaimButton.onClick.AddListener(OnAdClaimClicked);
+
+        // adClaimButton은 미사용 — quickMoveButton이 2배보상 역할
 
         // ★ 매니저 이벤트 구독
         OfflineRewardManager.OnRewardUpdated += RefreshUI;
@@ -267,8 +268,12 @@ public class OfflineRewardUI : MonoBehaviour
             var img = claimButton.GetComponent<Image>();
             if (img != null) img.color = canClaim ? claimReadyColor : claimNotReadyColor;
         }
-        if (adClaimButton != null)
-            adClaimButton.interactable = canClaim;
+        // quickMoveButton(2배보상) 상태 갱신
+        if (quickMoveButton != null)
+        {
+            int remaining = OfflineRewardManager.Instance?.RemainingAdClaims ?? 0;
+            quickMoveButton.interactable = remaining > 0;
+        }
     }
 
     // ── 아이템 슬롯 갱신 ──────────────────────────
@@ -313,12 +318,20 @@ public class OfflineRewardUI : MonoBehaviour
         if (OfflineRewardManager.Instance == null) return;
         SoundManager.Instance?.PlayOfflineReward();
         OfflineRewardManager.Instance.ClaimReward();
-        // 수령 후 패널은 닫지 않음 - 계속 열려있게
     }
 
-    private void OnAdClaimClicked()
+    /// <summary>2배 보상 버튼 (quickMoveButton) — 8시간분 보상 즉시 지급</summary>
+    private void OnQuickClaimClicked()
     {
         if (OfflineRewardManager.Instance == null) return;
+
+        int remaining = OfflineRewardManager.Instance.RemainingAdClaims;
+        if (remaining <= 0)
+        {
+            UIManager.Instance?.ShowMessage("오늘 2배 보상 횟수를 모두 사용했습니다!", Color.red);
+            return;
+        }
+
         SoundManager.Instance?.PlayOfflineReward();
         OfflineRewardManager.Instance.ClaimRewardWithAd();
     }
