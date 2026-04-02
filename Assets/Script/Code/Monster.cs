@@ -288,9 +288,15 @@ public class Monster : MonoBehaviour, IHitable
     //  피격
     // ════════════════════════════════════════
 
-    public void Hit(float damageAmount) { Hit(damageAmount, 0); }
+    public void Hit(float damageAmount) { Hit(damageAmount, 0, null); }
 
-    public void Hit(float damageAmount, int criticalTier)
+    public void Hit(float damageAmount, int criticalTier) { Hit(damageAmount, criticalTier, null); }
+
+    /// <summary>
+    /// 피격 처리 (스킬 히트 이펙트 지원)
+    /// hitEffectPrefab이 있으면 몬스터 위치에 해당 이펙트 생성 (번개, 폭발 등)
+    /// </summary>
+    public void Hit(float damageAmount, int criticalTier, GameObject hitEffectPrefab)
     {
         if (isDead) return;
 
@@ -302,6 +308,13 @@ public class Monster : MonoBehaviour, IHitable
             DamagePopupManager.Instance.ShowDamage(transform.position, damageAmount, criticalTier);
 
         if (healthBar != null) healthBar.ShowTemporarily();
+
+        // ★ 스킬 히트 이펙트 (번개 등) — 전달된 프리팹이 있으면 몬스터 위치에 생성
+        if (hitEffectPrefab != null)
+        {
+            GameObject fx = Instantiate(hitEffectPrefab, transform.position, Quaternion.identity);
+            Destroy(fx, 2f);
+        }
 
         // 피격 반짝이
         if (spriteRenderer != null)

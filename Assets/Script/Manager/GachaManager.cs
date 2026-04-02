@@ -26,11 +26,17 @@ public class GachaManager : MonoBehaviour
     [Header("가챠 설정")]
     public int ticketCostPerGacha = 1;      // 1회당 티켓 소모량
 
+    [Header("다연차 횟수 (풀별 설정)")]
+    [Tooltip("다연차 버튼 1 횟수 (기본 10연차)")]
+    public int multiGachaCount = 10;
+    [Tooltip("다연차 버튼 2 횟수 (기본 100연차)")]
+    public int bulkGachaCount = 100;
+
     [Header("VIP 경험치 보상")]
-    [Tooltip("10연차 완료 시 VIP 경험치")]
-    public int vipExpPerTenGacha = 50;
-    [Tooltip("100연차 완료 시 VIP 경험치")]
-    public int vipExpPerHundredGacha = 200;
+    [Tooltip("다연차 1 완료 시 VIP 경험치")]
+    public int vipExpPerMultiGacha = 50;
+    [Tooltip("다연차 2 완료 시 VIP 경험치")]
+    public int vipExpPerBulkGacha = 200;
 
     [Header("가챠 풀 (레벨별)")]
     public List<GachaItem> gachaPoolLv1 = new List<GachaItem>();
@@ -339,16 +345,16 @@ public class GachaManager : MonoBehaviour
         Debug.Log("[GachaManager] ========== 1회 가챠 완료 ==========");
     }
 
-    /// <summary>10연차 (ResourceBarManager 연동)</summary>
+    /// <summary>다연차 1 (multiGachaCount 횟수만큼)</summary>
     public void PerformTenGacha()
     {
-        Debug.Log("[GachaManager] ========== 10연차 가챠 시작 ==========");
+        Debug.Log($"[GachaManager] ========== {multiGachaCount}연차 가챠 시작 ==========");
 
         if (!CheckGachaPool()) return;
-        if (!SpendTickets(ticketCostPerGacha * 10)) return;
+        if (!SpendTickets(ticketCostPerGacha * multiGachaCount)) return;
 
         List<EquipmentData> results = new List<EquipmentData>();
-        for (int i = 0; i < 10; i++)
+        for (int i = 0; i < multiGachaCount; i++)
         {
             EquipmentData result = PerformGacha();
             if (result != null)
@@ -359,54 +365,50 @@ public class GachaManager : MonoBehaviour
             }
         }
 
-        // ★ VIP 경험치 지급
-        if (vipExpPerTenGacha > 0)
-            VipManager.Instance?.AddVipExp(vipExpPerTenGacha);
+        if (vipExpPerMultiGacha > 0)
+            VipManager.Instance?.AddVipExp(vipExpPerMultiGacha);
 
-        // 10연차 결과 즉시 저장
         SaveLoadManager.Instance?.SaveGame();
-
         ShowGachaResults(results);
         RefreshGachaUI();
-
-        // 장비탭 슬롯 갱신
         InventoryManager.Instance?.RefreshEquipDisplay();
 
-        Debug.Log("[GachaManager] ========== 10연차 가챠 완료 ==========");
+        Debug.Log($"[GachaManager] ========== {multiGachaCount}연차 가챠 완료 ==========");
     }
 
-    /// <summary>100연차 (ResourceBarManager 연동)</summary>
+    /// <summary>다연차 2 (bulkGachaCount 횟수만큼)</summary>
     public void PerformHundredGacha()
     {
-        Debug.Log("[GachaManager] ========== 100연차 가챠 시작 ==========");
+        Debug.Log($"[GachaManager] ========== {bulkGachaCount}연차 가챠 시작 ==========");
 
         if (!CheckGachaPool()) return;
-        if (!SpendTickets(ticketCostPerGacha * 100)) return;
+        if (!SpendTickets(ticketCostPerGacha * bulkGachaCount)) return;
 
-        UIManager.Instance?.ShowMessage("⏳ 100연차 뽑기 중...", Color.white);
-        StartCoroutine(HundredGachaCoroutine());
+        UIManager.Instance?.ShowMessage($"⏳ {bulkGachaCount}연차 뽑기 중...", Color.white);
+        StartCoroutine(BulkGachaCoroutine());
     }
 
-    /// <summary>100연차 코루틴 — 프레임 분산으로 멈춤 방지</summary>
-    private System.Collections.IEnumerator HundredGachaCoroutine()
+    /// <summary>대량 연차 코루틴 — 프레임 분산으로 멈춤 방지</summary>
+    private System.Collections.IEnumerator BulkGachaCoroutine()
     {
-        var results = new List<EquipmentData>(100);
+        var results = new List<EquipmentData>(bulkGachaCount);
+        int batchSize = Mathf.Max(25, bulkGachaCount / 4);
 
-        // Phase 1: 뽑기 (25개씩 프레임 분산)
-        for (int i = 0; i < 100; i++)
+        // Phase 1: 뽑기 (batchSize개씩 프레임 분산)
+        for (int i = 0; i < bulkGachaCount; i++)
         {
             EquipmentData result = PerformGacha();
             if (result != null) results.Add(result);
-            if ((i + 1) % 25 == 0) yield return null;
+            if ((i + 1) % batchSize == 0) yield return null;
         }
 
-        // Phase 2: 인벤토리 일괄 추가 (25개씩 분산)
+        // Phase 2: 인벤토리 일괄 추가
         if (InventoryManager.Instance != null)
         {
             for (int i = 0; i < results.Count; i++)
             {
                 InventoryManager.Instance.AddItem(results[i], 1, false);
-                if ((i + 1) % 25 == 0) yield return null;
+                if ((i + 1) % batchSize == 0) yield return null;
             }
         }
 
@@ -431,17 +433,16 @@ public class GachaManager : MonoBehaviour
             else if (item.rarity == ItemRarity.Rare) rare++;
         }
 
-        // ★ VIP 경험치 지급
-        if (vipExpPerHundredGacha > 0)
-            VipManager.Instance?.AddVipExp(vipExpPerHundredGacha);
+        if (vipExpPerBulkGacha > 0)
+            VipManager.Instance?.AddVipExp(vipExpPerBulkGacha);
 
         SaveLoadManager.Instance?.SaveGame();
         ShowGachaResults(results);
         RefreshGachaUI();
         InventoryManager.Instance?.RefreshEquipDisplay();
 
-        UIManager.Instance?.ShowMessage($"100연차 완료! 전설 {leg}개!", Color.yellow);
-        Debug.Log($"[GachaManager] 100연차 결과: 전설{leg} / 영웅{epic} / 희귀{rare}");
+        UIManager.Instance?.ShowMessage($"{bulkGachaCount}연차 완료! 전설 {leg}개!", Color.yellow);
+        Debug.Log($"[GachaManager] {bulkGachaCount}연차 결과: 전설{leg} / 영웅{epic} / 희귀{rare}");
     }
 
     // ════════════════════════════════════════════════════════
@@ -726,11 +727,11 @@ public class GachaManager : MonoBehaviour
 
     public bool CanPerformTenGacha()
         => ResourceBarManager.Instance != null &&
-           ResourceBarManager.Instance.HasEquipmentTickets(ticketCostPerGacha * 10);
+           ResourceBarManager.Instance.HasEquipmentTickets(ticketCostPerGacha * multiGachaCount);
 
     public bool CanPerformHundredGacha()
         => ResourceBarManager.Instance != null &&
-           ResourceBarManager.Instance.HasEquipmentTickets(ticketCostPerGacha * 100);
+           ResourceBarManager.Instance.HasEquipmentTickets(ticketCostPerGacha * bulkGachaCount);
 
     public float GetLevelProgress()
         => (float)currentGachaCount / gachaCountForLevelUp * 100f;

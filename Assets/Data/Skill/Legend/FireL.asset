@@ -33,6 +33,7 @@ MonoBehaviour:
   range: 200
   areaRadius: 200
   prerequisiteSkills: []
-  effectPrefab: {fileID: 4695098614234420828, guid: f85dced69bdbde04db90b3e73142865d, type: 3}
+  effectPrefab: {fileID: 8482821253585752479, guid: b2d1a7e3c779c334183600eee56341df, type: 3}
   skillSound: {fileID: 0}
   attackEffectPrefab: {fileID: 786301608763268689, guid: 3cc24ea55df837f419d0fc00bf511007, type: 3}
+  hitEffectPrefab: {fileID: 8482821253585752479, guid: b2d1a7e3c779c334183600eee56341df, type: 3}

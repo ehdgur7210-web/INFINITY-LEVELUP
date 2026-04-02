@@ -66396,6 +66396,28 @@ MonoBehaviour:
     - rewardType: 1
       itemData: {fileID: 0}
       amount: 1000000
+  - mailID: 2
+    title: "\"1\uACBD\uB2E4\uC6B4\uB85C\uB4DC\""
+    content: "1\uACBD\uB2E4\uC6B4\uB85C\uB4DC \uAC10\uC0AC \uC120\uBB3C"
+    isRead: 1
+    hasReward: 1
+    isRewardClaimed: 0
+    rewards:
+    - rewardType: 1
+      itemData: {fileID: 0}
+      amount: 1000000
+    - rewardType: 2
+      itemData: {fileID: 0}
+      amount: 10000
+    - rewardType: 7
+      itemData: {fileID: 0}
+      amount: 1000
+    - rewardType: 8
+      itemData: {fileID: 0}
+      amount: 1000
+    - rewardType: 10
+      itemData: {fileID: 0}
+      amount: 10000
   couponCodes:
   - code: "\uC624\uC988"
     description: "\"\uC624\uC988\""
@@ -66461,6 +66483,9 @@ MonoBehaviour:
       itemData: {fileID: 0}
       amount: 1000000000
     - rewardType: 8
+      itemData: {fileID: 0}
+      amount: 1000
+    - rewardType: 7
       itemData: {fileID: 0}
       amount: 1000
   usedCoupons:

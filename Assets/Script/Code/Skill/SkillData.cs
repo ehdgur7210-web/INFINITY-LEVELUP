@@ -94,6 +94,10 @@ public class SkillData : ScriptableObject
     [Tooltip("근거리=검기이펙트 / 원거리=총알프리팹 / 마법=파이어볼프리팹")]
     public GameObject attackEffectPrefab;
 
+    [Header("히트 이펙트 프리팹")]
+    [Tooltip("맞은 몬스터마다 생성되는 이펙트 (번개, 폭발 등). 없으면 생략")]
+    public GameObject hitEffectPrefab;
+
     public float GetValueAtLevel(int level)
     {
         return baseValue + (valuePerLevel * (level - 1));

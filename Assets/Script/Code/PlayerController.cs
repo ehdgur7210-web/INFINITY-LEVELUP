@@ -737,7 +737,8 @@ public class PlayerController : MonoBehaviour
             Monster monster = hit.GetComponent<Monster>();
             if (monster != null)
             {
-                monster.Hit(finalDmg, critTier);
+                // ★ 스킬 히트 이펙트를 몬스터에 전달 → 몬스터가 자기 위치에 생성
+                monster.Hit(finalDmg, critTier, skillData.hitEffectPrefab);
             }
             else
             {
@@ -747,11 +748,20 @@ public class PlayerController : MonoBehaviour
                     hitable.Hit(finalDmg);
                     if (DamagePopupManager.Instance != null)
                         DamagePopupManager.Instance.ShowDamage(hit.transform.position, finalDmg, critTier);
+
+                    // IHitable도 히트 이펙트 지원
+                    if (skillData.hitEffectPrefab != null)
+                    {
+                        GameObject fx = Instantiate(skillData.hitEffectPrefab, hit.transform.position, Quaternion.identity);
+                        Destroy(fx, 2f);
+                    }
                 }
             }
         }
 
-        SpawnSkillEffect(skillData, attackCenter);
+        // attackEffectPrefab은 히트이펙트가 없을 때만 (기존 호환)
+        if (skillData.hitEffectPrefab == null)
+            SpawnSkillEffect(skillData, attackCenter);
         TriggerAttackAnimation();
 
         Debug.Log($"[SkillMelee] {skillData.skillName} — {hits.Length}개 적 공격");
@@ -828,6 +838,52 @@ public class PlayerController : MonoBehaviour
             case 3: finalDmg *= (PlayerStats.Instance.ultraCriticalDamage / 100f); break;
         }
 
+        // ★ hitEffectPrefab이 있으면 → 범위 즉발 + 몬스터마다 히트 이펙트 (번개 등)
+        if (skillData.hitEffectPrefab != null)
+        {
+            float attackRange = skillData.range > 0 ? skillData.range : aimRange;
+            float attackRadius = skillData.areaRadius > 0 ? skillData.areaRadius : attackRange * 0.5f;
+
+            Vector2 attackCenter = (Vector2)transform.position + aimDirection * (attackRange * 0.5f);
+            Collider2D[] hits = Physics2D.OverlapCircleAll(attackCenter, attackRadius, enemyLayer);
+
+            foreach (Collider2D hit in hits)
+            {
+                // 몬스터별 개별 크리티컬 판정
+                int perHitCrit = PlayerStats.Instance.RollCriticalTier();
+                float perHitDmg = damageValue;
+                switch (perHitCrit)
+                {
+                    case 1: perHitDmg *= (PlayerStats.Instance.criticalDamage / 100f); break;
+                    case 2: perHitDmg *= (PlayerStats.Instance.superCriticalDamage / 100f); break;
+                    case 3: perHitDmg *= (PlayerStats.Instance.ultraCriticalDamage / 100f); break;
+                }
+
+                Monster monster = hit.GetComponent<Monster>();
+                if (monster != null)
+                {
+                    monster.Hit(perHitDmg, perHitCrit, skillData.hitEffectPrefab);
+                }
+                else
+                {
+                    IHitable hitable = hit.GetComponent<IHitable>();
+                    if (hitable != null)
+                    {
+                        hitable.Hit(perHitDmg);
+                        if (DamagePopupManager.Instance != null)
+                            DamagePopupManager.Instance.ShowDamage(hit.transform.position, perHitDmg, perHitCrit);
+
+                        GameObject fx = Instantiate(skillData.hitEffectPrefab, hit.transform.position, Quaternion.identity);
+                        Destroy(fx, 2f);
+                    }
+                }
+            }
+
+            TriggerAttackAnimation();
+            return;
+        }
+
+        // ★ hitEffectPrefab 없으면 → 기존 투사체 발사 방식
         GameObject fireball = null;
 
         if (PoolManager.Instance != null)

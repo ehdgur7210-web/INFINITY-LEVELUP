@@ -25,6 +25,10 @@ public class EnhancementSystem : MonoBehaviour
     public int baseEnhanceCost = 100;
     public float costMultiplier = 1.5f;
 
+    [Header("강화 단계별 비용 (직접 지정)")]
+    [Tooltip("배열이 비어있으면 baseEnhanceCost * costMultiplier^level 공식 사용.\n배열에 값이 있으면 해당 레벨의 비용을 직접 사용 (인덱스 0 = 0→1 강화)")]
+    public int[] customEnhanceCosts;
+
     [Header("강화 성공 확률")]
     public float[] successRates = new float[]
     {
@@ -533,7 +537,15 @@ public class EnhancementSystem : MonoBehaviour
         glowEffect.Stop();
     }
 
-    int CalculateEnhanceCost(int level) => Mathf.RoundToInt(baseEnhanceCost * Mathf.Pow(costMultiplier, level));
+    int CalculateEnhanceCost(int level)
+    {
+        // 직접 지정된 비용이 있으면 우선 사용
+        if (customEnhanceCosts != null && level < customEnhanceCosts.Length && customEnhanceCosts[level] > 0)
+            return customEnhanceCosts[level];
+
+        // 없으면 공식 사용
+        return Mathf.RoundToInt(baseEnhanceCost * Mathf.Pow(costMultiplier, level));
+    }
     bool RollEnhanceSuccess(int level) => Random.Range(0f, 100f) < GetSuccessRate(level);
     float GetSuccessRate(int level) => level < successRates.Length ? successRates[level] : 30f;
 

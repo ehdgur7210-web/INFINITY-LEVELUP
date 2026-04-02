@@ -36,10 +36,27 @@ public class GachaEquipmentTierManager : MonoBehaviour
     public int moleculeUnlockLevel = 10;
     public int dnaUnlockLevel = 20;
 
-    // ★ public 필드 (GachaManager에서 직접 접근)
-    [Header("레벨 1→2 업그레이드 추가 비용")]
-    public int lv1to2GoldCost = 500;
-    public int lv1to2CropPointCost = 100;
+    // ★ 레벨별 업그레이드 비용 (Inspector에서 자유롭게 설정)
+    [Header("레벨별 업그레이드 비용")]
+    [Tooltip("인덱스 0 = 레벨1→2, 인덱스 1 = 레벨2→3, ...")]
+    public LevelUpCost[] levelUpCosts = new LevelUpCost[]
+    {
+        new LevelUpCost { goldCost = 500, cropPointCost = 100 },   // 1→2
+        new LevelUpCost { goldCost = 2000, cropPointCost = 300 },  // 2→3
+        new LevelUpCost { goldCost = 5000, cropPointCost = 500 },  // 3→4
+        new LevelUpCost { goldCost = 10000, cropPointCost = 1000 },// 4→5
+    };
+
+    // 하위 호환용
+    public int lv1to2GoldCost => levelUpCosts.Length > 0 ? levelUpCosts[0].goldCost : 500;
+    public int lv1to2CropPointCost => levelUpCosts.Length > 0 ? levelUpCosts[0].cropPointCost : 100;
+
+    [System.Serializable]
+    public class LevelUpCost
+    {
+        public int goldCost;
+        public int cropPointCost;
+    }
 
     // ─── 티어별 가챠 풀 ───
     [Header("원자 장비 가챠 풀")]
@@ -162,37 +179,52 @@ public class GachaEquipmentTierManager : MonoBehaviour
     /// </summary>
     public bool TryPayLevelUpCost(int fromLevel)
     {
-        if (fromLevel != 1) return true; // 2레벨 이후는 티켓만으로 자동 레벨업
+        int costIndex = fromLevel - 1; // fromLevel 1 → index 0
 
-        int goldCost = lv1to2GoldCost;
-        int cpCost = lv1to2CropPointCost;
+        // 배열 범위 밖이면 무료
+        if (levelUpCosts == null || costIndex < 0 || costIndex >= levelUpCosts.Length)
+            return true;
+
+        LevelUpCost cost = levelUpCosts[costIndex];
+
+        // 비용이 둘 다 0이면 무료
+        if (cost.goldCost <= 0 && cost.cropPointCost <= 0)
+            return true;
 
         // 골드 확인
-        if (GameManager.Instance == null || GameManager.Instance.PlayerGold < goldCost)
+        if (cost.goldCost > 0)
         {
-            UIManager.Instance?.ShowMessage(
-                $"레벨업 비용 부족!\n골드 {goldCost:N0}G 필요 " +
-                $"(보유 {UIManager.FormatKoreanUnit(GameManager.Instance?.PlayerGold ?? 0)}G)", Color.red);
-            return false;
+            long currentGold = GameManager.Instance != null ? GameManager.Instance.PlayerGold : 0;
+            if (currentGold < cost.goldCost)
+            {
+                UIManager.Instance?.ShowMessage(
+                    $"레벨업 비용 부족!\n골드 {cost.goldCost:N0}G 필요 " +
+                    $"(보유 {UIManager.FormatKoreanUnit(currentGold)}G)", Color.red);
+                return false;
+            }
         }
 
         // CropPoint 확인
-        long curCp = FarmManager.Instance != null ? FarmManager.Instance.GetCropPoints() : 0;
-        if (curCp < cpCost)
+        if (cost.cropPointCost > 0)
         {
-            UIManager.Instance?.ShowMessage(
-                $"레벨업 비용 부족!\n작물 포인트 {cpCost}CP 필요 (보유 {curCp}CP)", Color.red);
-            return false;
+            long curCp = FarmManager.Instance != null ? FarmManager.Instance.GetCropPoints() : 0;
+            if (curCp < cost.cropPointCost)
+            {
+                UIManager.Instance?.ShowMessage(
+                    $"레벨업 비용 부족!\n작물 포인트 {cost.cropPointCost}CP 필요 (보유 {curCp}CP)", Color.red);
+                return false;
+            }
         }
 
         // 차감
-        GameManager.Instance.SpendGold(goldCost);
-        FarmManager.Instance.SpendCropPoints(cpCost);
+        if (cost.goldCost > 0)
+            GameManager.Instance.SpendGold(cost.goldCost);
+        if (cost.cropPointCost > 0)
+            FarmManager.Instance.SpendCropPoints(cost.cropPointCost);
 
         UIManager.Instance?.ShowMessage(
-            $"레벨 1→2 달성!\n-{goldCost:N0}G / -{cpCost}CP 소모", Color.cyan);
+            $"레벨 {fromLevel}→{fromLevel + 1} 달성!\n-{cost.goldCost:N0}G / -{cost.cropPointCost}CP", Color.cyan);
 
-        Debug.Log($"[GachaEquipmentTierManager] 레벨 1→2 비용 차감: {goldCost}G + {cpCost}CP");
         return true;
     }
 
@@ -203,10 +235,19 @@ public class GachaEquipmentTierManager : MonoBehaviour
 
         if (levelUpCostText != null)
         {
-            if (GachaManager.Instance.currentLevel == 1)
-                levelUpCostText.text = $"레벨업: {lv1to2GoldCost:N0}G + {lv1to2CropPointCost}CP\n(뽑기 {GachaManager.Instance.gachaCountForLevelUp}회 달성 시 자동 레벨업)";
+            int curLv = GachaManager.Instance.currentLevel;
+            int costIdx = curLv - 1;
+
+            if (levelUpCosts != null && costIdx >= 0 && costIdx < levelUpCosts.Length
+                && (levelUpCosts[costIdx].goldCost > 0 || levelUpCosts[costIdx].cropPointCost > 0))
+            {
+                var c = levelUpCosts[costIdx];
+                levelUpCostText.text = $"레벨업: {c.goldCost:N0}G + {c.cropPointCost}CP\n(뽑기 {GachaManager.Instance.gachaCountForLevelUp}회 달성 시 자동 레벨업)";
+            }
             else
+            {
                 levelUpCostText.text = $"자동 레벨업 (뽑기 {GachaManager.Instance.gachaCountForLevelUp}회 달성 시)";
+            }
         }
 
         if (levelUpPanel != null) levelUpPanel.SetActive(true);

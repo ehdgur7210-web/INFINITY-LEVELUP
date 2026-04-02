@@ -44,6 +44,7 @@ public class MailReward
         EquipmentTicket,     // ★ 장비 뽑기 티켓 (Ticket과 동일)
         CompanionTicket,     // ★ 동료 뽑기 티켓
         RelicTicket,         // ★ 유물 뽑기 티켓
+        CropPoint,           // ★ 작물 포인트
     }
 
     public RewardType rewardType;
@@ -251,7 +252,23 @@ public class MailManager : MonoBehaviour
             if (m.mailID >= nextMailID) nextMailID = m.mailID + 1;
         }
 
-        Debug.Log($"[MailManager] 메일 로드 완료: {mailList.Count}개 (Inspector:{inspectorMails.Count}, 세이브:{saveData.mails.Length})");
+        // ★ 중복 mailID 감지 및 자동 수정
+        var usedIDs = new HashSet<int>();
+        int fixedCount = 0;
+        foreach (var m in mailList)
+        {
+            if (usedIDs.Contains(m.mailID))
+            {
+                int oldID = m.mailID;
+                m.mailID = nextMailID++;
+                fixedCount++;
+                Debug.LogWarning($"[MailManager] 중복 mailID 수정: {oldID} → {m.mailID} ('{m.title}')");
+            }
+            usedIDs.Add(m.mailID);
+        }
+
+        Debug.Log($"[MailManager] 메일 로드 완료: {mailList.Count}개 (Inspector:{inspectorMails.Count}, 세이브:{saveData.mails.Length})" +
+                  (fixedCount > 0 ? $" ★ 중복ID {fixedCount}건 수정됨" : ""));
     }
 
     // ─────────────────────────────────────────────────────────
@@ -384,6 +401,13 @@ public class MailManager : MonoBehaviour
             case MailReward.RewardType.Fragment:
                 if (ResourceBarManager.Instance != null)
                     ResourceBarManager.Instance.AddFragments(reward.amount);
+                break;
+
+            case MailReward.RewardType.CropPoint:
+                if (FarmManager.Instance != null)
+                    FarmManager.Instance.AddCropPoints(reward.amount);
+                else if (GameDataBridge.CurrentData != null)
+                    GameDataBridge.CurrentData.cropPoints += reward.amount;
                 break;
         }
     }
