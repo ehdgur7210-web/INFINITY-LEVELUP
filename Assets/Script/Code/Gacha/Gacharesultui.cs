@@ -580,12 +580,16 @@ public class GachaResultUI : MonoBehaviour
             }
         }
 
-        // ★ 튜토리얼 중 클릭 관통 방지 (1프레임 EventSystem 비활성화)
-        if (tutorialActive)
+        // ★ 튜토리얼 중: 인벤토리가 열린 상태 유지 (닫기 버튼 클릭 관통으로 인벤토리가 닫히는 버그 방지)
+        if (tutorialActive && InventoryManager.Instance != null && !InventoryManager.Instance.isPanelOpen)
         {
-            UIClickGuard.Consume();
-            StartCoroutine(BlockInputOneFrame());
+            InventoryManager.Instance.OpenInventory();
+            Debug.Log("[GachaResultUI] ★ 튜토리얼 중 인벤토리 닫힘 감지 → 강제 재오픈");
         }
+
+        // ★ 클릭 관통 방지 (1프레임 EventSystem 비활성화)
+        UIClickGuard.Consume();
+        StartCoroutine(BlockInputOneFrame());
 
         // 튜토리얼 트리거
         TutorialManager.Instance?.OnActionCompleted("GachaResultClosed");
