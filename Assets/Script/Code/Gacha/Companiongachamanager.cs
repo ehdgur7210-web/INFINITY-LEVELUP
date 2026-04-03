@@ -180,6 +180,20 @@ public class CompanionGachaManager : MonoBehaviour
 
     public void OpenGachaPanel()
     {
+        // ★ 튜토리얼 중 차단 (동료뽑기 관련 포커스 단계는 허용)
+        if (TutorialManager.Instance != null && TutorialManager.Instance.ShouldBlockNonFocusButtons)
+        {
+            var step = TutorialManager.Instance.GetCurrentStep();
+            string fn = step?.focusTargetName ?? "";
+            bool isCompanionStep = fn == "CompanionGachaBtn" || fn == "CompanionSinglePullBtn"
+                                || fn == "CompanionResultCloseBtn";
+            if (!isCompanionStep && !TutorialManager.Instance.IsCurrentFocusTarget(companionGachaPanel))
+            {
+                Debug.Log("[CompanionGacha] 튜토리얼 중 차단");
+                return;
+            }
+        }
+
         // ★ 동시 클릭 방지 (VIP 버튼과 겹침 대응)
         if (UIClickGuard.IsBlocked) return;
         UIClickGuard.Consume();
@@ -631,13 +645,10 @@ public class CompanionGachaManager : MonoBehaviour
             Debug.Log("[CompanionGacha] ★ 동료탭 자동 전환 시도");
             InventoryManager.Instance.SelectTab(InventoryManager.InvenTabType.Companion);
         }
-        else
-        {
-            Debug.LogWarning("[CompanionGacha] ★ InventoryManager.Instance null — 동료탭 전환 불가");
-        }
 
         // 튜토리얼 트리거
         TutorialManager.Instance?.OnActionCompleted("CompanionGachaComplete");
+        TutorialManager.Instance?.OnActionCompleted("CompanionResultClosed");
     }
 
     // ═══════════════════════════════════════════════════════════════

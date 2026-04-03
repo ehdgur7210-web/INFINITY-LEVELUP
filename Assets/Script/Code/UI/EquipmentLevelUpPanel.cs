@@ -249,6 +249,13 @@ public class EquipmentLevelUpPanel : MonoBehaviour
 
     private void SelectTab(TabType tab)
     {
+        // ★ 튜토리얼 중 탭 전환 차단
+        if (TutorialManager.Instance != null && TutorialManager.Instance.ShouldBlockNonFocusButtons)
+        {
+            Debug.Log($"[EquipLevelUp] 튜토리얼 중 탭 전환 차단: {tab}");
+            return;
+        }
+
         Debug.Log($"[SelectTab] 호출: {tab}, 호출자={new System.Diagnostics.StackTrace().GetFrame(1)?.GetMethod()?.Name}");
         currentTab = tab;
         UpdateTabVisuals();
@@ -554,6 +561,13 @@ public class EquipmentLevelUpPanel : MonoBehaviour
 
     private void OnLevelUpClicked()
     {
+        // ★ 튜토리얼 중 레벨업 무조건 차단
+        if (TutorialManager.Instance != null && TutorialManager.Instance.ShouldBlockNonFocusButtons)
+        {
+            Debug.Log("[EquipLevelUp] 튜토리얼 중 레벨업 차단");
+            return;
+        }
+
         if (currentSlot == null || currentEquip == null) return;
 
         // ★ 레벨 상한 = 기본 20 + (강화수치 × 10)
@@ -743,6 +757,10 @@ public class EquipmentLevelUpPanel : MonoBehaviour
 
     private void OnSkillActionClicked()
     {
+        // ★ 튜토리얼 중 차단
+        if (TutorialManager.Instance != null && TutorialManager.Instance.ShouldBlockNonFocusButtons)
+            return;
+
         if (currentEquip == null || SkillManager.Instance == null) return;
 
         SkillData skill = GetEquipmentSkill();

@@ -54,6 +54,12 @@ public class TopMenuManager : MonoBehaviour
     [SerializeField] private bool startExpanded = false;
     [SerializeField] private GameObject equipmentPanel;
 
+    // ★ 튜토리얼용 public 접근자
+    public Button ToggleButton => toggleButton;
+    public Button InventoryButton => inventoryButton;
+    public Button MailButton => mailButton;
+    public Button EnhancementButton => enhancementButton;
+
     [Header("슬라이드 위치 설정")]
     // ★ 핵심 수정: 에디터 배치 위치에 의존하지 않고 직접 지정
     // 패널 Anchor가 오른쪽(right)일 때:
@@ -349,6 +355,9 @@ public class TopMenuManager : MonoBehaviour
         InventoryManager.Instance?.ToggleInventory();
         if (inventoryBadge != null) inventoryBadge.SetActive(false);
         PlayButtonSound();
+
+        // ★ 튜토리얼: 인벤토리 열기 액션 트리거
+        TutorialManager.Instance?.OnActionCompleted("OpenInventory");
     }
     private void OnShopButtonClicked()
     {

@@ -104,7 +104,14 @@ public class EnhancementSystem : MonoBehaviour
 
     public void ToggleEnhancementUI()
     {
-        if (TutorialManager.Instance != null && TutorialManager.Instance.ShouldBlockNonFocusButtons) return;
+        // ★ 튜토리얼 중 차단 (단, 강화 관련 단계는 허용)
+        if (TutorialManager.Instance != null && TutorialManager.Instance.ShouldBlockNonFocusButtons)
+        {
+            var step = TutorialManager.Instance.GetCurrentStep();
+            string fn = step?.focusTargetName ?? "";
+            bool isEnhanceStep = fn == "EnhanceActionBtn" || fn == "EnhancePanel" || fn.Contains("BtnClose");
+            if (!isEnhanceStep) return;
+        }
         if (enhancementPanel == null) return;
         bool isActive = enhancementPanel.activeSelf;
         enhancementPanel.SetActive(!isActive);
@@ -116,6 +123,15 @@ public class EnhancementSystem : MonoBehaviour
 
     public void ShowEnhancementUI()
     {
+        // ★ 튜토리얼 중 차단 (단, 강화 관련 단계는 허용)
+        if (TutorialManager.Instance != null && TutorialManager.Instance.ShouldBlockNonFocusButtons)
+        {
+            var step = TutorialManager.Instance.GetCurrentStep();
+            string fn = step?.focusTargetName ?? "";
+            bool isEnhanceStep = fn == "EnhanceActionBtn" || fn == "EnhancePanel" || fn.Contains("BtnClose");
+            if (!isEnhanceStep) return;
+        }
+
         if (enhancementPanel == null) return;
         if (enhancementPanel.activeSelf) return;
 
@@ -208,6 +224,14 @@ public class EnhancementSystem : MonoBehaviour
 
     public void TryEnhance()
     {
+        // ★ 튜토리얼 중 강화 차단 (포커스 대상일 때만 허용)
+        if (TutorialManager.Instance != null && TutorialManager.Instance.ShouldBlockNonFocusButtons
+            && !TutorialManager.Instance.IsCurrentFocusTarget(enhanceButton?.gameObject))
+        {
+            Debug.Log("[EnhancementSystem] 튜토리얼 중 강화 차단");
+            return;
+        }
+
         SoundManager.Instance?.PlayButtonClick();
 
         if (currentEquipment == null)

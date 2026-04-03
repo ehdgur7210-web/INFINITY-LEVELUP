@@ -1,0 +1,27 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ff3502ee1a5e23a4296b247472417649, type: 3}
+  m_Name: P1_31
+  m_EditorClassIdentifier: 
+  tipMessage: "\uBA54\uB274 \uBC84\uD2BC\uC744 \uB20C\uB7EC\uBCF4\uC138\uC694!"
+  focusTargetName: MenuToggleBtn
+  focusPadding: {x: 40, y: 40}
+  advanceType: 0
+  requiredAction: 
+  autoAdvanceDelay: 2
+  tipPosition: 0
+  isSceneTransitionStep: 0
+  delayBeforeShow: 0
+  useAreaFocus: 0
+  areaTargetName: 
+  hideTargets: []
+  rewards: []

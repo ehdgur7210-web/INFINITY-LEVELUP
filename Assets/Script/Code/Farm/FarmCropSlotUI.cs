@@ -37,6 +37,9 @@ public class FarmCropSlotUI : MonoBehaviour
         if (selectButton == null)
             selectButton = GetComponent<Button>();
 
+        // ★ Inspector 미연결 대비: 자식에서 TMP 자동 탐색 (New Text 잔류 방지)
+        AutoFindTextFields();
+
         // ★ 아이콘 설정: seedIcon → growthSprites[0] → harvestIcon 순서로 폴백
         Sprite icon = crop.seedIcon;
         if (icon == null && crop.growthSprites != null && crop.growthSprites.Length > 0)
@@ -83,6 +86,38 @@ public class FarmCropSlotUI : MonoBehaviour
         {
             selectButton?.onClick.RemoveAllListeners();
             selectButton?.onClick.AddListener(() => onSelect.Invoke());
+        }
+    }
+
+    /// <summary>Inspector 미연결 시 자식에서 이름 기반 자동 탐색</summary>
+    private void AutoFindTextFields()
+    {
+        if (cropNameText != null && costText != null && ownedText != null) return;
+
+        var tmps = GetComponentsInChildren<TextMeshProUGUI>(true);
+        foreach (var t in tmps)
+        {
+            string n = t.gameObject.name.ToLower();
+            if (cropNameText == null && (n.Contains("name") || n.Contains("cropname")))
+                cropNameText = t;
+            else if (costText == null && n.Contains("cost"))
+                costText = t;
+            else if (ownedText == null && n.Contains("owned"))
+                ownedText = t;
+        }
+
+        // 아직 못 찾은 필드가 있으면 순서 기반 폴백 (Name → Cost → Owned)
+        if (tmps.Length > 0)
+        {
+            var unassigned = new System.Collections.Generic.List<TextMeshProUGUI>();
+            foreach (var t in tmps)
+            {
+                if (t != cropNameText && t != costText && t != ownedText)
+                    unassigned.Add(t);
+            }
+            if (cropNameText == null && unassigned.Count > 0) { cropNameText = unassigned[0]; unassigned.RemoveAt(0); }
+            if (costText == null && unassigned.Count > 0) { costText = unassigned[0]; unassigned.RemoveAt(0); }
+            if (ownedText == null && unassigned.Count > 0) { ownedText = unassigned[0]; unassigned.RemoveAt(0); }
         }
     }
 

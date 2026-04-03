@@ -83,7 +83,7 @@ public class InventoryManager : MonoBehaviour
     private static readonly Color TabDeselectedColor = new Color(0.55f, 0.55f, 0.55f, 1f);
 
     private RectTransform panelRect;
-    private bool isPanelOpen = true;
+    [HideInInspector] public bool isPanelOpen = true;
     private Coroutine slideCoroutine;
 
     private float[] linkedOpenPosY;
@@ -756,7 +756,14 @@ public class InventoryManager : MonoBehaviour
 
     public void ToggleInventory()
     {
-        if (TutorialManager.Instance != null && TutorialManager.Instance.ShouldBlockNonFocusButtons) return;
+        // ★ 튜토리얼 차단 — 단, 인벤토리 버튼이 포커스 대상이면 허용
+        if (TutorialManager.Instance != null && TutorialManager.Instance.ShouldBlockNonFocusButtons)
+        {
+            var step = TutorialManager.Instance.GetCurrentStep();
+            string fn = step?.focusTargetName ?? "";
+            if (fn != "MenuInventoryBtn" && !fn.StartsWith("InvenSlot:"))
+                return;
+        }
         if (panelRect == null)
         {
             if (inventoryPanel != null)
@@ -795,13 +802,47 @@ public class InventoryManager : MonoBehaviour
     public void OpenInventory()
     {
         if (isPanelOpen) return;
-        ToggleInventory();
+        ForceSlide(true);
     }
 
     public void CloseInventory()
     {
         if (!isPanelOpen) return;
-        ToggleInventory();
+        ForceSlide(false);
+    }
+
+    /// <summary>튜토리얼 차단 무시하고 강제 슬라이드 (내부/튜토리얼 호출용)</summary>
+    private void ForceSlide(bool open)
+    {
+        if (panelRect == null)
+        {
+            if (inventoryPanel != null)
+                panelRect = inventoryPanel.GetComponent<RectTransform>();
+            if (panelRect == null) return;
+        }
+
+        isPanelOpen = open;
+        float targetY = open ? openPosY : closedPosY;
+
+        if (slideCoroutine != null)
+            StopCoroutine(slideCoroutine);
+        slideCoroutine = StartCoroutine(SlidePanel(targetY));
+
+        var chat = chatSystem != null ? chatSystem : ChatSystem.Instance;
+        if (chat != null)
+        {
+            if (!open) chat.ShowChat();
+            else
+            {
+                bool tutorialActive = TutorialManager.Instance != null && TutorialManager.Instance.IsTutorialActive;
+                if (!tutorialActive) chat.HideChat();
+            }
+        }
+
+        Debug.Log($"[InventoryManager] 강제 슬라이드 {(open ? "열기" : "닫기")} → Y={targetY}");
+
+        if (open)
+            TutorialManager.Instance?.OnActionCompleted("OpenInventory");
     }
 
     private IEnumerator SlidePanel(float targetY)
@@ -1217,6 +1258,13 @@ public class InventoryManager : MonoBehaviour
     /// <summary>인벤토리에서 장비 레벨업 패널 열기</summary>
     public void OpenLevelUpPanel(InventoryItemData invItem, int slotIndex)
     {
+        // ★ 튜토리얼 중 레벨업 패널 열기 차단
+        if (TutorialManager.Instance != null && TutorialManager.Instance.ShouldBlockNonFocusButtons)
+        {
+            Debug.Log("[InventoryManager] 튜토리얼 중 레벨업 패널 차단");
+            return;
+        }
+
         if (invItem == null) return;
 
         Debug.Log($"[InventoryManager] OpenLevelUpPanel 호출: itemID={invItem.itemID}, slotIndex={slotIndex}");

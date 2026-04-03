@@ -71,7 +71,11 @@ public class FarmBuildingManager : MonoBehaviour
         {
             Instance = this;
             Debug.Log("[ManagerInit] FarmBuildingManager가 생성되었습니다.");
-            DontDestroyOnLoad(transform.root.gameObject);
+            // ★ 기존: DontDestroyOnLoad(transform.root.gameObject) → FarmCanvas 전체를 DDOL로 만들어
+            //   FarmManager 등 씬 로컬 매니저가 씬에서 사라지는 버그 발생
+            //   → 자기 자신만 부모에서 분리 후 DDOL로 유지
+            transform.SetParent(null);
+            DontDestroyOnLoad(gameObject);
             AutoFillDefaultLevels();
         }
         else

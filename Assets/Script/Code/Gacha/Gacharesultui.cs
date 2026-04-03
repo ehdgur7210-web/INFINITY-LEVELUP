@@ -564,16 +564,42 @@ public class GachaResultUI : MonoBehaviour
         SaveLoadManager.Instance?.SaveGame();
 
         // 인벤토리 강제 갱신 + 자동 열기
+        bool tutorialActive = TutorialManager.Instance != null && TutorialManager.Instance.IsTutorialActive;
         if (InventoryManager.Instance != null)
         {
-            InventoryManager.Instance.ForceRefreshAll();
-            InventoryManager.Instance.OpenInventory();
+            if (!tutorialActive)
+            {
+                InventoryManager.Instance.ForceRefreshAll();
+                InventoryManager.Instance.OpenInventory();
+                Debug.Log("[GachaResultUI] ClosePanel — 인벤토리 갱신+열기 (일반 모드)");
+            }
+            else
+            {
+                // ★ 튜토리얼 중: 인벤토리 건드리지 않음 (ForceRefreshAll도 스킵)
+                Debug.Log("[GachaResultUI] ClosePanel — 튜토리얼 중 인벤토리 스킵");
+            }
+        }
+
+        // ★ 튜토리얼 중 클릭 관통 방지 (1프레임 EventSystem 비활성화)
+        if (tutorialActive)
+        {
+            UIClickGuard.Consume();
+            StartCoroutine(BlockInputOneFrame());
         }
 
         // 튜토리얼 트리거
         TutorialManager.Instance?.OnActionCompleted("GachaResultClosed");
 
         Debug.Log("[GachaResultUI] 패널 닫힘 → SaveGame 완료");
+    }
+
+    /// <summary>1프레임 동안 EventSystem 비활성화 (클릭 관통 완전 차단)</summary>
+    private IEnumerator BlockInputOneFrame()
+    {
+        var es = UnityEngine.EventSystems.EventSystem.current;
+        if (es != null) es.enabled = false;
+        yield return null;
+        if (es != null) es.enabled = true;
     }
 
     private void ClearSlots()

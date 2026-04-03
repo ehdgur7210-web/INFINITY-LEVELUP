@@ -45,7 +45,9 @@ public class FarmManagerExtension : MonoBehaviour
         {
             Instance = this;
             Debug.Log("[ManagerInit] FarmManagerExtension가 생성되었습니다.");
-            DontDestroyOnLoad(transform.root.gameObject);
+            // ★ transform.root 대신 자기 자신만 DDOL (부모 Canvas 전체 이동 방지)
+            transform.SetParent(null);
+            DontDestroyOnLoad(gameObject);
         }
         else
         {

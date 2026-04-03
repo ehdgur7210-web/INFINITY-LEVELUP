@@ -57,6 +57,9 @@ public class FarmPlantModePanel : MonoBehaviour
     // 싱글톤 인스턴스 — FarmPlotController에서 Instance?.OpenForPlot()으로 호출
     public static FarmPlantModePanel Instance { get; private set; }
 
+    // ★ 튜토리얼용 public 접근자
+    public Button CloseButton => closeButton;
+
     // ─────────────────────────────────────────────────────────────
     //  Inspector 필드
     // ─────────────────────────────────────────────────────────────

@@ -228,6 +228,23 @@ public class FarmSceneController : MonoBehaviour
     public void OpenCropShop()
     {
         SetBanner("작물상점");
+
+        // ★ FarmManager가 null이면 씬에서 찾아서 활성화 시도
+        if (FarmManager.Instance == null)
+        {
+            var fm = FindObjectOfType<FarmManager>(true);
+            if (fm != null)
+            {
+                Debug.LogWarning($"[FarmSceneController] ★ OpenCropShop: FarmManager.Instance null → 직접 탐색 발견 (active:{fm.gameObject.activeInHierarchy})");
+                if (!fm.gameObject.activeInHierarchy)
+                    fm.gameObject.SetActive(true);
+            }
+            else
+            {
+                Debug.LogError("[FarmSceneController] ★★★ OpenCropShop: FarmManager를 씬에서 찾을 수 없음!");
+            }
+        }
+
         cropShopUI?.OpenShop();
         TutorialManager.Instance?.OnActionCompleted("OpenCropShop");
     }

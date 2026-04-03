@@ -406,6 +406,13 @@ public class InventorySlot : MonoBehaviour, IBeginDragHandler, IDragHandler, IEn
     /// <summary>레벨업 버튼 → InventoryManager.OpenLevelUpPanel</summary>
     private void OnLevelUpClicked()
     {
+        // ★ 튜토리얼 중 레벨업 무조건 차단 (장착만 허용)
+        if (TutorialManager.Instance != null && TutorialManager.Instance.ShouldBlockNonFocusButtons)
+        {
+            Debug.Log("[InventorySlot] 튜토리얼 중 레벨업 차단");
+            return;
+        }
+
         if (itemData == null || !isUnlocked) return;
         SoundManager.Instance?.PlayButtonClick();
 

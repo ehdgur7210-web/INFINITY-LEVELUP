@@ -37,6 +37,17 @@ public class TutorialStepData : ScriptableObject
     [Tooltip("이 단계를 표시하기 전 대기 시간 (초). 씬 전환 직후 UI 초기화 대기용")]
     public float delayBeforeShow = 0f;
 
+    [Header("━━━ 영역 포커스 (Area Focus) ━━━")]
+    [Tooltip("true이면 포커스 영역 내 모든 버튼 클릭 허용 (단일 버튼이 아닌 영역 전체)")]
+    public bool useAreaFocus = false;
+
+    [Tooltip("영역 포커스 시 구멍을 뚫을 RectTransform 이름 (비어있으면 focusTargetName 사용)")]
+    public string areaTargetName;
+
+    [Header("━━━ 숨길 오브젝트 ━━━")]
+    [Tooltip("이 단계에서 숨길 오브젝트 이름 목록 (단계 종료 시 자동 복원)")]
+    public string[] hideTargets;
+
     [Header("━━━ 보상 지급 (이 단계 완료 시) ━━━")]
     [Tooltip("이 단계 완료 시 지급할 보상 (비어있으면 보상 없음)")]
     public TutorialReward[] rewards;

@@ -49,6 +49,13 @@ public class MailUI : MonoBehaviour
     [SerializeField] private GameObject notificationBadge;  // 빨간 알림 표시
     [SerializeField] private TextMeshProUGUI badgeText;     // 알림 숫자
 
+    // ★ 튜토리얼용 public 접근자
+    public Button ClaimAllButton => claimAllButton;
+    public Button OpenCouponButton => openCouponButton;
+    public TMP_InputField CouponInput => couponInput;
+    public GameObject CouponPanel => couponPanel;
+    public Button CloseMailButton => closeMailButton;
+
     private List<GameObject> currentMailSlots = new List<GameObject>();
     private List<GameObject> currentRewardSlots = new List<GameObject>();
     private Mail currentSelectedMail;

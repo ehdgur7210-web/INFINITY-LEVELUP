@@ -194,6 +194,50 @@ public class TutorialFocusMask : MonoBehaviour, ICanvasRaycastFilter
         fingerIcon.localRotation = Quaternion.Euler(0f, 0f, angle);
     }
 
+    /// <summary>구멍은 areaTarget에, 손가락은 fingerTarget에 표시</summary>
+    public void SetFocusWithFingerTarget(RectTransform areaTarget, Vector2 padding, RectTransform fingerTarget)
+    {
+        if (areaTarget == null) { ClearFocus(); return; }
+        if (!gameObject.activeSelf) gameObject.SetActive(true);
+
+        isFocusActive = true;
+        currentTarget = areaTarget;
+        currentPadding = padding;
+
+        if (overlayImage != null) overlayImage.enabled = true;
+        if (_uiCamera == null) CacheCamera();
+
+        // 포커스 영역 (구멍) — areaTarget 기준
+        Vector3[] corners = new Vector3[4];
+        areaTarget.GetWorldCorners(corners);
+        Vector2 min = RectTransformUtility.WorldToScreenPoint(_uiCamera, corners[0]);
+        Vector2 max = RectTransformUtility.WorldToScreenPoint(_uiCamera, corners[2]);
+        Vector2 focusSize = new Vector2(
+            Mathf.Abs(max.x - min.x) + padding.x,
+            Mathf.Abs(max.y - min.y) + padding.y
+        );
+
+        if (focusRect != null)
+        {
+            focusRect.gameObject.SetActive(true);
+            focusRect.position = areaTarget.position;
+            focusRect.sizeDelta = focusSize;
+        }
+
+        UpdateHoleShader(areaTarget, padding);
+
+        // 손가락 — fingerTarget 기준
+        RectTransform ft = fingerTarget != null ? fingerTarget : areaTarget;
+        if (fingerIcon != null)
+        {
+            fingerIcon.gameObject.SetActive(true);
+            actualFingerOffset = CalculateBestFingerOffset(ft, _uiCamera);
+            fingerBasePosition = ft.position + (Vector3)actualFingerOffset;
+            fingerIcon.position = fingerBasePosition;
+            UpdateFingerRotation();
+        }
+    }
+
     public void ClearFocus()
     {
         isFocusActive = false;
@@ -274,6 +318,19 @@ public class TutorialFocusMask : MonoBehaviour, ICanvasRaycastFilter
 
         return false;
     }
+
+    /// <summary>주어진 스크린 좌표가 현재 포커스 영역 안에 있는지 확인</summary>
+    public bool IsPointInsideFocusArea(Vector2 screenPoint)
+    {
+        if (!isFocusActive || focusRect == null || !focusRect.gameObject.activeSelf)
+            return false;
+
+        return RectTransformUtility.RectangleContainsScreenPoint(
+            focusRect, screenPoint, _uiCamera);
+    }
+
+    /// <summary>현재 포커스 영역의 RectTransform 반환</summary>
+    public RectTransform FocusRect => focusRect;
 
     void OnDestroy()
     {

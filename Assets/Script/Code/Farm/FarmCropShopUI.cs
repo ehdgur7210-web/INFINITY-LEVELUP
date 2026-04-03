@@ -1,3 +1,4 @@
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
@@ -200,10 +201,23 @@ public class FarmCropShopUI : MonoBehaviour
     void OnEnable()
     {
         FarmBuildingManager.OnBuildingLevelChanged += OnBuildingLevelChanged;
+
+        // ★ 상태바/보너스 텍스트 기본값 초기화 (Inspector 연결되어 있으나 값 미설정 시 "New Text" 방지)
+        if (waterBonusText) waterBonusText.text = "";
+        if (greenhouseLevelText) greenhouseLevelText.text = "";
+        if (watermillBonusText) watermillBonusText.text = "";
+        if (windmillBonusText) windmillBonusText.text = "";
+
         RefreshBuildingInfo();
 
         // ★ FarmManager가 아직 초기화되지 않았거나 allCrops가 비어있으면 대기 후 빌드
         bool farmReady = FarmManager.Instance != null && FarmManager.Instance.allCrops.Count > 0;
+
+        // ★ OnEnable 시 항상 채소 탭으로 초기화 (과일 탭이 먼저 보이는 버그 방지)
+        currentTab = ShopTab.Vegetable;
+        UpdateScrollViews();
+        UpdateTabColors();
+        HideAllDetailPanels();
 
         if (farmReady)
         {
@@ -230,9 +244,18 @@ public class FarmCropShopUI : MonoBehaviour
         int maxFrames = 60;
         int waited = 0;
 
-        // ── FarmManager.Instance가 null이면 대기 ──
+        // ── FarmManager.Instance가 null이면 대기 (비활성 오브젝트 탐색 포함) ──
         while (FarmManager.Instance == null && waited < maxFrames)
         {
+            if (waited % 10 == 0)
+            {
+                var found = FindObjectOfType<FarmManager>(true);
+                if (found != null && !found.gameObject.activeInHierarchy)
+                {
+                    Debug.LogWarning($"[FarmCropShop] WaitAndBuild: FarmManager 비활성 발견 → 강제 활성화: {found.gameObject.name}");
+                    found.gameObject.SetActive(true);
+                }
+            }
             waited++;
             yield return null;
         }
@@ -303,30 +326,78 @@ public class FarmCropShopUI : MonoBehaviour
     // ═══ 열기/닫기 ═══════════════════════════════════════════════
     public void OpenShop()
     {
+        Debug.Log($"[FarmCropShop] ★ OpenShop 호출! shopPanel:{shopPanel != null} / FarmManager:{FarmManager.Instance != null} / allCrops:{FarmManager.Instance?.allCrops?.Count ?? -1}");
         shopPanel?.SetActive(true);
 
-        // ★ 슬롯이 비어있으면 재빌드 (초기화 타이밍 문제 대응)
-        if (veggieSlots.Count == 0 && fruitSlots.Count == 0)
+        // ★ 항상 지연 재빌드 (씬 전환 후 타이밍 문제 완전 해결)
+        if (retryCoroutine != null) StopCoroutine(retryCoroutine);
+        retryCoroutine = StartCoroutine(OpenShopDelayed());
+    }
+
+    private IEnumerator OpenShopDelayed()
+    {
+        // FarmManager 준비 대기 (최대 120프레임 = ~2초)
+        int waited = 0;
+        while ((FarmManager.Instance == null || FarmManager.Instance.allCrops.Count == 0) && waited < 120)
         {
-            bool farmReady = FarmManager.Instance != null && FarmManager.Instance.allCrops.Count > 0;
-            if (farmReady)
+            // ★ FarmManager.Instance가 null이면 씬에서 직접 탐색 시도
+            if (FarmManager.Instance == null && waited % 10 == 0)
             {
-                Debug.Log("[FarmCropShop] OpenShop: 슬롯 비어있음 — 즉시 재빌드");
-                BuildAllSlots();
+                var found = FindObjectOfType<FarmManager>(true);
+                if (found != null)
+                {
+                    Debug.LogWarning($"[FarmCropShop] ★ FarmManager.Instance null → FindObjectOfType로 발견: {found.gameObject.name} (active:{found.gameObject.activeInHierarchy})");
+                    // 비활성 상태여서 Awake 안 된 경우 → 강제 활성화
+                    if (!found.gameObject.activeInHierarchy)
+                    {
+                        found.gameObject.SetActive(true);
+                        Debug.LogWarning("[FarmCropShop] ★ FarmManager 오브젝트 비활성 → 강제 활성화!");
+                    }
+                }
+                else
+                {
+                    Debug.LogWarning($"[FarmCropShop] ★ FarmManager를 씬에서 찾을 수 없음! ({waited}프레임 대기 중)");
+                }
             }
-            else if (retryCoroutine == null)
-            {
-                Debug.Log("[FarmCropShop] OpenShop: 슬롯 비어있고 FarmManager 미준비 — 대기 후 빌드");
-                retryCoroutine = StartCoroutine(WaitAndBuildSlots());
-            }
+            waited++;
+            yield return null;
         }
+
+        if (FarmManager.Instance == null || FarmManager.Instance.allCrops.Count == 0)
+        {
+            Debug.LogError($"[FarmCropShop] ★★★ OpenShop: {waited}프레임 대기 후에도 FarmManager 미준비! Instance:{FarmManager.Instance != null} / allCrops:{FarmManager.Instance?.allCrops?.Count ?? -1}");
+            Debug.LogError("[FarmCropShop] ★ 원인: FarmManager가 씬에 없거나, 부모 오브젝트가 비활성이거나, allCrops Inspector 미연결");
+            retryCoroutine = null;
+            yield break;
+        }
+
+        Debug.Log($"[FarmCropShop] OpenShop: 빌드 시작 ({waited}프레임 대기, allCrops:{FarmManager.Instance.allCrops.Count}개)");
+        BuildAllSlots();
+
+        // 보유수 갱신 대기
+        yield return null;
+        RefreshOwnedCounts();
 
         SwitchTab(ShopTab.Vegetable);
         SoundManager.Instance?.PlayPanelOpen();
+
+        retryCoroutine = null;
     }
 
     public void CloseShop()
     {
+        // ★ 튜토리얼 중 씨앗 선택/구매 단계에서는 닫힘 방지
+        if (TutorialManager.Instance != null && TutorialManager.Instance.IsTutorialActive)
+        {
+            var step = TutorialManager.Instance.GetCurrentStep();
+            if (step != null && !string.IsNullOrEmpty(step.requiredAction)
+                && (step.requiredAction == "SeedSelected" || step.requiredAction == "BuySeed"))
+            {
+                Debug.Log("[FarmCropShop] 튜토리얼 중 씨앗 선택/구매 단계 — 닫기 차단");
+                return;
+            }
+        }
+
         shopPanel?.SetActive(false);
         FarmSceneController.Instance?.ResetBanner();
         // ★ 닫을 때 마지막 선택 초기화 (다음에 열면 빈 상태)
@@ -347,6 +418,18 @@ public class FarmCropShopUI : MonoBehaviour
         currentTab = tab;
         UpdateScrollViews();
         UpdateTabColors();
+
+        // ★ 레이아웃 강제 리빌드 (씬 전환 후 슬롯 안 보이는 문제 대응)
+        Transform activeContainer = null;
+        switch (tab)
+        {
+            case ShopTab.Vegetable: activeContainer = veggieContainer; break;
+            case ShopTab.Fruit:     activeContainer = fruitContainer; break;
+            case ShopTab.Water:     activeContainer = waterContainer; break;
+            case ShopTab.Fertilizer:activeContainer = fertContainer; break;
+        }
+        if (activeContainer != null)
+            LayoutRebuilder.ForceRebuildLayoutImmediate(activeContainer as RectTransform);
 
         // ★ 탭 전환 시 모든 상세 패널 먼저 닫기 (채소↔과일 전환 시 이전 데이터 잔류 방지)
         HideAllDetailPanels();
@@ -409,14 +492,24 @@ public class FarmCropShopUI : MonoBehaviour
         ClearSlots(slots, container);
         if (FarmManager.Instance == null || cropSlotPrefab == null || container == null)
         {
-            Debug.LogWarning($"[FarmCropShop] {type} 슬롯 빌드 실패 — FarmManager:{FarmManager.Instance != null} / prefab:{cropSlotPrefab != null} / container:{container != null}");
+            Debug.LogError($"[FarmCropShop] ★★★ {type} 슬롯 빌드 실패! FarmManager:{FarmManager.Instance != null} / prefab:{cropSlotPrefab != null} / container:{container != null}");
+            if (FarmManager.Instance == null)
+                Debug.LogError("[FarmCropShop] ★ FarmManager.Instance가 null! 씬에 FarmManager가 배치되어 있는지, Awake 순서가 맞는지 확인");
             return;
         }
+        Debug.Log($"[FarmCropShop] ★ {type} 슬롯 빌드 시작 — allCrops 총:{FarmManager.Instance.allCrops.Count}개, container:{container.name}");
 
         // ★ 타입별 필터링
         var crops = new List<CropData>();
+        int nullCount = 0;
         foreach (var c in FarmManager.Instance.allCrops)
-            if (c != null && c.cropType == type) crops.Add(c);
+        {
+            if (c == null) { nullCount++; continue; }
+            if (c.cropType == type) crops.Add(c);
+        }
+        Debug.Log($"[FarmCropShop] ★ {type} 필터링 결과: {crops.Count}개 / null 데이터:{nullCount}개 / 전체:{FarmManager.Instance.allCrops.Count}개");
+        if (crops.Count == 0)
+            Debug.LogError($"[FarmCropShop] ★★★ {type} 타입 작물이 0개! allCrops에 {type} CropData가 등록되어 있는지 확인!");
 
         // ★ 정렬: 보유 씨앗 > 0 인 것 먼저, 그 안에서 보유 수량 내림차순
         var farmInv = GetFarmInventoryUI();
@@ -443,7 +536,13 @@ public class FarmCropShopUI : MonoBehaviour
             var cap = crop;
 
             var slot = go.GetComponent<FarmCropSlotUI>();
-            slot?.Setup(cap, unlocked, owned, () => SelectCrop(cap));
+            if (slot == null)
+                Debug.LogError($"[FarmCropShop] ★★★ cropSlotPrefab에 FarmCropSlotUI 컴포넌트가 없음! 프리팹 확인 필요");
+            else
+            {
+                slot.Setup(cap, unlocked, owned, () => SelectCrop(cap));
+                Debug.Log($"[FarmCropShop] 슬롯 Setup: {crop.cropName}(ID:{crop.cropID}) / nameText:{slot.cropNameText != null} / costText:{slot.costText != null} / ownedText:{slot.ownedText != null} / img:{slot.cropImage != null}");
+            }
 
             var rootBtn = go.GetComponent<Button>();
             if (rootBtn != null && (slot == null || rootBtn != slot.selectButton))
@@ -451,7 +550,7 @@ public class FarmCropShopUI : MonoBehaviour
 
             slots.Add(go);
         }
-        Debug.Log($"[FarmCropShop] {type} 슬롯 {slots.Count}개 생성 (보유 씨앗 우선 정렬)");
+        Debug.Log($"[FarmCropShop] {type} 슬롯 {slots.Count}개 생성 완료");
     }
 
     // ─── 채소 씨앗 슬롯 ──────────────────────────────────────────
@@ -572,6 +671,9 @@ public class FarmCropShopUI : MonoBehaviour
         selectedWater = null;
         selectedFert = null;
 
+        // ★ 튜토리얼: 씨앗 선택 완료 트리거
+        TutorialManager.Instance?.OnActionCompleted("SeedSelected");
+
         if (currentTab == ShopTab.Vegetable) lastVeggieCrop = crop;
         else if (currentTab == ShopTab.Fruit) lastFruitCrop = crop;
 
@@ -599,6 +701,13 @@ public class FarmCropShopUI : MonoBehaviour
                                 + $"✨ 비료+물 {FormatTime(crop.GetModifiedGrowthTime(true, true, wb, fb))}";
 
         if (costText) costText.text = crop.seedCostGem > 0 ? $"{crop.seedCostGem}" : $"{crop.seedCostGold}";
+
+        // ★ waterBonusText: 물주기 보너스 정보 표시 (미설정 시 "New Text" 잔류 버그 수정)
+        if (waterBonusText)
+        {
+            float waterBonus = FarmBuildingManager.Instance?.GetWaterTimeBonus() ?? 0f;
+            waterBonusText.text = waterBonus > 0 ? $"💧 물레방아 보너스 +{waterBonus * 100f:F0}%" : "";
+        }
 
         int owned = GetFarmInventoryUI()?.GetSeedCount(crop.cropID) ?? 0;
         if (ownedCountText) ownedCountText.text = $"보유 {owned}개";

@@ -42,13 +42,28 @@ public class TutorialManager : MonoBehaviour
     private int _currentPhase = 0;
     private Coroutine _waitCoroutine;
 
+    // ── 영역 포커스 ──
+    private bool _isAreaFocusActive = false;
+    private RectTransform _areaFocusRect = null;
+
+    // ── 숨긴 오브젝트 복원용 ──
+    private List<GameObject> _hiddenObjects = new List<GameObject>();
+
     public bool IsTutorialActive => _isTutorialActive;
     public int CurrentPhase => _currentPhase;
 
+    /// <summary>현재 진행 중인 튜토리얼 스텝 데이터 (외부 참조용)</summary>
+    public TutorialStepData GetCurrentStep()
+    {
+        if (!_isTutorialActive || _activeSteps == null || _currentStep >= _activeSteps.Count)
+            return null;
+        return _activeSteps[_currentStep];
+    }
+
     /// <summary>
-    /// 현재 튜토리얼이 ClickFocusTarget 단계인지 확인.
-    /// true이면 포커스 대상 외 버튼을 차단해야 함.
-    /// WaitForAction/ClickAnywhere/AutoAdvance 단계에서는 false → 자유 조작 허용.
+    /// 튜토리얼 진행 중 포커스 대상 외 버튼 차단 여부.
+    /// ★ ClickFocusTarget + WaitForAction 모두 차단 (튜토리얼 꼬임 방지)
+    /// ★ ClickAnywhere/AutoAdvance만 자유 조작 허용
     /// </summary>
     public bool ShouldBlockNonFocusButtons
     {
@@ -63,9 +78,12 @@ public class TutorialManager : MonoBehaviour
             if (step.advanceType == TutorialAdvanceType.ClickFocusTarget)
                 return true;
 
-            // WaitForAction + focusTargetName 설정 시에도 차단
-            if (step.advanceType == TutorialAdvanceType.WaitForAction
-                && !string.IsNullOrEmpty(step.focusTargetName))
+            // ★ WaitForAction은 항상 차단 (포커스 유무 무관, 다른 버튼 누르면 튜토리얼 꼬임)
+            if (step.advanceType == TutorialAdvanceType.WaitForAction)
+                return true;
+
+            // ★ 영역 포커스 활성 시에도 영역 밖 차단
+            if (step.useAreaFocus)
                 return true;
 
             return false;
@@ -78,7 +96,9 @@ public class TutorialManager : MonoBehaviour
         {
             Instance = this;
             Debug.Log("[ManagerInit] TutorialManager가 생성되었습니다.");
-            DontDestroyOnLoad(transform.root.gameObject);
+            // ★ transform.root 대신 자기 자신만 DDOL (부모 Canvas 전체 이동 방지)
+            transform.SetParent(null);
+            DontDestroyOnLoad(gameObject);
         }
         else
         {
@@ -134,6 +154,10 @@ public class TutorialManager : MonoBehaviour
 
     private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
     {
+        // ★ 씬 변경 시 LateUpdate 캐시 초기화
+        _cachedLevelUpPanel = null;
+        _levelUpPanelSearched = false;
+
         if (!_isTutorialActive || _activeSteps == null) return;
         if (_currentStep >= _activeSteps.Count) return;
 
@@ -161,7 +185,10 @@ public class TutorialManager : MonoBehaviour
             CleanupCurrentStepListeners(_activeSteps[_currentStep]);
         _focusButtonBound = false;
         _isAdvancing = false;
+        _isAreaFocusActive = false;
+        _areaFocusRect = null;
         RestoreCanvasRaycast();
+        RestoreHiddenObjects();
 
         yield return new WaitForSeconds(1.5f);
 
@@ -256,6 +283,9 @@ public class TutorialManager : MonoBehaviour
     {
         StopWaitCoroutine();
         RestoreCanvasRaycast(); // ★ 월드 타겟 모드 복원
+        RestoreHiddenObjects(); // ★ 숨긴 오브젝트 복원
+        _isAreaFocusActive = false;
+        _areaFocusRect = null;
         _isTutorialActive = false;
 
         if (tutorialPanel != null)
@@ -269,7 +299,8 @@ public class TutorialManager : MonoBehaviour
             GameDataBridge.CurrentData.tutorialPhase = _currentPhase;
             GameDataBridge.CurrentData.tutorialStep = -1;
 
-            if (_currentPhase >= 3)
+            // ★ phase1에 모든 튜토리얼이 통합되었으므로 phase1 완료 = 전체 완료
+            if (_currentPhase >= 1)
             {
                 GameDataBridge.CurrentData.tutorialPhase = 99;
                 GameDataBridge.CurrentData.tutorialCompleted = true;
@@ -277,10 +308,7 @@ public class TutorialManager : MonoBehaviour
         }
 
         SaveLoadManager.Instance?.SaveGame();
-        Debug.Log($"[Tutorial] Phase {_currentPhase} 완료!");
-
-        if (_currentPhase == 2)
-            StartCoroutine(DelayedStart(2f, 3));
+        Debug.Log($"[Tutorial] Phase {_currentPhase} 완료! 튜토리얼 전체 종료.");
     }
 
     // ════════════════════════════════════════
@@ -289,11 +317,8 @@ public class TutorialManager : MonoBehaviour
 
     public void OnPlayerLevelUp(int newLevel)
     {
-        if (_isTutorialActive) return;
-        int savedPhase = GameDataBridge.CurrentData?.tutorialPhase ?? 0;
-
-        if (savedPhase == 1 && newLevel >= 5)
-            StartCoroutine(DelayedStart(1f, 2));
+        // ★ phase1에 모든 튜토리얼 통합 — 레벨업 트리거 불필요
+        // 추후 phase2를 따로 만들 경우 여기에 추가
     }
 
     // ════════════════════════════════════════
@@ -342,13 +367,86 @@ public class TutorialManager : MonoBehaviour
         if (GameDataBridge.CurrentData != null)
             GameDataBridge.CurrentData.tutorialStep = stepIndex;
 
-        // ★ 채팅 관련 스텝이면 채팅 미니바 강제 표시
-        //   (인벤토리가 열리면서 HideChat()된 상태일 수 있음)
-        if (!string.IsNullOrEmpty(step.requiredAction) &&
-            step.requiredAction.StartsWith("Chat"))
+        // ★ 이전 스텝에서 숨긴 오브젝트 복원
+        RestoreHiddenObjects();
+
+        // ★ 매 스텝마다 강화/레벨업 패널 강제 닫기
+        ForceCloseBlockedPanels();
+
+        // ★ 이 스텝에서 숨길 오브젝트 처리
+        HideStepTargets(step);
+
+        // ★ 채팅 관련 스텝이면 인벤토리 닫고 채팅 미니바 강제 표시
+        bool isChatStep = (!string.IsNullOrEmpty(step.requiredAction) && step.requiredAction.StartsWith("Chat"))
+                       || (!string.IsNullOrEmpty(step.focusTargetName) &&
+                           (step.focusTargetName.StartsWith("Chat") || step.focusTargetName == "ChatExpandBtn"
+                            || step.focusTargetName == "ChatCollapseBtn" || step.focusTargetName == "ChatInputField"));
+        if (isChatStep)
         {
+            // 인벤토리 닫기 (채팅 바가 가려지지 않게)
+            if (InventoryManager.Instance != null)
+                InventoryManager.Instance.CloseInventory();
+            // 채팅 강제 표시
             if (ChatSystem.Instance != null)
                 ChatSystem.Instance.ShowChat();
+        }
+
+        // ★ 동료뽑기 관련 스텝: 단계별 인벤토리 제어
+        string focusName = step.focusTargetName ?? "";
+
+        // 동료 뽑기 진입/결과 단계: 인벤토리 닫기
+        bool isCompanionCloseInven = focusName == "CompanionGachaBtn" || focusName == "CompanionSinglePullBtn"
+                                  || focusName == "CompanionResultCloseBtn" || focusName == "CompanionAutoBtn";
+        // 동료 슬롯/핫바 단계: 인벤토리 유지 (결과 닫기에서 이미 열림)
+        bool isCompanionKeepInven = focusName.StartsWith("CompanionSlot:")
+                                 || focusName.Contains("HotbarRegisterButton");
+
+        if (isCompanionCloseInven)
+        {
+            if (InventoryManager.Instance != null)
+                InventoryManager.Instance.CloseInventory();
+            if (MailUI.Instance != null && MailUI.Instance.gameObject.activeInHierarchy)
+                MailUI.Instance.CloseMailPanel();
+            if (ChatSystem.Instance != null)
+                ChatSystem.Instance.HideChat();
+            Debug.Log("[Tutorial] 동료뽑기 스텝 — 인벤토리/메일/채팅 닫기");
+        }
+        else if (isCompanionKeepInven)
+        {
+            // 인벤토리 유지, 채팅만 숨기기
+            if (ChatSystem.Instance != null)
+                ChatSystem.Instance.HideChat();
+            Debug.Log("[Tutorial] 동료슬롯 스텝 — 인벤토리 유지");
+        }
+
+        // ★ 우편/메뉴 관련 스텝: 채팅 숨기기 + 인벤토리 닫기 + 메뉴 접기
+        bool isMailOrMenuStep = focusName == "MailCloseBtn" || focusName.StartsWith("Menu")
+                             || focusName.StartsWith("Mail");
+        if (isMailOrMenuStep)
+        {
+            if (ChatSystem.Instance != null)
+                ChatSystem.Instance.HideChat();
+            // 인벤토리 닫기 (MenuInventoryBtn 제외 — 닫혀있어야 클릭으로 열 수 있음)
+            if (focusName != "MenuInventoryBtn" && InventoryManager.Instance != null)
+                InventoryManager.Instance.CloseInventory();
+            // ★ 메뉴 토글 스텝: 메뉴 접어놓기 (클릭으로 열게)
+            if (focusName == "MenuToggleBtn" && TopMenuManager.Instance != null)
+                TopMenuManager.Instance.CollapseMenu();
+        }
+
+        // ★ 강화 관련 스텝: 채팅 숨기기 + 장비 탭 강제 전환
+        bool isEnhanceRelated = focusName == "EnhanceActionBtn" || focusName == "EnhancePanel"
+                             || focusName.Contains("BtnClose")
+                             || focusName.StartsWith("InvenSlot:");
+        if (isEnhanceRelated)
+        {
+            // 채팅 숨기기 (화면 겹침 방지)
+            if (ChatSystem.Instance != null)
+                ChatSystem.Instance.HideChat();
+            // 장비 탭 강제 전환 (인벤토리가 열려있으면)
+            if (InventoryManager.Instance != null && InventoryManager.Instance.isPanelOpen)
+                InventoryManager.Instance.SelectTab(InventoryManager.InvenTabType.Equip);
+            Debug.Log("[Tutorial] 강화 스텝 — 채팅 숨기기 + 장비 탭 전환");
         }
 
         SetupFocus(step);
@@ -374,8 +472,8 @@ public class TutorialManager : MonoBehaviour
                 _waitCoroutine = StartCoroutine(WaitForAnyClick());
                 break;
             case TutorialAdvanceType.WaitForAction:
-                // ★ 액션 대기 — focusTargetName이 있으면 해당 영역만 구멍 뚫기
-                if (!string.IsNullOrEmpty(step.focusTargetName))
+                // ★ 액션 대기 — 포커스/영역이 있으면 해당 영역만 구멍 뚫기
+                if (!string.IsNullOrEmpty(step.focusTargetName) || step.useAreaFocus)
                 {
                     // SetupFocus에서 이미 포커스 마스크 설정됨 → 유지
                     // 포커스 영역 내 클릭만 허용, 나머지 차단
@@ -383,9 +481,11 @@ public class TutorialManager : MonoBehaviour
                 }
                 else
                 {
-                    // focusTargetName 없으면 기존 동작 — 완전 자유 조작
-                    focusMask?.ClearFocus();
-                    DisableCanvasRaycast();
+                    // ★ 포커스 대상 없는 WaitForAction → 전체 차단 (BlockAll)
+                    //   OnActionCompleted는 코드에서 호출되므로 UI 차단해도 동작함
+                    //   단, 닫기 버튼 등은 영역 포커스(areaTargetName)로 허용해야 함
+                    focusMask?.BlockAll();
+                    Debug.Log($"[Tutorial] WaitForAction 전체 차단 (액션: {step.requiredAction})");
                 }
                 break;
         }
@@ -399,10 +499,10 @@ public class TutorialManager : MonoBehaviour
     private IEnumerator RetryFocusTargetCoroutine(TutorialStepData step)
     {
         float elapsed = 0f;
-        while (elapsed < 5f)
+        while (elapsed < 3f)
         {
-            yield return new WaitForSecondsRealtime(0.5f);
-            elapsed += 0.5f;
+            yield return null; // ★ 1프레임 대기 (즉시 재시도)
+            elapsed += Time.unscaledDeltaTime;
 
             if (!_isTutorialActive) yield break;
 
@@ -457,10 +557,77 @@ public class TutorialManager : MonoBehaviour
     {
         _focusButtonBound = false;
         _currentFocusTargetObj = null;
+        _isAreaFocusActive = false;
+        _areaFocusRect = null;
 
         // ★ 이전 월드 타겟 모드 복원
         RestoreCanvasRaycast();
 
+        if (string.IsNullOrEmpty(step.focusTargetName) && string.IsNullOrEmpty(step.areaTargetName))
+        {
+            focusMask?.ClearFocus();
+            return;
+        }
+
+        // ★ 영역 포커스: areaTargetName이 있으면 해당 영역에 구멍, 없으면 focusTargetName 사용
+        if (step.useAreaFocus)
+        {
+            string areaName = !string.IsNullOrEmpty(step.areaTargetName) ? step.areaTargetName : step.focusTargetName;
+            GameObject areaObj = FindTargetByName(areaName);
+            RectTransform areaRT = areaObj?.GetComponent<RectTransform>();
+
+            // focusTargetName이 있으면 손가락 포인터를 해당 오브젝트로 지정
+            RectTransform fingerRT = null;
+            if (!string.IsNullOrEmpty(step.focusTargetName))
+            {
+                GameObject focusObj = FindTargetByName(step.focusTargetName);
+                if (focusObj != null)
+                {
+                    _currentFocusTargetObj = focusObj;
+                    fingerRT = focusObj.GetComponent<RectTransform>();
+                }
+            }
+
+            if (areaRT != null && focusMask != null)
+            {
+                if (fingerRT != null && fingerRT != areaRT)
+                {
+                    // ★ 구멍은 영역, 손가락은 포커스 타겟 (닫기 버튼 등)
+                    focusMask.SetFocusWithFingerTarget(areaRT, step.focusPadding, fingerRT);
+                }
+                else
+                {
+                    focusMask.SetFocus(areaRT, step.focusPadding);
+                }
+                _isAreaFocusActive = true;
+                _areaFocusRect = areaRT;
+                Debug.Log($"[Tutorial] 영역 포커스 설정: {areaName}" +
+                          (fingerRT != null ? $" (손가락→{step.focusTargetName})" : ""));
+            }
+            else
+            {
+                // ★ 영역 타겟을 못 찾으면 마스크 해제 (클릭 차단 방지)
+                Debug.LogWarning($"[Tutorial] 영역 포커스 타겟 못 찾음: {areaName} → 마스크 해제");
+                focusMask?.ClearFocus();
+                DisableCanvasRaycast();
+            }
+
+            // 영역 포커스는 ClickFocusTarget에서 버튼 리스너를 등록하지 않음 (영역 내 자유 클릭)
+            // WaitForAction으로 진행하거나, 영역 내 특정 버튼으로 진행
+            if (step.advanceType == TutorialAdvanceType.ClickFocusTarget && _currentFocusTargetObj != null)
+            {
+                Button btn = _currentFocusTargetObj.GetComponent<Button>();
+                if (btn != null)
+                {
+                    btn.onClick.RemoveListener(OnFocusTargetClicked);
+                    btn.onClick.AddListener(OnFocusTargetClicked);
+                    _focusButtonBound = true;
+                }
+            }
+            return;
+        }
+
+        // ★ 일반 포커스 (기존 로직)
         if (string.IsNullOrEmpty(step.focusTargetName))
         {
             focusMask?.ClearFocus();
@@ -688,6 +855,11 @@ public class TutorialManager : MonoBehaviour
     {
         StopWaitCoroutine();
         RestoreCanvasRaycast(); // ★ 월드 타겟 모드 복원
+        RestoreHiddenObjects(); // ★ 숨긴 오브젝트 복원
+
+        // ★ 영역 포커스 초기화
+        _isAreaFocusActive = false;
+        _areaFocusRect = null;
 
         // ★ 현재 스텝 리스너 정리 (다음 스텝 전에 반드시)
         if (_activeSteps != null && _currentStep < _activeSteps.Count)
@@ -818,6 +990,19 @@ public class TutorialManager : MonoBehaviour
         if (!_isTutorialActive || _activeSteps == null || _currentStep >= _activeSteps.Count)
             return false;
 
+        // ★ 영역 포커스 모드: 포커스 영역 내 모든 오브젝트 허용
+        if (_isAreaFocusActive && _areaFocusRect != null && focusMask != null)
+        {
+            RectTransform goRT = go.GetComponent<RectTransform>();
+            if (goRT != null)
+            {
+                // 오브젝트의 스크린 좌표가 포커스 영역 안에 있는지 체크
+                Vector2 screenPos = RectTransformUtility.WorldToScreenPoint(null, goRT.position);
+                if (focusMask.IsPointInsideFocusArea(screenPos))
+                    return true;
+            }
+        }
+
         // ★ 오브젝트 참조 비교 (이름이 달라도 같은 오브젝트면 허용)
         if (_currentFocusTargetObj != null && go == _currentFocusTargetObj)
             return true;
@@ -828,6 +1013,105 @@ public class TutorialManager : MonoBehaviour
         if (string.IsNullOrEmpty(step.focusTargetName))
             return false;
         return go.name == step.focusTargetName;
+    }
+
+    // ════════════════════════════════════════
+    //  오브젝트 숨기기/복원
+    // ════════════════════════════════════════
+
+    /// <summary>현재 스텝이 강화 관련 단계인지 (강화패널 닫기 예외 처리용)</summary>
+    private bool IsEnhanceRelatedStep()
+    {
+        if (_activeSteps == null || _currentStep >= _activeSteps.Count) return false;
+        var step = _activeSteps[_currentStep];
+        string fn = step.focusTargetName ?? "";
+        return fn == "EnhanceActionBtn" || fn == "EnhancePanel" || fn.Contains("BtnClose");
+    }
+
+    /// <summary>튜토리얼 중 열리면 안 되는 패널 강제 닫기 (매 스텝마다 호출)</summary>
+    private void ForceCloseBlockedPanels()
+    {
+        bool isEnhanceStep = IsEnhanceRelatedStep();
+
+        // 강화 패널 — 강화 관련 단계에서는 닫지 않음
+        if (!isEnhanceStep)
+        {
+            var enhance = FindObjectOfType<EnhancementSystem>(true);
+            if (enhance != null && enhance.enhancementPanel != null && enhance.enhancementPanel.activeSelf)
+            {
+                enhance.enhancementPanel.SetActive(false);
+                Debug.Log("[Tutorial] 강화 패널 강제 닫기");
+            }
+        }
+
+        // 레벨업 패널
+        var levelUp = FindObjectOfType<EquipmentLevelUpPanel>(true);
+        if (levelUp != null && levelUp.gameObject.activeSelf)
+        {
+            levelUp.gameObject.SetActive(false);
+            Debug.Log("[Tutorial] 레벨업 패널 강제 닫기");
+        }
+
+        // 동료 뽑기 패널
+        var compGacha = FindObjectOfType<CompanionGachaManager>(true);
+        if (compGacha != null && compGacha.companionGachaPanel != null
+            && compGacha.companionGachaPanel.activeSelf
+            && !(_activeSteps[_currentStep].focusTargetName == "CompanionGachaBtn"
+              || _activeSteps[_currentStep].focusTargetName == "CompanionSinglePullBtn"))
+        {
+            compGacha.companionGachaPanel.SetActive(false);
+            Debug.Log("[Tutorial] 동료뽑기 패널 강제 닫기");
+        }
+    }
+
+    /// <summary>이 스텝의 hideTargets에 지정된 오브젝트 숨기기</summary>
+    private void HideStepTargets(TutorialStepData step)
+    {
+        if (step.hideTargets == null || step.hideTargets.Length == 0) return;
+
+        foreach (string targetName in step.hideTargets)
+        {
+            if (string.IsNullOrEmpty(targetName)) continue;
+
+            // ★ "AllContains:키워드" → 해당 키워드를 포함하는 모든 활성 오브젝트 숨기기
+            if (targetName.StartsWith("AllContains:"))
+            {
+                string keyword = targetName.Substring("AllContains:".Length);
+                var allTransforms = FindObjectsOfType<Transform>(false);
+                foreach (var t in allTransforms)
+                {
+                    if (t.gameObject.activeInHierarchy && t.name.Contains(keyword))
+                    {
+                        t.gameObject.SetActive(false);
+                        _hiddenObjects.Add(t.gameObject);
+                    }
+                }
+                Debug.Log($"[Tutorial] 전체 숨김: {keyword} ({_hiddenObjects.Count}개)");
+                continue;
+            }
+
+            GameObject obj = FindTargetByName(targetName);
+            if (obj != null && obj.activeSelf)
+            {
+                obj.SetActive(false);
+                _hiddenObjects.Add(obj);
+                Debug.Log($"[Tutorial] 숨김: {targetName}");
+            }
+        }
+    }
+
+    /// <summary>숨긴 오브젝트 전부 복원</summary>
+    private void RestoreHiddenObjects()
+    {
+        foreach (var obj in _hiddenObjects)
+        {
+            if (obj != null)
+            {
+                obj.SetActive(true);
+                Debug.Log($"[Tutorial] 복원: {obj.name}");
+            }
+        }
+        _hiddenObjects.Clear();
     }
 
     private List<TutorialStepData> GetPhaseSteps(int phase)
@@ -868,7 +1152,7 @@ public class TutorialManager : MonoBehaviour
 
         // ═══ 특수 패턴 처리 ═══
 
-        // "FarmPlot:N" → plotIndex=N인 FarmPlotController
+        // "FarmPlot:N" → plotIndex=N인 FarmPlotController (Image 자식 우선)
         if (targetName.StartsWith("FarmPlot:"))
         {
             string idxStr = targetName.Substring("FarmPlot:".Length);
@@ -876,7 +1160,285 @@ public class TutorialManager : MonoBehaviour
             {
                 var plots = FindObjectsOfType<FarmPlotController>(true);
                 foreach (var p in plots)
-                    if (p.plotIndex == idx) return p.gameObject;
+                {
+                    if (p.plotIndex != idx) continue;
+                    // ★ Image 자식이 있으면 그 위치를 타겟 (시각적 정확도)
+                    var img = p.GetComponentInChildren<Image>();
+                    if (img != null && img.GetComponent<RectTransform>() != null)
+                        return img.gameObject;
+                    return p.gameObject;
+                }
+            }
+            return null;
+        }
+
+        // "MailCloseBtn" → 메일 닫기 버튼
+        if (targetName == "MailCloseBtn")
+        {
+            var mail = MailUI.Instance ?? FindObjectOfType<MailUI>(true);
+            if (mail != null && mail.CloseMailButton != null) return mail.CloseMailButton.gameObject;
+            return null;
+        }
+
+        // "MailClaimAllBtn" → 메일 모두받기 버튼
+        if (targetName == "MailClaimAllBtn")
+        {
+            var mail = MailUI.Instance ?? FindObjectOfType<MailUI>(true);
+            if (mail != null && mail.ClaimAllButton != null) return mail.ClaimAllButton.gameObject;
+            return null;
+        }
+
+        // "MailCouponBtn" → 메일 쿠폰 버튼
+        if (targetName == "MailCouponBtn")
+        {
+            var mail = MailUI.Instance ?? FindObjectOfType<MailUI>(true);
+            if (mail != null && mail.OpenCouponButton != null) return mail.OpenCouponButton.gameObject;
+            return null;
+        }
+
+        // "MailCouponInput" → 쿠폰 입력 필드
+        if (targetName == "MailCouponInput")
+        {
+            var mail = MailUI.Instance ?? FindObjectOfType<MailUI>(true);
+            if (mail != null && mail.CouponInput != null) return mail.CouponInput.gameObject;
+            return null;
+        }
+
+        // "MailCouponPanel" → 쿠폰 입력 패널 전체
+        if (targetName == "MailCouponPanel")
+        {
+            var mail = MailUI.Instance ?? FindObjectOfType<MailUI>(true);
+            if (mail != null && mail.CouponPanel != null) return mail.CouponPanel;
+            return null;
+        }
+
+        // "ChatExpandBtn" → 채팅 펼치기 버튼
+        if (targetName == "ChatExpandBtn")
+        {
+            var chat = ChatSystem.Instance ?? FindObjectOfType<ChatSystem>(true);
+            if (chat != null && chat.expandButton != null) return chat.expandButton.gameObject;
+            return null;
+        }
+
+        // "ChatCollapseBtn" → 채팅 축소 버튼
+        if (targetName == "ChatCollapseBtn")
+        {
+            var chat = ChatSystem.Instance ?? FindObjectOfType<ChatSystem>(true);
+            if (chat != null && chat.collapseButton != null) return chat.collapseButton.gameObject;
+            return null;
+        }
+
+        // "ChatInputField" → 채팅 입력 필드
+        if (targetName == "ChatInputField")
+        {
+            var chat = ChatSystem.Instance ?? FindObjectOfType<ChatSystem>(true);
+            if (chat != null && chat.chatInputField != null) return chat.chatInputField.gameObject;
+            return null;
+        }
+
+        // "MenuToggleBtn" → 메뉴 토글 버튼
+        if (targetName == "MenuToggleBtn")
+        {
+            var mgr = TopMenuManager.Instance;
+            if (mgr != null && mgr.ToggleButton != null) return mgr.ToggleButton.gameObject;
+            return null;
+        }
+
+        // "MenuInventoryBtn" → 메뉴 인벤토리 버튼
+        if (targetName == "MenuInventoryBtn")
+        {
+            var mgr = TopMenuManager.Instance;
+            if (mgr != null && mgr.InventoryButton != null) return mgr.InventoryButton.gameObject;
+            return null;
+        }
+
+        // "MenuMailBtn" → 메뉴 메일 버튼
+        if (targetName == "MenuMailBtn")
+        {
+            var mgr = TopMenuManager.Instance;
+            if (mgr != null && mgr.MailButton != null) return mgr.MailButton.gameObject;
+            return null;
+        }
+
+        // "MenuEnhanceBtn" → 메뉴 강화 버튼
+        if (targetName == "MenuEnhanceBtn")
+        {
+            var mgr = TopMenuManager.Instance;
+            if (mgr != null && mgr.EnhancementButton != null) return mgr.EnhancementButton.gameObject;
+            return null;
+        }
+
+        // "CompanionGachaBtn" → 동료뽑기 버튼 (이름에 "동료뽑" 포함된 버튼)
+        if (targetName == "CompanionGachaBtn")
+        {
+            // 활성 오브젝트 중 "동료뽑" 포함 + Button 컴포넌트가 있는 것
+            var allBtns = FindObjectsOfType<Button>(false);
+            foreach (var btn in allBtns)
+            {
+                if (btn.gameObject.activeInHierarchy && btn.gameObject.name.Contains("동료뽑"))
+                    return btn.gameObject;
+            }
+            // 폴백: TMP 텍스트에 "동료뽑기" 포함된 버튼의 부모
+            var allTmps = FindObjectsOfType<TMPro.TextMeshProUGUI>(false);
+            foreach (var tmp in allTmps)
+            {
+                if (tmp.text.Contains("동료뽑기"))
+                {
+                    var btn = tmp.GetComponentInParent<Button>();
+                    if (btn != null) return btn.gameObject;
+                }
+            }
+            return null;
+        }
+
+        // "CompanionSinglePullBtn" → 동료 1회 뽑기 버튼
+        if (targetName == "CompanionSinglePullBtn")
+        {
+            var mgr = FindObjectOfType<CompanionGachaManager>(true);
+            if (mgr != null && mgr.singlePullBtn != null) return mgr.singlePullBtn.gameObject;
+            return null;
+        }
+
+        // "EnhanceActionBtn" → 강화 실행 버튼
+        if (targetName == "EnhanceActionBtn")
+        {
+            var sys = FindObjectOfType<EnhancementSystem>(true);
+            if (sys != null && sys.enhanceButton != null) return sys.enhanceButton.gameObject;
+            return null;
+        }
+
+        // "EnhancePanel" → 강화 패널
+        if (targetName == "EnhancePanel")
+        {
+            var sys = FindObjectOfType<EnhancementSystem>(true);
+            if (sys != null && sys.enhancementPanel != null) return sys.enhancementPanel;
+            return null;
+        }
+
+        // "PlantModePanel" → 작물관리 패널 (FarmPlantModePanel 자체)
+        if (targetName == "PlantModePanel")
+        {
+            var panel = FindObjectOfType<FarmPlantModePanel>(true);
+            if (panel != null) return panel.gameObject;
+            return null;
+        }
+
+        // "PlantModeCloseBtn" → 작물관리 닫기 버튼 (closeButton 필드 직접 참조)
+        if (targetName == "PlantModeCloseBtn")
+        {
+            var panel = FarmPlantModePanel.Instance ?? FindObjectOfType<FarmPlantModePanel>(true);
+            if (panel != null && panel.CloseButton != null)
+                return panel.CloseButton.gameObject;
+            return null;
+        }
+
+        // "CompanionResultPanel" → 동료 뽑기 결과 패널
+        if (targetName == "CompanionResultPanel")
+        {
+            var mgr = FindObjectOfType<CompanionGachaManager>(true);
+            if (mgr != null && mgr.resultPanel != null) return mgr.resultPanel;
+            return null;
+        }
+
+        // "CompanionResultCloseBtn" → 동료 뽑기 결과 닫기 버튼
+        if (targetName == "CompanionResultCloseBtn")
+        {
+            var mgr = FindObjectOfType<CompanionGachaManager>(true);
+            if (mgr != null && mgr.resultCloseBtn != null) return mgr.resultCloseBtn.gameObject;
+            return null;
+        }
+
+        // "CompanionAutoBtn" → 동료 오토 버튼
+        if (targetName == "CompanionAutoBtn")
+        {
+            var hotbarMgr = FindObjectOfType<CompanionHotbarManager>(true);
+            if (hotbarMgr != null && hotbarMgr.autoButton != null)
+                return hotbarMgr.autoButton.gameObject;
+            return null;
+        }
+
+        // "HundredGachaBtn" → 100연차 버튼
+        if (targetName == "HundredGachaBtn")
+        {
+            var gachaUI = FindObjectOfType<GachaUI>(true);
+            if (gachaUI != null && gachaUI.hundredGachaButton != null)
+                return gachaUI.hundredGachaButton.gameObject;
+            return null;
+        }
+
+        // "CompanionSlot:N" → 동료 인벤토리 N번째 활성 슬롯
+        if (targetName.StartsWith("CompanionSlot:"))
+        {
+            string idxStr = targetName.Substring("CompanionSlot:".Length);
+            if (int.TryParse(idxStr, out int idx) && InventoryManager.Instance != null)
+            {
+                var parent = InventoryManager.Instance.companionContainer;
+                if (parent != null)
+                {
+                    int count = 0;
+                    for (int i = 0; i < parent.childCount; i++)
+                    {
+                        var child = parent.GetChild(i);
+                        if (child.gameObject.activeSelf)
+                        {
+                            if (count == idx) return child.gameObject;
+                            count++;
+                        }
+                    }
+                }
+            }
+            return null;
+        }
+
+        // "EquipLevelUpPanel" → 장비 레벨업 패널 전체 (튜토리얼 중 숨김용)
+        if (targetName == "EquipLevelUpPanel")
+        {
+            var panel = FindObjectOfType<EquipmentLevelUpPanel>(true);
+            if (panel != null) return panel.gameObject;
+            return null;
+        }
+
+        // "GachaResultCloseBtn" → 가챠 결과 닫기 버튼 (포커스 포인터용)
+        if (targetName == "GachaResultCloseBtn")
+        {
+            var resultUI = FindObjectOfType<GachaResultUI>(true);
+            if (resultUI != null && resultUI.closeButton != null)
+                return resultUI.closeButton.gameObject;
+            return null;
+        }
+
+        // "CropShopPanel" → 작물상점 전체 패널 (영역 포커스용)
+        if (targetName == "CropShopPanel")
+        {
+            var shop = FindObjectOfType<FarmCropShopUI>(true);
+            if (shop != null && shop.shopPanel != null) return shop.shopPanel;
+            if (shop != null) return shop.gameObject;
+            return null;
+        }
+
+        // "CropShopCloseBtn" → 작물상점 닫기 버튼
+        if (targetName == "CropShopCloseBtn")
+        {
+            var shop = FindObjectOfType<FarmCropShopUI>(true);
+            if (shop != null && shop.closeButton != null) return shop.closeButton.gameObject;
+            return null;
+        }
+
+        // "CropShopDetail" → 작물상점 디테일+구매 패널
+        if (targetName == "CropShopDetail")
+        {
+            var shop = FindObjectOfType<FarmCropShopUI>(true);
+            if (shop != null && shop.detailPanel != null) return shop.detailPanel;
+            return null;
+        }
+
+        // "EquipSlotParent" → 장비 슬롯 부모 (영역 포커스용)
+        if (targetName == "EquipSlotParent")
+        {
+            if (InventoryManager.Instance != null)
+            {
+                var parent = InventoryManager.Instance.GetEquipSlotParent();
+                if (parent != null) return parent.gameObject;
             }
             return null;
         }
@@ -984,6 +1546,39 @@ public class TutorialManager : MonoBehaviour
             if (found != null) return found;
         }
         return null;
+    }
+
+    // ── LateUpdate 캐싱 ──
+    private EquipmentLevelUpPanel _cachedLevelUpPanel;
+    private bool _levelUpPanelSearched = false;
+
+    /// <summary>매 프레임 차단 패널 감시 — 튜토리얼 중 열리면 안 되는 패널 즉시 닫기</summary>
+    void LateUpdate()
+    {
+        if (!_isTutorialActive || !ShouldBlockNonFocusButtons) return;
+
+        bool isEnhanceStep = IsEnhanceRelatedStep();
+
+        // 강화 패널 — 강화 관련 단계에서는 닫지 않음
+        if (!isEnhanceStep)
+        {
+            var enhance = EnhancementSystem.Instance;
+            if (enhance != null && enhance.enhancementPanel != null && enhance.enhancementPanel.activeSelf)
+                enhance.enhancementPanel.SetActive(false);
+        }
+
+        // 레벨업 패널 (강화 단계가 아닐 때만)
+        if (!isEnhanceStep)
+        {
+            // ★ FindObjectOfType 캐싱 (매 프레임 호출 방지)
+            if (!_levelUpPanelSearched)
+            {
+                _cachedLevelUpPanel = FindObjectOfType<EquipmentLevelUpPanel>(true);
+                _levelUpPanelSearched = true;
+            }
+            if (_cachedLevelUpPanel != null && _cachedLevelUpPanel.gameObject.activeSelf)
+                _cachedLevelUpPanel.gameObject.SetActive(false);
+        }
     }
 
 #if UNITY_EDITOR

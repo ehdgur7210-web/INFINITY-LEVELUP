@@ -69,18 +69,25 @@ public class FarmManager : MonoBehaviour
 
     void Awake()
     {
+        Debug.Log($"[FarmManager] ★ Awake 진입! this={gameObject.name} / activeInHierarchy:{gameObject.activeInHierarchy} / Instance현재:{(Instance != null ? Instance.gameObject?.name ?? "DESTROYED" : "null")}");
+
         // ★ 파괴된 Instance 정리 (씬 전환 시 OnDestroy 누락 대비)
-        if (Instance != null && Instance.gameObject == null)
+        if (Instance != null)
         {
-            Debug.Log("[FarmManager] 파괴된 Instance 감지 → null로 초기화");
-            Instance = null;
+            bool isDestroyed = false;
+            try { _ = Instance.gameObject.name; } catch { isDestroyed = true; }
+            if (isDestroyed || Instance.gameObject == null)
+            {
+                Debug.Log("[FarmManager] 파괴된 Instance 감지 → null로 초기화");
+                Instance = null;
+            }
         }
 
         if (Instance == null)
         {
             Instance = this;
             Debug.Log("[ManagerInit] FarmManager가 생성되었습니다.");
-            Debug.Log($"[FarmManager] Instance 설정: {gameObject.name} / allCrops:{allCrops?.Count ?? 0}개");
+            Debug.Log($"[FarmManager] ★ Instance 설정 완료: {gameObject.name} / allCrops:{allCrops?.Count ?? 0}개 / scene:{gameObject.scene.name}");
         }
         else if (Instance != this)
         {
@@ -144,10 +151,11 @@ public class FarmManager : MonoBehaviour
 
     void OnDestroy()
     {
+        Debug.Log($"[FarmManager] ★ OnDestroy 호출: {gameObject.name} / isInstance:{Instance == this} / scene:{gameObject.scene.name}");
         if (Instance == this)
         {
             Instance = null;
-            Debug.Log("[FarmManager] Instance 해제 (씬 전환)");
+            Debug.Log("[FarmManager] ★ Instance = null 설정됨 (씬 전환)");
         }
     }
 
