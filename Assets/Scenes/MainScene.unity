@@ -26416,6 +26416,9 @@ MonoBehaviour:
   - {fileID: 11400000, guid: e36d7301b0da06e4ab784d067a11c1b6, type: 2}
   - {fileID: 11400000, guid: 675ceba27ac33af4bb991ee5dd19e0cf, type: 2}
   - {fileID: 11400000, guid: 68851d77f0522144d976f4c5ff525709, type: 2}
+  - {fileID: 11400000, guid: 63cb6383249f9c34899b2571a52082a9, type: 2}
+  - {fileID: 11400000, guid: ba690421c00fca947866b8ea6ef80444, type: 2}
+  - {fileID: 11400000, guid: 31276ad007452ed4988d016b80e16e84, type: 2}
   phase2Steps: []
   phase3Steps: []
   tutorialPanel: {fileID: 641643821}
@@ -35432,6 +35435,7 @@ MonoBehaviour:
   openPosY: 31
   closedPosY: -270
   slideDuration: 0.25
+  isPanelOpen: 1
 --- !u!4 &727001751
 Transform:
   m_ObjectHideFlags: 0
@@ -43103,8 +43107,8 @@ RectTransform:
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
-  - {fileID: 1688827186}
   - {fileID: 405983543}
+  - {fileID: 1688827186}
   - {fileID: 1482029843}
   - {fileID: 345220996}
   - {fileID: 1186929368}

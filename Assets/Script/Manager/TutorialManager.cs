@@ -397,7 +397,9 @@ public class TutorialManager : MonoBehaviour
         string focusName = step.focusTargetName ?? "";
 
         // 동료 뽑기 진입/결과 단계: 인벤토리 닫기
-        bool isCompanionCloseInven = focusName == "CompanionGachaBtn" || focusName == "CompanionSinglePullBtn"
+        // ★ CompanionGachaBtn 제외 — 가챠 결과 확인 직후 인벤토리가 갑자기 닫히는 문제 방지
+        //   (동료뽑기 패널이 실제로 열릴 때 인벤토리가 자연스럽게 가려짐)
+        bool isCompanionCloseInven = focusName == "CompanionSinglePullBtn"
                                   || focusName == "CompanionResultCloseBtn" || focusName == "CompanionAutoBtn";
         // 동료 슬롯/핫바 단계: 인벤토리 유지 (결과 닫기에서 이미 열림)
         bool isCompanionKeepInven = focusName.StartsWith("CompanionSlot:")

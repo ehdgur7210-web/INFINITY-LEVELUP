@@ -575,21 +575,11 @@ public class GachaResultUI : MonoBehaviour
             }
             else
             {
-                // ★ 튜토리얼 중: 인벤토리 건드리지 않음 (ForceRefreshAll도 스킵)
-                Debug.Log("[GachaResultUI] ClosePanel — 튜토리얼 중 인벤토리 스킵");
+                // ★ 튜토리얼 중: ForceRefreshAll만 (열기/닫기는 건드리지 않음)
+                InventoryManager.Instance.ForceRefreshAll();
+                Debug.Log("[GachaResultUI] ClosePanel — 튜토리얼 중 인벤토리 갱신만");
             }
         }
-
-        // ★ 튜토리얼 중: 인벤토리가 열린 상태 유지 (닫기 버튼 클릭 관통으로 인벤토리가 닫히는 버그 방지)
-        if (tutorialActive && InventoryManager.Instance != null && !InventoryManager.Instance.isPanelOpen)
-        {
-            InventoryManager.Instance.OpenInventory();
-            Debug.Log("[GachaResultUI] ★ 튜토리얼 중 인벤토리 닫힘 감지 → 강제 재오픈");
-        }
-
-        // ★ 클릭 관통 방지 (1프레임 EventSystem 비활성화)
-        UIClickGuard.Consume();
-        StartCoroutine(BlockInputOneFrame());
 
         // 튜토리얼 트리거
         TutorialManager.Instance?.OnActionCompleted("GachaResultClosed");
@@ -597,13 +587,17 @@ public class GachaResultUI : MonoBehaviour
         Debug.Log("[GachaResultUI] 패널 닫힘 → SaveGame 완료");
     }
 
-    /// <summary>1프레임 동안 EventSystem 비활성화 (클릭 관통 완전 차단)</summary>
-    private IEnumerator BlockInputOneFrame()
+    /// <summary>N프레임 후 EventSystem 복원 (필요시 사용)</summary>
+    private IEnumerator RestoreEventSystemDelayed()
     {
-        var es = UnityEngine.EventSystems.EventSystem.current;
-        if (es != null) es.enabled = false;
         yield return null;
-        if (es != null) es.enabled = true;
+        yield return null;
+        var es = UnityEngine.EventSystems.EventSystem.current;
+        if (es != null && !es.enabled)
+        {
+            es.enabled = true;
+            Debug.Log("[GachaResultUI] EventSystem 복원");
+        }
     }
 
     private void ClearSlots()
