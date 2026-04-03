@@ -196,9 +196,7 @@ public class TutorialManager : MonoBehaviour
         var offlineUI = FindObjectOfType<OfflineRewardUI>(true);
         if (offlineUI != null) offlineUI.ClosePanel();
 
-        // 현재 스텝 보상 지급 후 다음으로
-        if (_activeSteps != null && _currentStep < _activeSteps.Count)
-            GiveStepRewards(_activeSteps[_currentStep]);
+        // ★ 보상은 DoShowStep(스텝 시작 시)에서 지급 → 여기서 제거
 
         _currentStep++;
         _sceneAdvancing = false; // ★ 중복 방지 해제
@@ -265,6 +263,7 @@ public class TutorialManager : MonoBehaviour
         _activeSteps = steps;
         _currentStep = 0;
         _isTutorialActive = true;
+        _rewardedSteps.Clear(); // ★ 보상 지급 기록 초기화
 
         if (GameDataBridge.CurrentData != null)
             GameDataBridge.CurrentData.tutorialStep = 0;
@@ -366,6 +365,9 @@ public class TutorialManager : MonoBehaviour
 
         if (GameDataBridge.CurrentData != null)
             GameDataBridge.CurrentData.tutorialStep = stepIndex;
+
+        // ★ 보상은 스텝 시작 시 지급 (뽑기 등 보상이 필요한 액션 전에 지급되어야 함)
+        GiveStepRewards(step);
 
         // ★ 이전 스텝에서 숨긴 오브젝트 복원
         RestoreHiddenObjects();
@@ -865,7 +867,7 @@ public class TutorialManager : MonoBehaviour
         if (_activeSteps != null && _currentStep < _activeSteps.Count)
         {
             CleanupCurrentStepListeners(_activeSteps[_currentStep]);
-            GiveStepRewards(_activeSteps[_currentStep]);
+            // ★ 보상은 DoShowStep(스텝 시작 시)에서 지급 → 여기서 제거
         }
 
         _focusButtonBound = false; // ★ 다음 스텝을 위해 초기화
@@ -889,9 +891,20 @@ public class TutorialManager : MonoBehaviour
         }
     }
 
+    // ★ 이미 보상을 지급한 스텝 인덱스 (중복 지급 방지)
+    private HashSet<int> _rewardedSteps = new HashSet<int>();
+
     private void GiveStepRewards(TutorialStepData step)
     {
         if (step.rewards == null || step.rewards.Length == 0) return;
+
+        // ★ 이미 지급한 스텝은 건너뛰기
+        int stepIdx = _activeSteps != null ? _activeSteps.IndexOf(step) : -1;
+        if (stepIdx >= 0 && !_rewardedSteps.Add(stepIdx))
+        {
+            Debug.Log($"[Tutorial] 보상 중복 방지: Step {stepIdx} 이미 지급됨");
+            return;
+        }
 
         foreach (var r in step.rewards)
         {
@@ -910,13 +923,16 @@ public class TutorialManager : MonoBehaviour
                     UIManager.Instance?.ShowMessage($"+{r.amount:N0} 다이아", Color.cyan);
                     break;
                 case TutorialRewardType.EquipmentTicket:
+                    // ★ ResourceBarManager + GameDataBridge 양쪽 모두 업데이트 (씬 전환 후 유실 방지)
                     if (ResourceBarManager.Instance != null) ResourceBarManager.Instance.AddEquipmentTickets(r.amount);
-                    else if (GameDataBridge.CurrentData != null) GameDataBridge.CurrentData.equipmentTickets += r.amount;
+                    if (GameDataBridge.CurrentData != null) GameDataBridge.CurrentData.equipmentTickets += (ResourceBarManager.Instance == null ? r.amount : 0);
+                    Debug.Log($"[Tutorial] ★ 장비 티켓 +{r.amount} 지급 (ResourceBar:{ResourceBarManager.Instance != null})");
                     UIManager.Instance?.ShowMessage($"+{r.amount} 장비 티켓", Color.green);
                     break;
                 case TutorialRewardType.CompanionTicket:
                     if (ResourceBarManager.Instance != null) ResourceBarManager.Instance.AddCompanionTickets(r.amount);
-                    else if (GameDataBridge.CurrentData != null) GameDataBridge.CurrentData.companionTickets += r.amount;
+                    if (GameDataBridge.CurrentData != null) GameDataBridge.CurrentData.companionTickets += (ResourceBarManager.Instance == null ? r.amount : 0);
+                    Debug.Log($"[Tutorial] ★ 동료 티켓 +{r.amount} 지급 (ResourceBar:{ResourceBarManager.Instance != null})");
                     UIManager.Instance?.ShowMessage($"+{r.amount} 동료 티켓", Color.green);
                     break;
                 case TutorialRewardType.CropPoint:
