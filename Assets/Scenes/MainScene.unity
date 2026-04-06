@@ -4341,7 +4341,7 @@ MonoBehaviour:
   friendPanel: {fileID: 90496816}
   canvasGroup: {fileID: 90496820}
   tabFriendListBtn: {fileID: 1556642120}
-  tabRequestBtn: {fileID: 1556642120}
+  tabRequestBtn: {fileID: 774976493}
   tabSearchBtn: {fileID: 1643084367}
   friendListPanel: {fileID: 1076634335}
   requestPanel: {fileID: 1499536573}

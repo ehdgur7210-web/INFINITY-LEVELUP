@@ -231,7 +231,11 @@ public class FriendUI : MonoBehaviour
     /// <summary>모든 탭 콘텐츠를 숨기고 동적 아이템 제거</summary>
     private void HideAll()
     {
-        // ★ 패널 토글 안 함 — 자식 연쇄 활성화 방지
+        // ★ 패널 전부 끄기
+        if (friendListPanel) friendListPanel.SetActive(false);
+        if (requestPanel) requestPanel.SetActive(false);
+        if (searchPanel) searchPanel.SetActive(false);
+
         // 탭0 요소
         ClearChildren(friendListContent);
         SetGO(friendCountText, false);
@@ -255,7 +259,7 @@ public class FriendUI : MonoBehaviour
 
     private void ShowTab0()
     {
-        // ★ friendListPanel 토글 안 함 — 개별 요소만 켬
+        if (friendListPanel) friendListPanel.SetActive(true);
         SetGO(friendCountText, true);
         SetGO(friendPointText, true);
         SetGO(sendAllBtn, true);
@@ -268,6 +272,7 @@ public class FriendUI : MonoBehaviour
 
     private void ShowTab1()
     {
+        if (requestPanel) requestPanel.SetActive(true);
         SetGO(requestCountText, true);
         SetGO(requestListContent, true);
 
@@ -276,6 +281,7 @@ public class FriendUI : MonoBehaviour
 
     private void ShowTab2()
     {
+        if (searchPanel) searchPanel.SetActive(true);
         SetGO(searchInput, true);
         SetGO(searchBtn, true);
         SetGO(searchResultContent, true);
