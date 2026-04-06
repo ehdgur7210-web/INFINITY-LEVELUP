@@ -269,7 +269,8 @@ public class OfflineRewardManager : MonoBehaviour
 
     private void ApplyReward(float bonusMultiplier, bool isAdClaim)
     {
-        if (!IsClaimable) return;
+        // ★ 일반 수령은 최소 누적 시간 필요, 2배 보상은 누적 시간 무관 (고정 8시간분)
+        if (!isAdClaim && !IsClaimable) return;
 
         int finalGold, finalExp, finalGem, finalTicket;
         string label;

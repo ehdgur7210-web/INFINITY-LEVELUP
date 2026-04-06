@@ -476,6 +476,9 @@ public class SkillComboSystem : MonoBehaviour
         {
             if (col == null || col.gameObject == player.gameObject) continue;
 
+            // ★ 동료(CompanionAgent)는 범위 공격 대상에서 제외
+            if (col.GetComponent<CompanionAgent>() != null) continue;
+
             // Monster 컴포넌트
             Monster monster = col.GetComponent<Monster>();
             if (monster != null && monster.currentHp > 0)

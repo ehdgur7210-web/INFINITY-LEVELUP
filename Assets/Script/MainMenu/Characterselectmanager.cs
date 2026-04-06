@@ -746,11 +746,9 @@ public class CharacterSelectManager : MonoBehaviour
             });
         }
 
-        // ★ 인메모리 CurrentData도 초기화 (씬 전환 시 옛 데이터 잔존 방지)
-        if (GameDataBridge.HasData && GameDataBridge.CurrentData.activeCharacterSlot == idx)
-        {
-            GameDataBridge.ResetCurrentData();
-        }
+        // ★ 인메모리 CurrentData 초기화 (삭제된 슬롯 데이터가 잔존하는 것 방지)
+        GameDataBridge.ResetCurrentData();
+        Debug.Log($"[CharacterSelect] 슬롯 {idx} 삭제 — CurrentData 초기화 완료");
     }
 
     // ══════════════════════════════════════════════════════

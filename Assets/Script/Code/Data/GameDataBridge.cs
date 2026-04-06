@@ -101,8 +101,12 @@ public static class GameDataBridge
     /// <summary>SaveLoadManager가 수집한 데이터를 인메모리에 등록</summary>
     public static void SetData(SaveData data)
     {
+        int prevEquip = CurrentData?.equipmentData?.slots?.Count ?? -1;
         CurrentData = data ?? new SaveData();
         HasData = true;
+        int newEquip = CurrentData?.equipmentData?.slots?.Count ?? -1;
+        if (prevEquip != newEquip)
+            Debug.Log($"[EQUIP-TRACE] GameDataBridge.SetData: 장비 {prevEquip}개 → {newEquip}개");
     }
 
     /// <summary>

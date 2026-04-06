@@ -462,7 +462,7 @@ public class EquipmentLevelUpPanel : MonoBehaviour
     {
         if (currentEquip == null) return;
 
-        // ★ 레벨 상한 = 기본 20 + (강화수치 × 10)
+        // ★ 레벨 상한: 기본 20 + (강화 1당 +10)
         int enhLevel = currentSlot != null ? currentSlot.enhanceLevel : 0;
         int maxLv = 20 + (enhLevel * 10);
         bool isMaxLevel = currentLevel >= maxLv;
@@ -570,7 +570,7 @@ public class EquipmentLevelUpPanel : MonoBehaviour
 
         if (currentSlot == null || currentEquip == null) return;
 
-        // ★ 레벨 상한 = 기본 20 + (강화수치 × 10)
+        // ★ 레벨 상한: 기본 20 + (강화 1당 +10)
         int enhLevel = currentSlot != null ? currentSlot.enhanceLevel : 0;
         int maxLv = 20 + (enhLevel * 10);
         if (currentLevel >= maxLv)

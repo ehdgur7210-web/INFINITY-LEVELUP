@@ -12,11 +12,12 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ff3502ee1a5e23a4296b247472417649, type: 3}
   m_Name: P1_42
   m_EditorClassIdentifier: 
-  tipMessage: "\uBA38\uB9AC \uC7A5\uBE44\uB97C \uD130\uCE58\uD558\uC138\uC694!"
-  focusTargetName: InvenSlot:0
+  tipMessage: "\uBA38\uB9AC \uC7A5\uBE44\uB97C \uD130\uCE58\uD558\uC138\uC694!\n\uC7A5\uBE44
+    \uC2AC\uB86F\uC744 \uD074\uB9AD\uD558\uBA74 \uAC15\uD654\uCC3D\uC774 \uC5F4\uB9BD\uB2C8\uB2E4."
+  focusTargetName: EquipPanelSlot:Helmet
   focusPadding: {x: 20, y: 20}
-  advanceType: 0
-  requiredAction: 
+  advanceType: 3
+  requiredAction: EnhancePanelOpened
   autoAdvanceDelay: 2
   tipPosition: 0
   isSceneTransitionStep: 0
@@ -24,5 +25,7 @@ MonoBehaviour:
   useAreaFocus: 0
   areaTargetName: 
   hideTargets:
+  - EquipLevelUpPanel
   - AllContains:EquipButton
+  - AllContains:LevelUpButton
   rewards: []

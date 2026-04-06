@@ -109,7 +109,8 @@ public class EnhancementSystem : MonoBehaviour
         {
             var step = TutorialManager.Instance.GetCurrentStep();
             string fn = step?.focusTargetName ?? "";
-            bool isEnhanceStep = fn == "EnhanceActionBtn" || fn == "EnhancePanel" || fn.Contains("BtnClose");
+            bool isEnhanceStep = fn == "EnhanceActionBtn" || fn == "EnhancePanel" || fn.Contains("BtnClose")
+                              || fn.StartsWith("EquipPanelSlot:");
             if (!isEnhanceStep) return;
         }
         if (enhancementPanel == null) return;
@@ -128,7 +129,8 @@ public class EnhancementSystem : MonoBehaviour
         {
             var step = TutorialManager.Instance.GetCurrentStep();
             string fn = step?.focusTargetName ?? "";
-            bool isEnhanceStep = fn == "EnhanceActionBtn" || fn == "EnhancePanel" || fn.Contains("BtnClose");
+            bool isEnhanceStep = fn == "EnhanceActionBtn" || fn == "EnhancePanel" || fn.Contains("BtnClose")
+                              || fn.StartsWith("EquipPanelSlot:");
             if (!isEnhanceStep) return;
         }
 
@@ -215,6 +217,9 @@ public class EnhancementSystem : MonoBehaviour
             enhancementPanel.SetActive(true);
 
         Debug.Log($"[EnhancementSystem] 장착 아이템 선택: {equipment.itemName} +{currentEnhanceLevel}");
+
+        // ★ 튜토리얼: 강화 패널 열림 액션 완료
+        TutorialManager.Instance?.OnActionCompleted("EnhancePanelOpened");
     }
 
     // ─────────────────────────────────────────

@@ -131,6 +131,50 @@ public class SoundManager : MonoBehaviour
         BuildClipDictionaries();
         CreateSFXPool();
         LoadSettings();
+
+        // ★ 씬 로드 이벤트 구독 — 씬별 BGM 자동 전환
+        UnityEngine.SceneManagement.SceneManager.sceneLoaded += OnSceneLoaded;
+    }
+
+    /// <summary>씬 로드 시 해당 씬에 맞는 BGM 자동 재생</summary>
+    private void OnSceneLoaded(UnityEngine.SceneManagement.Scene scene, UnityEngine.SceneManagement.LoadSceneMode mode)
+    {
+        // 클립 딕셔너리 재구성 (새 씬에서 클립이 갱신되었을 수 있음)
+        BuildClipDictionaries();
+
+        string sceneName = scene.name;
+        Debug.Log($"[SoundManager] 씬 로드 감지: {sceneName} → BGM 전환 시도");
+
+        switch (sceneName)
+        {
+            case "LoginScene":
+                // 로그인 BGM: "시작음" 또는 첫 번째 BGM
+                if (bgmDict.ContainsKey("시작음"))
+                    PlayBGM("시작음");
+                else if (bgmDict.Count > 0)
+                {
+                    foreach (var kvp in bgmDict) { PlayBGM(kvp.Key); break; }
+                }
+                break;
+
+            case "MainScene":
+                // 메인 BGM: "메인음" 또는 "MainBGM" 등 (없으면 유지)
+                if (bgmDict.ContainsKey("메인음"))
+                    PlayBGM("메인음");
+                else if (bgmDict.ContainsKey("MainBGM"))
+                    PlayBGM("MainBGM");
+                // 매칭 BGM 없으면 현재 BGM 유지 또는 시작음 재생
+                else if (!bgmSource.isPlaying && bgmDict.ContainsKey("시작음"))
+                    PlayBGM("시작음");
+                break;
+
+            case "FarmScene":
+                if (bgmDict.ContainsKey("농장음"))
+                    PlayBGM("농장음");
+                else if (bgmDict.ContainsKey("FarmBGM"))
+                    PlayBGM("FarmBGM");
+                break;
+        }
     }
 
     /// <summary>

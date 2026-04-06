@@ -390,13 +390,14 @@ public class TutorialPhase1Builder
             delay = 0f
         }));
 
-        // --- Step 42: 장비 슬롯 머리 선택 (직접 타겟) ---
+        // --- Step 42: 장비 패널 슬롯 머리(Helmet) 선택 → 강화창 진입 ---
         steps.Add(Create(42, new StepDef {
-            tip = "머리 장비를 터치하세요!",
-            focus = "InvenSlot:0",
-            advance = TutorialAdvanceType.ClickFocusTarget,
+            tip = "머리 장비를 터치하세요!\n장비 슬롯을 클릭하면 강화창이 열립니다.",
+            focus = "EquipPanelSlot:Helmet",
+            advance = TutorialAdvanceType.WaitForAction,
+            action = "EnhancePanelOpened",
             padding = new Vector2(20, 20),
-            hideTargets = new[] { "AllContains:EquipButton" }
+            hideTargets = new[] { "EquipLevelUpPanel", "AllContains:EquipButton", "AllContains:LevelUpButton" }
         }));
 
         // --- Step 43: 강화 버튼 클릭 (1레벨 올리기) ---

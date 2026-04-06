@@ -639,11 +639,23 @@ public class CompanionGachaManager : MonoBehaviour
         // 메인 UI 복원
         ShowMainUI();
 
-        // 동료탭 자동 전환
-        if (InventoryManager.Instance != null)
+        // ★ 튜토리얼 중: 인벤토리 상태 건드리지 않음 (TutorialManager가 제어)
+        bool tutorialActive = TutorialManager.Instance != null && TutorialManager.Instance.IsTutorialActive;
+        if (!tutorialActive)
         {
-            Debug.Log("[CompanionGacha] ★ 동료탭 자동 전환 시도");
-            InventoryManager.Instance.SelectTab(InventoryManager.InvenTabType.Companion);
+            // 동료탭 자동 전환
+            if (InventoryManager.Instance != null)
+            {
+                Debug.Log("[CompanionGacha] ★ 동료탭 자동 전환 시도");
+                InventoryManager.Instance.SelectTab(InventoryManager.InvenTabType.Companion);
+            }
+        }
+        else
+        {
+            // ★ 튜토리얼 중: 인벤토리 갱신만 (열기/닫기/탭전환 안 함)
+            if (InventoryManager.Instance != null)
+                InventoryManager.Instance.ForceRefreshAll();
+            Debug.Log("[CompanionGacha] ★ 튜토리얼 중 — 인벤토리 갱신만, 탭전환 안 함");
         }
 
         // 튜토리얼 트리거

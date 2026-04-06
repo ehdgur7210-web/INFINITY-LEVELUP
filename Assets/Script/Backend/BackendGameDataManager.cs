@@ -521,24 +521,76 @@ public class BackendGameDataManager : MonoBehaviour
     /// <summary>서버에서 해당 슬롯의 데이터를 삭제합니다.</summary>
     public void DeleteFromServer(int slot, Action<bool> onComplete = null)
     {
-        if (BackendManager.Instance == null || !BackendManager.Instance.IsLoggedIn || string.IsNullOrEmpty(_rowInDate))
+        if (BackendManager.Instance == null || !BackendManager.Instance.IsLoggedIn)
         {
+            Debug.LogWarning($"[BackendGameData] DeleteFromServer 스킵 — 미로그인 (slot:{slot})");
             onComplete?.Invoke(false);
             return;
         }
 
-        Backend.GameData.DeleteV2(tableName, _rowInDate, Backend.UserInDate, callback =>
+        // ★ slot_index 기반으로 해당 슬롯 데이터를 검색 후 삭제
+        //   (_rowInDate는 현재 로드된 row만 가리키므로, 슬롯별 삭제에는 where 검색 필요)
+        Where where = new Where();
+        where.Equal("slot_index", slot);
+
+        Debug.Log($"[BackendGameData] ▶ DeleteFromServer — slot:{slot}, 서버에서 slot_index={slot} 검색 후 삭제");
+
+        Backend.GameData.GetMyData(tableName, where, callback =>
         {
-            if (callback.IsSuccess())
+            if (!callback.IsSuccess())
             {
-                _rowInDate = null;
-                Debug.Log($"[BackendGameData] ✅ 서버 슬롯 {slot} 삭제 완료");
-                onComplete?.Invoke(true);
+                Debug.Log($"[BackendGameData] 삭제 대상 조회 실패/없음 (slot:{slot}) → 삭제 불필요");
+                onComplete?.Invoke(true); // 데이터가 없으면 삭제 성공으로 간주
+                return;
             }
-            else
+
+            JsonData rows = callback.FlattenRows();
+            if (rows.Count == 0)
             {
-                Debug.LogError($"[BackendGameData] ❌ 삭제 실패: statusCode={callback.GetStatusCode()}, errorCode={callback.GetErrorCode()}, msg={callback.GetMessage()}");
-                onComplete?.Invoke(false);
+                Debug.Log($"[BackendGameData] 서버에 slot:{slot} 데이터 없음 → 삭제 불필요");
+                onComplete?.Invoke(true);
+                return;
+            }
+
+            // 해당 슬롯의 모든 row 삭제
+            int deleteCount = rows.Count;
+            int deleteDone = 0;
+            bool allSuccess = true;
+
+            for (int i = 0; i < rows.Count; i++)
+            {
+                string rowInDate = rows[i].ContainsKey("inDate") ? rows[i]["inDate"].ToString() : null;
+                if (string.IsNullOrEmpty(rowInDate))
+                {
+                    deleteDone++;
+                    continue;
+                }
+
+                Backend.GameData.DeleteV2(tableName, rowInDate, Backend.UserInDate, delCallback =>
+                {
+                    if (!delCallback.IsSuccess())
+                    {
+                        Debug.LogError($"[BackendGameData] ❌ 삭제 실패 (slot:{slot}, row:{rowInDate}): {delCallback.GetMessage()}");
+                        allSuccess = false;
+                    }
+                    deleteDone++;
+
+                    if (deleteDone >= deleteCount)
+                    {
+                        // 현재 _rowInDate가 삭제된 슬롯의 것이었으면 null 처리
+                        if (_rowInDate != null)
+                        {
+                            for (int j = 0; j < rows.Count; j++)
+                            {
+                                string rd = rows[j].ContainsKey("inDate") ? rows[j]["inDate"].ToString() : null;
+                                if (rd == _rowInDate) { _rowInDate = null; break; }
+                            }
+                        }
+
+                        Debug.Log($"[BackendGameData] ✅ 서버 슬롯 {slot} 삭제 완료 ({deleteCount}개 row, 성공={allSuccess})");
+                        onComplete?.Invoke(allSuccess);
+                    }
+                });
             }
         });
     }

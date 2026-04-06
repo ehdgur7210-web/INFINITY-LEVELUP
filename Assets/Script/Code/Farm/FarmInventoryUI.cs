@@ -651,7 +651,11 @@ public class FarmInventoryUI : MonoBehaviour
     private void ExitPlantMode()
     {
         isPlantMode = false;
-        plantModeGuide?.SetActive(false);
+        if (plantModeGuide != null && plantModeGuide.gameObject != null)
+        {
+            try { plantModeGuide.SetActive(false); }
+            catch (MissingReferenceException) { plantModeGuide = null; }
+        }
     }
 
     // ════════════════════════════════════════════════

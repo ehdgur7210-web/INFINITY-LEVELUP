@@ -54,6 +54,15 @@ public class EquipPanelSlot : MonoBehaviour, IDropHandler, IPointerClickHandler,
 
         // ★ ClearSlot 대신 장착 데이터 즉시 표시
         RefreshFromManager();
+
+        // ★ 타이밍 문제 방지: 1프레임 후 재갱신 (SaveData 로드가 Start 이후일 수 있음)
+        StartCoroutine(DelayedRefresh());
+    }
+
+    private System.Collections.IEnumerator DelayedRefresh()
+    {
+        yield return null; // 1프레임 대기
+        RefreshFromManager();
     }
 
     void OnEnable()
@@ -85,6 +94,9 @@ public class EquipPanelSlot : MonoBehaviour, IDropHandler, IPointerClickHandler,
     private void RefreshFromManager()
     {
         if (EquipmentManager.Instance == null) return;
+
+        // ★ 장비 로드 전이면 갱신 스킵 (빈 데이터로 UnequipItem 방지)
+        if (!EquipmentManager.Instance.IsEquipmentLoaded) return;
 
         EquipmentData equipped = EquipmentManager.Instance.GetEquippedItem(slotType);
         if (equipped != null)
@@ -206,6 +218,14 @@ public class EquipPanelSlot : MonoBehaviour, IDropHandler, IPointerClickHandler,
         // 롱프레스로 탈착했으면 클릭 무시
         if (longPressTriggered) return;
         if (currentEquipment == null) return;
+
+        // ★ 튜토리얼 중: 포커스 대상 슬롯만 클릭 허용
+        if (TutorialManager.Instance != null && TutorialManager.Instance.ShouldBlockNonFocusButtons
+            && !TutorialManager.Instance.IsCurrentFocusTarget(gameObject))
+        {
+            return;
+        }
+
         SoundManager.Instance?.PlayButtonClick();
 
         if (EnhancementSystem.Instance != null)

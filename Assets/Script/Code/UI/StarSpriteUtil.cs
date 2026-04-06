@@ -28,6 +28,9 @@ public static class StarSpriteUtil
     /// <summary>true면 스프라이트 이미지, false면 폰트 문자 "★" + color 태그</summary>
     public static bool useSpriteMode = true;
 
+    /// <summary>TMP Sprite Asset 이름 (Assets/TextMesh Pro/Resources/Sprite Assets/ 내 에셋)</summary>
+    public static string spriteAssetName = "별";
+
     /// <summary>한 등급당 최대 별 수</summary>
     public const int StarsPerTier = 5;
 
@@ -125,7 +128,8 @@ public static class StarSpriteUtil
         if (!useSpriteMode)
             return new string('\u2605', count);
 
-        string tag = $"<sprite={spriteIndex}>";
+        // ★ Sprite Asset 이름 명시 — 기본 EmojiOne 대신 "별" 에셋 사용
+        string tag = $"<sprite=\"{spriteAssetName}\" index={spriteIndex}>";
         var sb = new System.Text.StringBuilder(tag.Length * count);
         for (int i = 0; i < count; i++)
             sb.Append(tag);

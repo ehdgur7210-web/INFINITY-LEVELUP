@@ -222,8 +222,8 @@ public class CharacterCreateManager : MonoBehaviour
     private string BuildBar(int value)
     {
         var sb = new System.Text.StringBuilder();
-        string filled = $"<sprite=0 tint=1 color=#FFD700>";
-        string empty  = $"<sprite=1 tint=1 color=#555555>";
+        string filled = $"<sprite=\"별\" index=0 tint=1 color=#FFD700>";
+        string empty  = $"<sprite=\"별\" index=1 tint=1 color=#555555>";
 
         // size 태그로 별 영역 축소
         sb.Append($"<size={starSize}>");

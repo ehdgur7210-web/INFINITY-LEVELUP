@@ -248,6 +248,12 @@ public class CompanionAgent : MonoBehaviour, IHitable
     }
 
     // ── Follow: 플레이어 근처 대기 + 적 탐색 ──
+    [Header("동료 간 분리")]
+    [Tooltip("다른 동료와 이 거리 이내면 서로 밀어냄")]
+    public float separationRadius = 1.5f;
+    [Tooltip("분리 힘 세기")]
+    public float separationForce = 3f;
+
     private void DoFollow(float distToPlayer)
     {
         float speed = data != null ? data.moveSpeed * 0.6f : 2f;
@@ -261,9 +267,35 @@ public class CompanionAgent : MonoBehaviour, IHitable
         }
         else
         {
-            // 충분히 가까우면 정지
+            // 충분히 가까우면 정지 + 분리 힘만 적용
             rb.velocity = Vector2.zero;
             SetAnimMoving(false);
+        }
+
+        // ★ 동료 간 겹침 방지: 가까운 동료로부터 밀어내기
+        ApplySeparation();
+    }
+
+    /// <summary>주변 동료와 겹치지 않도록 밀어내는 힘 적용</summary>
+    private void ApplySeparation()
+    {
+        Vector2 sepDir = Vector2.zero;
+        var companions = FindObjectsOfType<CompanionAgent>();
+
+        foreach (var other in companions)
+        {
+            if (other == this || other.IsDead || !other.isActive) continue;
+            Vector2 diff = (Vector2)transform.position - (Vector2)other.transform.position;
+            float dist = diff.magnitude;
+            if (dist < separationRadius && dist > 0.01f)
+            {
+                sepDir += diff.normalized * (1f - dist / separationRadius);
+            }
+        }
+
+        if (sepDir.sqrMagnitude > 0.01f)
+        {
+            rb.velocity += sepDir.normalized * separationForce;
         }
     }
 

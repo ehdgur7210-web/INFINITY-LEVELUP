@@ -624,10 +624,14 @@ public class OptionUI : MonoBehaviour
             BackendManager.Instance.Logout();
         }
 
-        // 3. 옵션 패널 닫기
+        // 3. ★ BGM 정지 (로그인 씬에서 로그인 BGM이 새로 재생되도록)
+        if (SoundManager.Instance != null)
+            SoundManager.Instance.StopBGM();
+
+        // 4. 옵션 패널 닫기
         CloseOptionPanel();
 
-        // 4. 로그인 씬으로 이동
+        // 5. 로그인 씬으로 이동
         if (SceneTransitionManager.Instance != null)
         {
             SceneTransitionManager.Instance.LoadScene("LoginScene");

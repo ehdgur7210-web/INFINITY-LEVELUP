@@ -264,8 +264,10 @@ public class SceneTransitionManager : MonoBehaviour
     /// </summary>
     public void LoadFarmScene(Vector3 spawnPosition = default)
     {
+        Debug.Log($"[EQUIP-TRACE] ═══ LoadFarmScene 시작 ═══ EquipMgr={EquipmentManager.Instance != null}, IsLoaded={EquipmentManager.Instance?.IsEquipmentLoaded}, Bridge장비={GameDataBridge.CurrentData?.equipmentData?.slots?.Count ?? -1}개");
         // ★ 씬 이동 전 현재 씬 데이터 저장
         SaveLoadManager.Instance?.SaveGame();
+        Debug.Log($"[EQUIP-TRACE] LoadFarmScene SaveGame 후 Bridge장비={GameDataBridge.CurrentData?.equipmentData?.slots?.Count ?? -1}개");
 
         pendingPlayerPosition = spawnPosition == default ? Vector3.zero : spawnPosition;
         StartCoroutine(LoadSceneCoroutine(SCENE_FARM));
@@ -274,8 +276,10 @@ public class SceneTransitionManager : MonoBehaviour
     /// <summary>메인 게임씬으로 복귀 (저장 후 이동)</summary>
     public void LoadMainScene(Vector3 returnPosition = default)
     {
+        Debug.Log($"[EQUIP-TRACE] ═══ LoadMainScene 시작 ═══ EquipMgr={EquipmentManager.Instance != null}, IsLoaded={EquipmentManager.Instance?.IsEquipmentLoaded}, Bridge장비={GameDataBridge.CurrentData?.equipmentData?.slots?.Count ?? -1}개");
         // 저장 먼저
         SaveLoadManager.Instance?.SaveGame();
+        Debug.Log($"[EQUIP-TRACE] LoadMainScene SaveGame 후 Bridge장비={GameDataBridge.CurrentData?.equipmentData?.slots?.Count ?? -1}개");
 
         pendingPlayerPosition = returnPosition == default ? Vector3.zero : returnPosition;
         StartCoroutine(LoadSceneCoroutine(SCENE_MAIN));

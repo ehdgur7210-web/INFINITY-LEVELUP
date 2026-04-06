@@ -288,10 +288,21 @@ public class SaveLoadManager : MonoBehaviour
         else if (GameDataBridge.CurrentData?.questData != null)
             data.questData = GameDataBridge.CurrentData.questData;
         // ── 장비 (MainScene 전용) ──
-        if (isMainScene && EquipmentManager.Instance != null)
+        // ★ IsEquipmentLoaded=false이면 아직 로드 안 됨 → GameDataBridge 폴백 (빈 데이터로 덮어쓰기 방지)
+        if (isMainScene && EquipmentManager.Instance != null && EquipmentManager.Instance.IsEquipmentLoaded)
+        {
             data.equipmentData = EquipmentManager.Instance.GetEquipmentSaveData();
+            Debug.Log($"[EQUIP-TRACE] CollectSaveData: EquipmentManager에서 수집 → {data.equipmentData?.slots?.Count ?? 0}개 (IsLoaded=true)");
+        }
         else if (GameDataBridge.CurrentData?.equipmentData != null)
+        {
             data.equipmentData = GameDataBridge.CurrentData.equipmentData;
+            Debug.Log($"[EQUIP-TRACE] CollectSaveData: GameDataBridge 폴백 → {data.equipmentData?.slots?.Count ?? 0}개 (isMain={isMainScene}, EquipMgr={EquipmentManager.Instance != null}, IsLoaded={EquipmentManager.Instance?.IsEquipmentLoaded})");
+        }
+        else
+        {
+            Debug.LogWarning($"[EQUIP-TRACE] CollectSaveData: 장비 데이터 없음! (isMain={isMainScene}, EquipMgr={EquipmentManager.Instance != null}, Bridge={GameDataBridge.CurrentData?.equipmentData != null})");
+        }
 
         // ── 업적 ──
         if (AchievementSystem.Instance != null)
@@ -426,6 +437,12 @@ public class SaveLoadManager : MonoBehaviour
             data.offlineExpRate            = GameDataBridge.CurrentData.offlineExpRate;
             data.offlineGemRate            = GameDataBridge.CurrentData.offlineGemRate;
             data.offlineEquipTicketRate    = GameDataBridge.CurrentData.offlineEquipTicketRate;
+        }
+        // ★ 2배 보상 횟수 저장 (GameDataBridge.CurrentData에서 항상 수집)
+        if (GameDataBridge.CurrentData != null)
+        {
+            data.adClaimCount = GameDataBridge.CurrentData.adClaimCount;
+            data.adClaimDate  = GameDataBridge.CurrentData.adClaimDate;
         }
 
         // ── 스테이지/웨이브 (오프라인 보상과 독립적으로 저장) ──
@@ -640,10 +657,12 @@ public class SaveLoadManager : MonoBehaviour
             TransferFarmHarvestToInventory(data);
 
         // ── 장비 (ItemDatabase 준비 후 로드) ──
+        Debug.Log($"[EQUIP-TRACE] ApplySaveData: EquipMgr={EquipmentManager.Instance != null}, equipData={data.equipmentData?.slots?.Count ?? -1}개, ItemDB={ItemDatabase.Instance != null}, IsReady={ItemDatabase.Instance?.IsReady}");
         if (EquipmentManager.Instance != null && data.equipmentData != null)
         {
             if (ItemDatabase.Instance != null && ItemDatabase.Instance.IsReady)
             {
+                Debug.Log($"[EQUIP-TRACE] ApplySaveData: LoadEquipmentSaveData 호출 ({data.equipmentData.slots.Count}개)");
                 EquipmentManager.Instance.LoadEquipmentSaveData(data.equipmentData);
                 // ★ 장비 스킬 동기화 — 빈 슬롯의 잔류 스킬 클리어 포함
                 EquipmentSkillSystem.Instance?.RefreshAllEquippedSkills();
@@ -651,7 +670,22 @@ public class SaveLoadManager : MonoBehaviour
             }
             else
             {
+                Debug.LogWarning($"[EQUIP-TRACE] ApplySaveData: ItemDatabase 미준비 → WaitAndLoadEquipment 코루틴 ({data.equipmentData.slots.Count}개)");
                 StartCoroutine(WaitAndLoadEquipment(data.equipmentData));
+            }
+        }
+        else if (data.equipmentData != null && data.equipmentData.slots != null && data.equipmentData.slots.Count > 0)
+        {
+            // ★ MainScene에서만 대기 (FarmScene에는 EquipmentManager가 없음)
+            string curScene = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name;
+            if (curScene == "MainScene")
+            {
+                Debug.LogWarning($"[EQUIP-TRACE] ApplySaveData: EquipMgr 미준비 → WaitAndLoadEquipment 코루틴 ({data.equipmentData.slots.Count}개)");
+                StartCoroutine(WaitAndLoadEquipment(data.equipmentData));
+            }
+            else
+            {
+                Debug.Log($"[EQUIP-TRACE] ApplySaveData: {curScene}에서는 장비 로드 스킵 (EquipmentManager 없는 씬), Bridge 보존={data.equipmentData.slots.Count}개");
             }
         }
 
@@ -917,14 +951,25 @@ public class SaveLoadManager : MonoBehaviour
     // ── ItemDatabase 준비 후 장비 로드 ──────────────────
     private IEnumerator WaitAndLoadEquipment(EquipmentSaveData equipmentData)
     {
-        float timeout = 5f;
-        while ((ItemDatabase.Instance == null || !ItemDatabase.Instance.IsReady) && timeout > 0f)
+        float timeout = 10f;
+        // ★ EquipmentManager + ItemDatabase 모두 준비될 때까지 대기
+        while (timeout > 0f)
         {
-            timeout -= Time.deltaTime;
+            if (EquipmentManager.Instance != null
+                && ItemDatabase.Instance != null && ItemDatabase.Instance.IsReady)
+                break;
+            timeout -= Time.unscaledDeltaTime;
             yield return null;
         }
 
-        EquipmentManager.Instance?.LoadEquipmentSaveData(equipmentData);
+        if (EquipmentManager.Instance == null)
+        {
+            Debug.LogError($"[EQUIP-TRACE] WaitAndLoadEquipment: 10초 타임아웃! EquipmentManager가 생성되지 않음");
+            yield break;
+        }
+
+        Debug.Log($"[EQUIP-TRACE] WaitAndLoadEquipment: 로드 시작 ({equipmentData?.slots?.Count ?? 0}개)");
+        EquipmentManager.Instance.LoadEquipmentSaveData(equipmentData);
 
         yield return null; // RecalculateStats 반영 1프레임 대기
 
@@ -932,7 +977,7 @@ public class SaveLoadManager : MonoBehaviour
             EquipmentSkillSystem.Instance.RefreshAllEquippedSkills();
 
         RestoreFullHealth();
-        Debug.Log("[SaveLoadManager] 장비 지연 로드 완료");
+        Debug.Log($"[EQUIP-TRACE] WaitAndLoadEquipment: 장비 지연 로드 완료 ({EquipmentManager.Instance.IsEquipmentLoaded}, {equipmentData?.slots?.Count ?? 0}개)");
     }
 
     // ── ItemDatabase 준비 후 메일 로드 ──────────────────

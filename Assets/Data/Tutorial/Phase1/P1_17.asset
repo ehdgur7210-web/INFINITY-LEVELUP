@@ -28,4 +28,10 @@ MonoBehaviour:
   - BtnWater
   - BtnHarvest
   - BtnInstantFinish
-  rewards: []
+  rewards:
+  - rewardType: 2
+    amount: 100
+    item: {fileID: 0}
+  - rewardType: 3
+    amount: 10
+    item: {fileID: 0}

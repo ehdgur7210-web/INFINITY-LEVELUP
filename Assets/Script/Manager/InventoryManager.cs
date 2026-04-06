@@ -826,20 +826,41 @@ public class InventoryManager : MonoBehaviour
 
         if (slideCoroutine != null)
             StopCoroutine(slideCoroutine);
-        slideCoroutine = StartCoroutine(SlidePanel(targetY));
+
+        // ★ 튜토리얼 중에는 슬라이드 애니메이션 없이 즉시 이동 (내려갔다 올라오는 현상 방지)
+        bool tutorialActive = TutorialManager.Instance != null && TutorialManager.Instance.IsTutorialActive;
+        if (tutorialActive)
+        {
+            Vector2 pos = panelRect.anchoredPosition;
+            pos.y = targetY;
+            panelRect.anchoredPosition = pos;
+
+            // 연결 패널도 즉시 이동
+            if (linkedPanels != null && linkedOpenPosY != null)
+            {
+                for (int i = 0; i < linkedPanels.Length; i++)
+                {
+                    if (linkedPanels[i] == null) continue;
+                    Vector2 lp = linkedPanels[i].anchoredPosition;
+                    lp.y = open ? linkedOpenPosY[i] : linkedClosedPosY[i];
+                    linkedPanels[i].anchoredPosition = lp;
+                }
+            }
+        }
+        else
+        {
+            slideCoroutine = StartCoroutine(SlidePanel(targetY));
+        }
 
         var chat = chatSystem != null ? chatSystem : ChatSystem.Instance;
         if (chat != null)
         {
             if (!open) chat.ShowChat();
-            else
-            {
-                bool tutorialActive = TutorialManager.Instance != null && TutorialManager.Instance.IsTutorialActive;
-                if (!tutorialActive) chat.HideChat();
-            }
+            else if (!tutorialActive) chat.HideChat();
         }
 
-        Debug.Log($"[InventoryManager] 강제 슬라이드 {(open ? "열기" : "닫기")} → Y={targetY}");
+        Debug.Log($"[InventoryManager] 강제 슬라이드 {(open ? "열기" : "닫기")} → Y={targetY}" +
+                  (tutorialActive ? " (즉시 이동)" : ""));
 
         if (open)
             TutorialManager.Instance?.OnActionCompleted("OpenInventory");

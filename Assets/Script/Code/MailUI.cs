@@ -143,6 +143,19 @@ public class MailUI : MonoBehaviour
 
     public void CloseMailPanel()
     {
+        // ★ 튜토리얼 중: 쿠폰 관련 스텝에서만 닫기 차단 (닫기 스텝 자체는 허용)
+        if (TutorialManager.Instance != null && TutorialManager.Instance.ShouldBlockNonFocusButtons)
+        {
+            var step = TutorialManager.Instance.GetCurrentStep();
+            string fn = step?.focusTargetName ?? "";
+            // 쿠폰 버튼/입력/패널 스텝 → 닫기 차단
+            if (fn.Contains("Coupon") || fn == "MailClaimAllBtn")
+            {
+                Debug.Log("[MailUI] 튜토리얼 중 메일 닫기 차단 (쿠폰 스텝)");
+                return;
+            }
+        }
+
         if (mailPanel != null)
             mailPanel.SetActive(false);
 

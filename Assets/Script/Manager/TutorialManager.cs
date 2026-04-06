@@ -396,6 +396,16 @@ public class TutorialManager : MonoBehaviour
         // ★ 동료뽑기 관련 스텝: 단계별 인벤토리 제어
         string focusName = step.focusTargetName ?? "";
 
+        // ★ CompanionGachaBtn 스텝: 100뽑기 결과 닫기 후 인벤토리/가챠 유지
+        if (focusName == "CompanionGachaBtn")
+        {
+            if (InventoryManager.Instance != null)
+                InventoryManager.Instance.OpenInventory();
+            if (ChatSystem.Instance != null)
+                ChatSystem.Instance.HideChat();
+            Debug.Log("[Tutorial] 동료뽑기 버튼 스텝 — 인벤토리 열기 유지 + 채팅 숨김");
+        }
+
         // 동료 뽑기 진입/결과 단계: 인벤토리 닫기
         // ★ CompanionGachaBtn 제외 — 가챠 결과 확인 직후 인벤토리가 갑자기 닫히는 문제 방지
         //   (동료뽑기 패널이 실제로 열릴 때 인벤토리가 자연스럽게 가려짐)
@@ -417,10 +427,15 @@ public class TutorialManager : MonoBehaviour
         }
         else if (isCompanionKeepInven)
         {
-            // 인벤토리 유지, 채팅만 숨기기
+            // ★ 인벤토리 열기 + 동료 탭 전환 (결과 닫기 후 인벤토리가 닫혀있을 수 있음)
+            if (InventoryManager.Instance != null)
+            {
+                InventoryManager.Instance.OpenInventory();
+                InventoryManager.Instance.SelectTab(InventoryManager.InvenTabType.Companion);
+            }
             if (ChatSystem.Instance != null)
                 ChatSystem.Instance.HideChat();
-            Debug.Log("[Tutorial] 동료슬롯 스텝 — 인벤토리 유지");
+            Debug.Log("[Tutorial] 동료슬롯 스텝 — 인벤토리 열기 + 동료탭 전환");
         }
 
         // ★ 우편/메뉴 관련 스텝: 채팅 숨기기 + 인벤토리 닫기 + 메뉴 접기
@@ -441,7 +456,8 @@ public class TutorialManager : MonoBehaviour
         // ★ 강화 관련 스텝: 채팅 숨기기 + 장비 탭 강제 전환
         bool isEnhanceRelated = focusName == "EnhanceActionBtn" || focusName == "EnhancePanel"
                              || focusName.Contains("BtnClose")
-                             || focusName.StartsWith("InvenSlot:");
+                             || focusName.StartsWith("InvenSlot:")
+                             || focusName.StartsWith("EquipPanelSlot:");
         if (isEnhanceRelated)
         {
             // 채팅 숨기기 (화면 겹침 방지)
@@ -450,7 +466,10 @@ public class TutorialManager : MonoBehaviour
             // 장비 탭 강제 전환 (인벤토리가 열려있으면)
             if (InventoryManager.Instance != null && InventoryManager.Instance.isPanelOpen)
                 InventoryManager.Instance.SelectTab(InventoryManager.InvenTabType.Equip);
-            Debug.Log("[Tutorial] 강화 스텝 — 채팅 숨기기 + 장비 탭 전환");
+            // ★ EquipPanelSlot/강화 스텝에서만 슬롯 갱신 (InvenSlot 초반 스텝에서는 불필요)
+            if ((focusName.StartsWith("EquipPanelSlot:") || focusName == "EnhanceActionBtn")
+                && EquipmentManager.Instance != null)
+                EquipmentManager.Instance.RefreshAllPanelSlots();
         }
 
         SetupFocus(step);
@@ -1043,7 +1062,8 @@ public class TutorialManager : MonoBehaviour
         if (_activeSteps == null || _currentStep >= _activeSteps.Count) return false;
         var step = _activeSteps[_currentStep];
         string fn = step.focusTargetName ?? "";
-        return fn == "EnhanceActionBtn" || fn == "EnhancePanel" || fn.Contains("BtnClose");
+        return fn == "EnhanceActionBtn" || fn == "EnhancePanel" || fn.Contains("BtnClose")
+            || fn.StartsWith("EquipPanelSlot:");
     }
 
     /// <summary>튜토리얼 중 열리면 안 되는 패널 강제 닫기 (매 스텝마다 호출)</summary>
@@ -1447,6 +1467,38 @@ public class TutorialManager : MonoBehaviour
         {
             var shop = FindObjectOfType<FarmCropShopUI>(true);
             if (shop != null && shop.detailPanel != null) return shop.detailPanel;
+            return null;
+        }
+
+        // "EquipPanelSlot:타입" → 캐릭터 장비 패널 슬롯 (EquipmentType 이름으로 검색)
+        //   예: EquipPanelSlot:Helmet, EquipPanelSlot:WeaponLeft 등
+        if (targetName.StartsWith("EquipPanelSlot:"))
+        {
+            string typeStr = targetName.Substring("EquipPanelSlot:".Length);
+            if (System.Enum.TryParse<EquipmentType>(typeStr, out EquipmentType eqType))
+            {
+                // ★ 활성 슬롯 우선, 없으면 비활성 포함
+                EquipPanelSlot matchedSlot = null;
+                var slots = FindObjectsOfType<EquipPanelSlot>(true);
+                foreach (var slot in slots)
+                {
+                    if (slot.slotType == eqType)
+                    {
+                        if (slot.gameObject.activeInHierarchy)
+                        {
+                            matchedSlot = slot;
+                            break; // 활성 슬롯 우선
+                        }
+                        if (matchedSlot == null) matchedSlot = slot; // 비활성 폴백
+                    }
+                }
+                if (matchedSlot != null)
+                {
+                    Debug.Log($"[Tutorial] EquipPanelSlot:{typeStr} 발견: {matchedSlot.name} (active={matchedSlot.gameObject.activeInHierarchy}, pos={matchedSlot.transform.position})");
+                    return matchedSlot.gameObject;
+                }
+                Debug.LogWarning($"[Tutorial] EquipPanelSlot:{typeStr} 못 찾음! 전체 슬롯 수: {slots.Length}");
+            }
             return null;
         }
 

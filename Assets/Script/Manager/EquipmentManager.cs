@@ -18,6 +18,9 @@ public class EquipmentManager : MonoBehaviour
     private Dictionary<EquipmentType, EquippedEntry> equippedItems
         = new Dictionary<EquipmentType, EquippedEntry>();
 
+    /// <summary>장비 데이터 로드 완료 여부 (로드 전 SaveGame으로 빈 데이터 덮어쓰기 방지)</summary>
+    public bool IsEquipmentLoaded { get; private set; } = false;
+
     // EquipPanelSlot 캐시 (비활성 상태에서도 접근 가능)
     private EquipPanelSlot[] cachedPanelSlots;
 
@@ -55,6 +58,40 @@ public class EquipmentManager : MonoBehaviour
 
         // 씬 전환 후 PlayerStats가 재생성될 경우 장비 스탯 재적용
         RecalculateStats();
+
+        // ★ 씬 전환 후 장비 데이터 자동 로드 (ApplySaveData가 먼저 실행되지 못한 경우 대비)
+        if (!IsEquipmentLoaded && GameDataBridge.HasData
+            && GameDataBridge.CurrentData?.equipmentData?.slots != null
+            && GameDataBridge.CurrentData.equipmentData.slots.Count > 0)
+        {
+            if (ItemDatabase.Instance != null && ItemDatabase.Instance.IsReady)
+            {
+                Debug.Log($"[EQUIP-TRACE] EquipmentManager.Start: GameDataBridge에서 즉시 로드 ({GameDataBridge.CurrentData.equipmentData.slots.Count}개)");
+                LoadEquipmentSaveData(GameDataBridge.CurrentData.equipmentData);
+                EquipmentSkillSystem.Instance?.RefreshAllEquippedSkills();
+            }
+            else
+            {
+                StartCoroutine(SelfLoadFromBridge());
+            }
+        }
+    }
+
+    /// <summary>ItemDatabase 준비 대기 후 GameDataBridge에서 장비 로드</summary>
+    private System.Collections.IEnumerator SelfLoadFromBridge()
+    {
+        float timeout = 5f;
+        while ((ItemDatabase.Instance == null || !ItemDatabase.Instance.IsReady) && timeout > 0f)
+        {
+            timeout -= Time.unscaledDeltaTime;
+            yield return null;
+        }
+        if (!IsEquipmentLoaded && GameDataBridge.CurrentData?.equipmentData?.slots?.Count > 0)
+        {
+            LoadEquipmentSaveData(GameDataBridge.CurrentData.equipmentData);
+            EquipmentSkillSystem.Instance?.RefreshAllEquippedSkills();
+            Debug.Log($"[EQUIP-TRACE] SelfLoadFromBridge 완료 ({equippedItems.Count}개)");
+        }
     }
 
     /// <summary>EquipPanelSlot이 Awake에서 자가 등록</summary>
@@ -151,6 +188,7 @@ public class EquipmentManager : MonoBehaviour
         // 장착 변경 즉시 저장
         SaveLoadManager.Instance?.SaveGame();
 
+        IsEquipmentLoaded = true; // ★ 장착 행위 = 데이터 유효
         Debug.Log($"[EquipmentManager] 장착: {equipment.itemName} +{enhanceLevel} Lv.{itemLevel}");
         TutorialManager.Instance?.OnActionCompleted("EquipItem");
 
@@ -371,6 +409,36 @@ public class EquipmentManager : MonoBehaviour
         }
     }
 
+    /// <summary>모든 EquipPanelSlot 재캐시 + 장착 데이터 강제 갱신 (씬 전환/튜토리얼 후 누락 방지)</summary>
+    public void RefreshAllPanelSlots()
+    {
+        // ★ 장비 로드 전이면 갱신 스킵 (빈 데이터로 슬롯을 비워버리는 것 방지)
+        if (!IsEquipmentLoaded)
+        {
+            Debug.LogWarning($"[EquipmentManager] RefreshAllPanelSlots 스킵 — IsEquipmentLoaded=false (equippedItems={equippedItems.Count}개)");
+            return;
+        }
+
+        CacheEquipPanelSlots();
+        if (cachedPanelSlots == null) return;
+
+        foreach (var slot in cachedPanelSlots)
+        {
+            if (slot == null) continue;
+            EquipmentData eq = GetEquippedItem(slot.slotType);
+            if (eq != null)
+            {
+                int enhLevel = GetEnhanceLevel(slot.slotType);
+                slot.EquipItem(eq, enhLevel);
+            }
+            else
+            {
+                slot.UnequipItem();
+            }
+        }
+        Debug.Log($"[EquipmentManager] RefreshAllPanelSlots 완료: {cachedPanelSlots.Length}개 슬롯, 장착={equippedItems.Count}개");
+    }
+
     // ================================
     // 저장 / 로드
     // ================================
@@ -432,6 +500,14 @@ public class EquipmentManager : MonoBehaviour
         // ★ 로드 후 모든 장비의 강화 레벨에 따른 스킬 레벨 동기화
         foreach (var kvp in equippedItems)
             UpdateSkillLevelByEnhance(kvp.Key, kvp.Value.enhanceLevel);
+
+        // ★ 로드 완료 플래그를 먼저 설정 (RefreshAllPanelSlots가 IsEquipmentLoaded 체크하므로)
+        IsEquipmentLoaded = true;
+
+        // ★ 로드 후 EquipPanelSlot 강제 갱신 (씬 전환 후 데이터 누락 방지)
+        RefreshAllPanelSlots();
+
+        Debug.Log($"[EquipmentManager] 장비 로드+갱신 완료: {equippedItems.Count}개, IsEquipmentLoaded=true");
     }
 
     // ═══════════════════════════════════════════════════════
