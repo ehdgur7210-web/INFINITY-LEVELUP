@@ -72,15 +72,18 @@ public class FriendUI : MonoBehaviour
         Instance = this;
 
         // 탭 버튼
-        if (tabFriendListBtn) tabFriendListBtn.onClick.AddListener(() => SwitchTab(0));
-        if (tabRequestBtn) tabRequestBtn.onClick.AddListener(() => SwitchTab(1));
-        if (tabSearchBtn) tabSearchBtn.onClick.AddListener(() => SwitchTab(2));
+        if (tabFriendListBtn) tabFriendListBtn.onClick.AddListener(() => { Debug.Log("[FriendUI] ▶ 친구목록 버튼 클릭"); SwitchTab(0); });
+        if (tabRequestBtn) tabRequestBtn.onClick.AddListener(() => { Debug.Log("[FriendUI] ▶ 받은목록 버튼 클릭"); SwitchTab(1); });
+        if (tabSearchBtn) tabSearchBtn.onClick.AddListener(() => { Debug.Log("[FriendUI] ▶ 검색 버튼 클릭"); SwitchTab(2); });
 
         // 액션
         if (sendAllBtn) sendAllBtn.onClick.AddListener(OnSendAll);
         if (claimAllBtn) claimAllBtn.onClick.AddListener(OnClaimAll);
         if (searchBtn) searchBtn.onClick.AddListener(OnSearch);
         if (closeBtn) closeBtn.onClick.AddListener(Hide);
+
+        // ★ Inspector에서 연결 안 된 참조를 자동으로 찾기
+        AutoFindReferences();
 
         // 이벤트 구독
         BackendFriendManager.OnFriendListLoaded += OnFriendListUpdated;
@@ -123,60 +126,173 @@ public class FriendUI : MonoBehaviour
     public bool IsOpen => friendPanel != null && friendPanel.activeSelf;
 
     // ═══════════════════════════════════════
-    //  탭 전환 — 핵심 수정
+    //  Inspector 참조 자동 탐색
+    // ═══════════════════════════════════════
+
+    /// <summary>Inspector에서 빠진 참조를 friendPanel 하위에서 자동으로 찾는다</summary>
+    private void AutoFindReferences()
+    {
+        if (friendPanel == null) return;
+        var allTMP = friendPanel.GetComponentsInChildren<TextMeshProUGUI>(true);
+        var allInput = friendPanel.GetComponentsInChildren<TMP_InputField>(true);
+
+        // searchInput 자동 탐색
+        if (searchInput == null)
+        {
+            foreach (var inp in allInput)
+            {
+                searchInput = inp;
+                Debug.Log($"[FriendUI] searchInput 자동 발견: {inp.gameObject.name}");
+                break;
+            }
+        }
+
+        // requestCountText 자동 탐색 — "받은" 포함 텍스트 또는 이름
+        if (requestCountText == null)
+        {
+            foreach (var t in allTMP)
+            {
+                if (t.gameObject.name.Contains("request") || t.gameObject.name.Contains("Request") ||
+                    t.gameObject.name.Contains("받은") || t.text.Contains("받은"))
+                {
+                    requestCountText = t;
+                    Debug.Log($"[FriendUI] requestCountText 자동 발견: {t.gameObject.name}");
+                    break;
+                }
+            }
+        }
+
+        // friendCountText 자동 탐색
+        if (friendCountText == null)
+        {
+            foreach (var t in allTMP)
+            {
+                if (t.gameObject.name.Contains("friendCount") || t.gameObject.name.Contains("FriendCount") ||
+                    t.gameObject.name.Contains("친구") || t.text.Contains("친구:"))
+                {
+                    friendCountText = t;
+                    Debug.Log($"[FriendUI] friendCountText 자동 발견: {t.gameObject.name}");
+                    break;
+                }
+            }
+        }
+
+        // friendPointText 자동 탐색
+        if (friendPointText == null)
+        {
+            foreach (var t in allTMP)
+            {
+                if (t.gameObject.name.Contains("point") || t.gameObject.name.Contains("Point") ||
+                    t.gameObject.name.Contains("포인트") || t.text.Contains("포인트"))
+                {
+                    friendPointText = t;
+                    Debug.Log($"[FriendUI] friendPointText 자동 발견: {t.gameObject.name}");
+                    break;
+                }
+            }
+        }
+
+        // ★ 모든 참조 상태 로그
+        Debug.Log($"[FriendUI] 참조 상태 — " +
+            $"friendListPanel:{friendListPanel != null}, requestPanel:{requestPanel != null}, searchPanel:{searchPanel != null}, " +
+            $"friendListContent:{friendListContent != null}, requestListContent:{requestListContent != null}, searchResultContent:{searchResultContent != null}, " +
+            $"friendCountText:{friendCountText != null}, friendPointText:{friendPointText != null}, requestCountText:{requestCountText != null}, " +
+            $"searchInput:{searchInput != null}, searchBtn:{searchBtn != null}, " +
+            $"sendAllBtn:{sendAllBtn != null}, claimAllBtn:{claimAllBtn != null}");
+    }
+
+    // ═══════════════════════════════════════
+    //  탭 전환
     // ═══════════════════════════════════════
 
     private void SwitchTab(int tab)
     {
         currentTab = tab;
 
-        // ── 1) 패널 토글 (있으면 사용) ──
-        if (friendListPanel) friendListPanel.SetActive(tab == 0);
-        if (requestPanel) requestPanel.SetActive(tab == 1);
-        if (searchPanel) searchPanel.SetActive(tab == 2);
+        // ── 1) 먼저 모든 것을 숨긴다 ──
+        HideAll();
 
-        // ── 2) 모든 콘텐츠 요소 직접 on/off ──
-        //    패널이 null이거나 계층 구조가 잘못되어도 확실히 동작
-        SetVisible(friendListContent, tab == 0);
-        SetVisible(friendCountText, tab == 0);
-        SetVisible(friendPointText, tab == 0);
-        SetVisible(sendAllBtn, tab == 0);
-        SetVisible(claimAllBtn, tab == 0);
-
-        SetVisible(requestListContent, tab == 1);
-        SetVisible(requestCountText, tab == 1);
-
-        SetVisible(searchInput, tab == 2);
-        SetVisible(searchBtn, tab == 2);
-        SetVisible(searchResultContent, tab == 2);
+        // ── 2) 현재 탭만 보인다 ──
+        switch (tab)
+        {
+            case 0: ShowTab0(); break;
+            case 1: ShowTab1(); break;
+            case 2: ShowTab2(); break;
+        }
 
         // ── 3) 탭 색상 ──
         SetTabColor(tabFriendListBtn, tab == 0);
         SetTabColor(tabRequestBtn, tab == 1);
         SetTabColor(tabSearchBtn, tab == 2);
 
-        // ── 4) 데이터 로드 ──
-        switch (tab)
-        {
-            case 0:
-                BackendFriendManager.Instance?.LoadFriendList();
-                RefreshPointUI();
-                break;
-            case 1:
-                BackendFriendManager.Instance?.LoadReceivedRequests();
-                break;
-            case 2:
-                BackendFriendManager.Instance?.LoadRandomUsers();
-                break;
-        }
-
         Debug.Log($"[FriendUI] SwitchTab({tab})");
     }
 
-    /// <summary>Component의 GameObject를 안전하게 on/off</summary>
-    private void SetVisible(Component comp, bool visible)
+    /// <summary>모든 탭 콘텐츠를 숨기고 동적 아이템 제거</summary>
+    private void HideAll()
     {
-        if (comp != null) comp.gameObject.SetActive(visible);
+        // ★ 패널 토글 안 함 — 자식 연쇄 활성화 방지
+        // 탭0 요소
+        ClearChildren(friendListContent);
+        SetGO(friendCountText, false);
+        SetGO(friendPointText, false);
+        SetGO(sendAllBtn, false);
+        SetGO(claimAllBtn, false);
+        SetGO(friendListContent, false);
+
+        // 탭1 요소
+        ClearChildren(requestListContent);
+        SetGO(requestCountText, false);
+        if (requestCountText) requestCountText.text = "";
+        SetGO(requestListContent, false);
+
+        // 탭2 요소
+        ClearChildren(searchResultContent);
+        SetGO(searchInput, false);
+        SetGO(searchBtn, false);
+        SetGO(searchResultContent, false);
+    }
+
+    private void ShowTab0()
+    {
+        // ★ friendListPanel 토글 안 함 — 개별 요소만 켬
+        SetGO(friendCountText, true);
+        SetGO(friendPointText, true);
+        SetGO(sendAllBtn, true);
+        SetGO(claimAllBtn, true);
+        SetGO(friendListContent, true);
+
+        BackendFriendManager.Instance?.LoadFriendList();
+        RefreshPointUI();
+    }
+
+    private void ShowTab1()
+    {
+        SetGO(requestCountText, true);
+        SetGO(requestListContent, true);
+
+        BackendFriendManager.Instance?.LoadReceivedRequests();
+    }
+
+    private void ShowTab2()
+    {
+        SetGO(searchInput, true);
+        SetGO(searchBtn, true);
+        SetGO(searchResultContent, true);
+
+        BackendFriendManager.Instance?.LoadRandomUsers();
+    }
+
+    private void SetGO(Component comp, bool active)
+    {
+        if (comp != null) comp.gameObject.SetActive(active);
+    }
+
+    private void ClearChildren(Transform parent)
+    {
+        if (parent == null) return;
+        for (int i = parent.childCount - 1; i >= 0; i--)
+            Destroy(parent.GetChild(i).gameObject);
     }
 
     private void SetTabColor(Button btn, bool active)
@@ -192,8 +308,7 @@ public class FriendUI : MonoBehaviour
 
     private void OnFriendListUpdated(List<FriendData> friends)
     {
-        // ★ 현재 탭이 0이 아니면 무시 (다른 탭에서 콜백 올 때 방지)
-        if (currentTab != 0) return;
+        Debug.Log($"[FriendUI] OnFriendListUpdated — count:{friends.Count}, currentTab:{currentTab}, isOpen:{IsOpen}");
         if (friendListContent == null || friendItemPrefab == null) return;
 
         foreach (Transform child in friendListContent) Destroy(child.gameObject);
@@ -288,8 +403,8 @@ public class FriendUI : MonoBehaviour
 
     private void OnRequestListUpdated(List<FriendRequestData> requests)
     {
-        // ★ 현재 탭이 1이 아니면 무시
-        if (currentTab != 1) return;
+        Debug.Log($"[FriendUI] OnRequestListUpdated — count:{requests.Count}, currentTab:{currentTab}, isOpen:{IsOpen}");
+        // 가드 제거 — 항상 빌드, 표시/숨기기는 SwitchTab이 담당
         if (requestListContent == null || requestItemPrefab == null) return;
 
         foreach (Transform child in requestListContent) Destroy(child.gameObject);
@@ -344,8 +459,8 @@ public class FriendUI : MonoBehaviour
 
     private void OnSearchResultUpdated(List<FriendSearchResult> results)
     {
-        // ★ 현재 탭이 2가 아니면 무시
-        if (currentTab != 2) return;
+        Debug.Log($"[FriendUI] OnSearchResultUpdated — count:{results.Count}, currentTab:{currentTab}, isOpen:{IsOpen}");
+        // 가드 제거 — 항상 빌드, 표시/숨기기는 SwitchTab이 담당
         if (searchResultContent == null || searchResultItemPrefab == null) return;
 
         foreach (Transform child in searchResultContent) Destroy(child.gameObject);

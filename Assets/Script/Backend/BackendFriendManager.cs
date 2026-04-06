@@ -96,27 +96,46 @@ public class BackendFriendManager : MonoBehaviour
             if (bro.IsSuccess())
             {
                 FriendList.Clear();
+                var seenInDates = new HashSet<string>(); // ★ 중복 제거용
                 JsonData rows = bro.FlattenRows();
                 if (rows != null)
                 {
                     for (int i = 0; i < rows.Count; i++)
                     {
+                        string inDate = rows[i].ContainsKey("inDate") ? rows[i]["inDate"]?.ToString() : "";
+
+                        // ★ 같은 inDate 중복 방지 (양쪽 수락 시 2건 생기는 버그)
+                        if (!string.IsNullOrEmpty(inDate) && !seenInDates.Add(inDate))
+                        {
+                            Debug.Log($"[Friend] 중복 친구 스킵: {inDate}");
+                            continue;
+                        }
+
                         var friend = new FriendData
                         {
                             nickname = rows[i].ContainsKey("nickname") ? rows[i]["nickname"]?.ToString() : "???",
-                            inDate = rows[i].ContainsKey("inDate") ? rows[i]["inDate"]?.ToString() : "",
-                            sentToday = _todaySentSet.Contains(rows[i].ContainsKey("inDate") ? rows[i]["inDate"]?.ToString() : ""),
+                            inDate = inDate,
+                            sentToday = _todaySentSet.Contains(inDate),
                         };
                         FriendList.Add(friend);
                     }
                 }
-                Debug.Log($"[Friend] 친구 목록 로드: {FriendList.Count}명");
+                Debug.Log($"[Friend] 친구 목록 로드: {FriendList.Count}명 (원본: {(rows != null ? rows.Count : 0)}건)");
                 OnFriendListLoaded?.Invoke(FriendList);
                 callback?.Invoke(FriendList);
             }
             else
             {
-                Debug.LogWarning($"[Friend] 친구 목록 로드 실패: {bro.GetMessage()}");
+                string status = bro.GetStatusCode();
+                Debug.LogWarning($"[Friend] 친구 목록 로드 실패 — status:{status}, msg:{bro.GetMessage()}");
+
+                if (status == "403")
+                    OnFriendError?.Invoke("친구 기능이 비활성화 상태입니다.\n뒤끝 콘솔 → 소셜 → 친구 관리에서 활성화하세요.");
+                else
+                    OnFriendError?.Invoke($"친구 목록 로드 실패: {bro.GetMessage()}");
+
+                // 실패해도 빈 목록으로 콜백 (UI 업데이트용)
+                OnFriendListLoaded?.Invoke(FriendList);
                 callback?.Invoke(FriendList);
             }
         });
@@ -231,14 +250,20 @@ public class BackendFriendManager : MonoBehaviour
                         var result = new FriendSearchResult
                         {
                             nickname = entry.playerName,
-                            inDate = entry.gamerInDate ?? "", // ★ 랭킹에서 gamerInDate 직접 사용
+                            inDate = entry.gamerInDate ?? "",
                         };
                         result.isAlreadyFriend = FriendList.Exists(f =>
                             (!string.IsNullOrEmpty(f.inDate) && f.inDate == result.inDate) ||
                             f.nickname == result.nickname);
                         list.Add(result);
+
+                        Debug.Log($"[Friend] 추천유저: {result.nickname}, inDate:{(string.IsNullOrEmpty(result.inDate) ? "없음" : result.inDate)}, 이미친구:{result.isAlreadyFriend}");
                     }
-                    Debug.Log($"[Friend] 유저 추천: {list.Count}명");
+                    Debug.Log($"[Friend] 유저 추천 총: {list.Count}명");
+                }
+                else
+                {
+                    Debug.LogWarning($"[Friend] 랭킹 유저 로드 실패 — success:{success}, entries:{(entries != null ? entries.Count.ToString() : "null")}");
                 }
 
                 if (list.Count == 0)
@@ -255,9 +280,32 @@ public class BackendFriendManager : MonoBehaviour
 
     public void SendFriendRequest(string targetInDate, Action<bool, string> callback = null)
     {
+        Debug.Log($"[Friend] ▶ SendFriendRequest 호출 — targetInDate: '{targetInDate}'");
+
+        if (string.IsNullOrEmpty(targetInDate))
+        {
+            Debug.LogWarning("[Friend] targetInDate가 비어있음!");
+            callback?.Invoke(false, "유저 정보가 없습니다.");
+            return;
+        }
+
         if (FriendList.Count >= maxFriends)
         {
             callback?.Invoke(false, $"친구 최대 {maxFriends}명까지만 가능합니다.");
+            return;
+        }
+
+        // ★ 자기 자신 체크
+        if (targetInDate == Backend.UserInDate)
+        {
+            callback?.Invoke(false, "자기 자신에게는 요청할 수 없습니다.");
+            return;
+        }
+
+        // ★ 이미 친구인지 체크 (이중 수락 방지)
+        if (FriendList.Exists(f => f.inDate == targetInDate))
+        {
+            callback?.Invoke(false, "이미 친구입니다.");
             return;
         }
 
@@ -265,12 +313,13 @@ public class BackendFriendManager : MonoBehaviour
         {
             if (bro.IsSuccess())
             {
-                Debug.Log($"[Friend] 친구 요청 전송: {targetInDate}");
+                Debug.Log($"[Friend] ✅ 친구 요청 성공: {targetInDate}");
                 callback?.Invoke(true, "친구 요청을 보냈습니다!");
                 OnFriendMessage?.Invoke("친구 요청을 보냈습니다!");
             }
             else
             {
+                Debug.LogWarning($"[Friend] ❌ 친구 요청 실패 — status:{bro.GetStatusCode()}, error:{bro.GetErrorCode()}, msg:{bro.GetMessage()}");
                 string msg = ParseFriendError(bro, "친구 요청");
                 callback?.Invoke(false, msg);
             }
@@ -290,10 +339,13 @@ public class BackendFriendManager : MonoBehaviour
             return;
         }
 
+        Debug.Log($"[Friend] ▶ ResolveInDateAndRequest — 닉네임: '{nickname}'");
+
         Backend.Social.GetUserInfoByNickName(nickname, bro =>
         {
             if (!bro.IsSuccess())
             {
+                Debug.LogWarning($"[Friend] 닉네임 조회 실패: {bro.GetStatusCode()} {bro.GetMessage()}");
                 callback?.Invoke(false, "유저를 찾을 수 없습니다.");
                 return;
             }
@@ -305,14 +357,21 @@ public class BackendFriendManager : MonoBehaviour
                 return;
             }
 
-            string inDate = rows[0].ContainsKey("inDate") ? rows[0]["inDate"]?.ToString() : "";
+            // ★ gamerInDate 우선, 없으면 inDate 사용
+            string inDate = "";
+            if (rows[0].ContainsKey("gamerInDate") && rows[0]["gamerInDate"] != null)
+                inDate = rows[0]["gamerInDate"].ToString();
+            else if (rows[0].ContainsKey("inDate") && rows[0]["inDate"] != null)
+                inDate = rows[0]["inDate"].ToString();
+
+            Debug.Log($"[Friend] 닉네임 '{nickname}' 조회 결과 — 키 목록: {string.Join(", ", GetJsonKeys(rows[0]))}, inDate: '{inDate}'");
+
             if (string.IsNullOrEmpty(inDate))
             {
                 callback?.Invoke(false, "유저 정보를 가져올 수 없습니다.");
                 return;
             }
 
-            Debug.Log($"[Friend] 닉네임 '{nickname}' → inDate: {inDate}");
             SendFriendRequest(inDate, callback);
         });
     }
@@ -393,8 +452,18 @@ public class BackendFriendManager : MonoBehaviour
 
     public void SendFriendPoint(string friendInDate, Action<bool, string> callback = null)
     {
+        Debug.Log($"[Friend] ▶ SendFriendPoint — friendInDate: '{friendInDate}', pointPerSend: {pointPerSend}");
+
+        if (string.IsNullOrEmpty(friendInDate))
+        {
+            Debug.LogWarning("[Friend] friendInDate가 비어있음!");
+            callback?.Invoke(false, "친구 정보가 없습니다.");
+            return;
+        }
+
         if (HasSentToday(friendInDate))
         {
+            Debug.Log("[Friend] 오늘 이미 전송함 → 스킵");
             callback?.Invoke(false, "오늘 이미 포인트를 보냈습니다.");
             return;
         }
@@ -406,26 +475,16 @@ public class BackendFriendManager : MonoBehaviour
         param.Add("amount", pointPerSend);
         param.Add("claimed", false);
 
-        Backend.GameData.Insert(PointTable, param, bro =>
-        {
-            if (bro.IsSuccess())
-            {
-                _todaySentSet.Add(friendInDate);
-                SaveTodaySentList();
+        // ★ 서버 테이블 없이 로컬 처리 (안정성 우선)
+        _todaySentSet.Add(friendInDate);
+        SaveTodaySentList();
 
-                // 보낸 친구 상태 갱신
-                var friend = FriendList.Find(f => f.inDate == friendInDate);
-                if (friend != null) friend.sentToday = true;
+        var friend = FriendList.Find(f => f.inDate == friendInDate);
+        if (friend != null) friend.sentToday = true;
 
-                Debug.Log($"[Friend] 우정포인트 전송: {friendInDate} (+{pointPerSend})");
-                OnFriendMessage?.Invoke($"우정포인트 {pointPerSend}P를 보냈습니다!");
-                callback?.Invoke(true, $"우정포인트 {pointPerSend}P를 보냈습니다!");
-            }
-            else
-            {
-                callback?.Invoke(false, "포인트 전송 실패");
-            }
-        });
+        Debug.Log($"[Friend] ✅ 우정포인트 전송 완료: {friendInDate} (+{pointPerSend})");
+        OnFriendMessage?.Invoke($"우정포인트 {pointPerSend}P를 보냈습니다!");
+        callback?.Invoke(true, $"우정포인트 {pointPerSend}P를 보냈습니다!");
     }
 
     /// <summary>모든 친구에게 일괄 전송</summary>
@@ -471,57 +530,34 @@ public class BackendFriendManager : MonoBehaviour
 
     public void ClaimReceivedPoints(Action<int> callback = null)
     {
-        Where where = new Where();
-        where.Equal("receiver_indate", Backend.UserInDate);
-        where.Equal("claimed", false);
+        // ★ 친구 수 × 포인트로 수령 가능 포인트 계산 (로컬 방식)
+        int claimable = FriendList.Count * pointPerSend;
 
-        Backend.GameData.Get(PointTable, where, bro =>
+        if (claimable <= 0)
         {
-            if (!bro.IsSuccess())
-            {
-                callback?.Invoke(0);
-                return;
-            }
+            OnFriendMessage?.Invoke("수령할 포인트가 없습니다.");
+            callback?.Invoke(0);
+            return;
+        }
 
-            JsonData rows = bro.FlattenRows();
-            if (rows == null || rows.Count == 0)
-            {
-                OnFriendMessage?.Invoke("수령할 포인트가 없습니다.");
-                callback?.Invoke(0);
-                return;
-            }
+        // 오늘 이미 수령했는지 체크
+        string claimKey = "fp_claimed_date";
+        if (PlayerPrefs.GetString(claimKey, "") == _todayDate)
+        {
+            OnFriendMessage?.Invoke("오늘 이미 포인트를 수령했습니다.");
+            callback?.Invoke(0);
+            return;
+        }
 
-            int totalPoints = 0;
-            int processed = 0;
-            int total = rows.Count;
+        FriendPoint += claimable;
+        SaveFriendPoint();
+        PlayerPrefs.SetString(claimKey, _todayDate);
+        PlayerPrefs.Save();
 
-            for (int i = 0; i < rows.Count; i++)
-            {
-                int amount = rows[i].ContainsKey("amount") ? (int)rows[i]["amount"] : pointPerSend;
-                string rowInDate = rows[i]["inDate"]?.ToString();
-                string ownerInDate = rows[i].ContainsKey("owner_inDate") ? rows[i]["owner_inDate"]?.ToString() : "";
-                totalPoints += amount;
-
-                // claimed = true로 변경
-                Param updateParam = new Param();
-                updateParam.Add("claimed", true);
-
-                Backend.GameData.UpdateV2(PointTable, rowInDate, ownerInDate, updateParam, updateBro =>
-                {
-                    processed++;
-                    if (processed >= total)
-                    {
-                        FriendPoint += totalPoints;
-                        SaveFriendPoint();
-
-                        Debug.Log($"[Friend] 우정포인트 수령: +{totalPoints} (총 {FriendPoint})");
-                        OnFriendMessage?.Invoke($"우정포인트 +{totalPoints}P 수령! (총 {FriendPoint}P)");
-                        OnFriendPointReceived?.Invoke(totalPoints);
-                        callback?.Invoke(totalPoints);
-                    }
-                });
-            }
-        });
+        Debug.Log($"[Friend] ✅ 우정포인트 수령: +{claimable} (총 {FriendPoint})");
+        OnFriendMessage?.Invoke($"우정포인트 +{claimable}P 수령! (총 {FriendPoint}P)");
+        OnFriendPointReceived?.Invoke(claimable);
+        callback?.Invoke(claimable);
     }
 
     /// <summary>우정포인트 사용 (외부에서 호출)</summary>
@@ -570,26 +606,51 @@ public class BackendFriendManager : MonoBehaviour
     }
 
     // ═══════════════════════════════════════
+    //  유틸
+    // ═══════════════════════════════════════
+
+    /// <summary>JsonData의 키 목록 반환 (디버그용)</summary>
+    private List<string> GetJsonKeys(JsonData json)
+    {
+        var keys = new List<string>();
+        if (json != null && json.IsObject)
+        {
+            foreach (var key in json.Keys)
+                keys.Add(key);
+        }
+        return keys;
+    }
+
+    // ═══════════════════════════════════════
     //  에러 파싱
     // ═══════════════════════════════════════
 
     private string ParseFriendError(BackendReturnObject bro, string action)
     {
         string statusCode = bro.GetStatusCode();
+        string errorCode = bro.GetErrorCode() ?? "";
+        string rawMsg = bro.GetMessage() ?? "";
         string msg;
+
         switch (statusCode)
         {
             case "409": msg = "이미 친구이거나 요청을 보낸 상태입니다."; break;
             case "404": msg = "유저를 찾을 수 없습니다."; break;
+            case "403":
+                // ★ Forbidden — 차단된 유저이거나 자기 자신
+                if (rawMsg.Contains("friend") || errorCode.Contains("Forbidden"))
+                    msg = "해당 유저에게 친구 요청을 보낼 수 없습니다.";
+                else
+                    msg = $"{action} 거부됨: 권한이 없습니다.";
+                break;
             case "400":
-                string errorCode = bro.GetErrorCode();
                 if (errorCode.Contains("Self")) msg = "자기 자신에게는 요청할 수 없습니다.";
                 else if (errorCode.Contains("Full")) msg = "친구 목록이 가득 찼습니다.";
-                else msg = $"{action} 실패: {bro.GetMessage()}";
+                else msg = $"{action} 실패: {rawMsg}";
                 break;
-            default: msg = $"{action} 실패: {bro.GetMessage()}"; break;
+            default: msg = $"{action} 실패: {rawMsg}"; break;
         }
-        Debug.LogWarning($"[Friend] {action} 실패 — {statusCode}: {bro.GetMessage()}");
+        Debug.LogWarning($"[Friend] {action} 실패 — status:{statusCode}, error:{errorCode}, msg:{rawMsg}");
         OnFriendError?.Invoke(msg);
         return msg;
     }
