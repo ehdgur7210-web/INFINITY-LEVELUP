@@ -356,13 +356,19 @@ public class BackendRankingManager : MonoBehaviour
                 int.TryParse(row["combat_power"].ToString(), out combatPower);
             }
 
+            // ★ gamerInDate 저장 (친구 요청 등에 활용)
+            string gamerInDate = "";
+            if (row.ContainsKey("gamerInDate") && row["gamerInDate"] != null)
+                gamerInDate = row["gamerInDate"].ToString();
+
             entries.Add(new RankingManager.RankEntry
             {
                 playerName = nickname,
                 score = score,
                 combatPower = combatPower,
                 classIndex = classIndex,
-                isMe = isMe
+                isMe = isMe,
+                gamerInDate = gamerInDate
             });
         }
 

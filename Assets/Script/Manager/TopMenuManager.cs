@@ -204,6 +204,8 @@ public class TopMenuManager : MonoBehaviour
         if (rankingButton != null) { rankingButton.onClick.RemoveAllListeners(); rankingButton.onClick.AddListener(OnRankingButtonClicked); }
         else Debug.LogWarning("[TopMenuManager] rankingButton이 Inspector에 연결되지 않았습니다!");
         if (settingsButton != null) { settingsButton.onClick.RemoveAllListeners(); settingsButton.onClick.AddListener(OnSettingsButtonClicked); }
+        if (guildButton != null) { guildButton.onClick.RemoveAllListeners(); guildButton.onClick.AddListener(OnGuildButtonClicked); }
+        if (friendButton != null) { friendButton.onClick.RemoveAllListeners(); friendButton.onClick.AddListener(OnFriendButtonClicked); }
         if (toggleButton != null) { toggleButton.onClick.RemoveAllListeners(); toggleButton.onClick.AddListener(ToggleMenu); }
     }
 
@@ -489,6 +491,18 @@ public class TopMenuManager : MonoBehaviour
     {
         if (IsButtonOnCooldown()) return;
         if (IsBlockedByTutorial(guildButton)) return;
+
+        // ★ Instance가 null이면 비활성 오브젝트를 찾아 강제 초기화
+        if (GuildUI.Instance == null)
+        {
+            var found = FindObjectOfType<GuildUI>(true);
+            if (found != null && !found.gameObject.activeSelf)
+            {
+                found.gameObject.SetActive(true);
+                found.gameObject.SetActive(false);
+            }
+        }
+
         ToggleWithBanner("길드",
             () => GuildUI.Instance?.Show(),
             () => GuildUI.Instance?.Hide());
@@ -499,6 +513,18 @@ public class TopMenuManager : MonoBehaviour
     {
         if (IsButtonOnCooldown()) return;
         if (IsBlockedByTutorial(friendButton)) return;
+
+        // ★ Instance가 null이면 비활성 오브젝트를 찾아 강제 초기화
+        if (FriendUI.Instance == null)
+        {
+            var found = FindObjectOfType<FriendUI>(true);
+            if (found != null && !found.gameObject.activeSelf)
+            {
+                found.gameObject.SetActive(true);
+                found.gameObject.SetActive(false);
+            }
+        }
+
         ToggleWithBanner("친구",
             () => FriendUI.Instance?.Show(),
             () => FriendUI.Instance?.Hide());

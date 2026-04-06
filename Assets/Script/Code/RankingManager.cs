@@ -39,6 +39,7 @@ public class RankingManager : MonoBehaviour
         public int combatPower; // 전투력 (K단위 표시용, 모든 탭에서 사용)
         public int classIndex;  // 0=전사, 1=원거리, 2=마법사
         public bool isMe;
+        public string gamerInDate; // ★ 유저 고유 inDate (친구 요청 등에 사용)
     }
 
     /// <summary>내 직업 인덱스 (캐릭터 선택 시 외부에서 설정)</summary>

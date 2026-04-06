@@ -98,10 +98,8 @@ public class GuildUI : MonoBehaviour
     {
         if (Instance != null && Instance != this) { Destroy(gameObject); return; }
         Instance = this;
-    }
 
-    void Start()
-    {
+        // ★ Awake에서 초기화 (비활성 상태에서도 InactiveInitializer로 실행)
         // 탭 버튼
         if (tabInfoBtn) tabInfoBtn.onClick.AddListener(() => SwitchTab(0));
         if (tabSearchBtn) tabSearchBtn.onClick.AddListener(() => SwitchTab(1));

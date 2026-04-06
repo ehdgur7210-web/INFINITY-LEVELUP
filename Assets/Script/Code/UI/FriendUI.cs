@@ -70,10 +70,8 @@ public class FriendUI : MonoBehaviour
     {
         if (Instance != null && Instance != this) { Destroy(gameObject); return; }
         Instance = this;
-    }
 
-    void Start()
-    {
+        // ★ Awake에서 초기화 (비활성 상태에서도 실행)
         // 탭
         if (tabFriendListBtn) tabFriendListBtn.onClick.AddListener(() => SwitchTab(0));
         if (tabRequestBtn) tabRequestBtn.onClick.AddListener(() => SwitchTab(1));
@@ -135,9 +133,28 @@ public class FriendUI : MonoBehaviour
     {
         currentTab = tab;
 
+        // ★ 패널 토글
         if (friendListPanel) friendListPanel.SetActive(tab == 0);
+        else Debug.LogWarning("[FriendUI] friendListPanel이 연결되지 않았습니다!");
+
         if (requestPanel) requestPanel.SetActive(tab == 1);
+        else Debug.LogWarning("[FriendUI] requestPanel이 연결되지 않았습니다!");
+
         if (searchPanel) searchPanel.SetActive(tab == 2);
+        else Debug.LogWarning("[FriendUI] searchPanel이 연결되지 않았습니다!");
+
+        // ★ 패널이 null일 때 대비: 콘텐츠도 명시적으로 숨기기/보이기
+        if (friendListContent) friendListContent.gameObject.SetActive(tab == 0);
+        if (friendCountText) friendCountText.gameObject.SetActive(tab == 0);
+        if (friendPointText) friendPointText.gameObject.SetActive(tab == 0);
+        if (sendAllBtn) sendAllBtn.gameObject.SetActive(tab == 0);
+        if (claimAllBtn) claimAllBtn.gameObject.SetActive(tab == 0);
+
+        if (requestListContent) requestListContent.gameObject.SetActive(tab == 1);
+        if (requestCountText) requestCountText.gameObject.SetActive(tab == 1);
+
+        if (searchInput) searchInput.gameObject.SetActive(tab == 2);
+        if (searchResultContent) searchResultContent.gameObject.SetActive(tab == 2);
 
         SetTabColor(tabFriendListBtn, tab == 0);
         SetTabColor(tabRequestBtn, tab == 1);
@@ -152,7 +169,13 @@ public class FriendUI : MonoBehaviour
             case 1:
                 BackendFriendManager.Instance?.LoadReceivedRequests();
                 break;
+            case 2:
+                // ★ 검색 탭 진입 시 자동으로 랜덤 유저 추천 로드
+                BackendFriendManager.Instance?.LoadRandomUsers();
+                break;
         }
+
+        Debug.Log($"[FriendUI] SwitchTab({tab}) — friendListPanel={friendListPanel != null}, requestPanel={requestPanel != null}, searchPanel={searchPanel != null}");
     }
 
     private void SetTabColor(Button btn, bool active)
@@ -307,9 +330,11 @@ public class FriendUI : MonoBehaviour
     {
         if (searchInput == null) return;
         string keyword = searchInput.text.Trim();
+
+        // ★ 빈 검색어 → 랜덤 유저 추천
         if (string.IsNullOrEmpty(keyword))
         {
-            ShowMessage("닉네임을 입력하세요.");
+            BackendFriendManager.Instance?.LoadRandomUsers();
             return;
         }
         BackendFriendManager.Instance?.SearchUser(keyword);
@@ -341,18 +366,40 @@ public class FriendUI : MonoBehaviour
                 else
                 {
                     string inDate = result.inDate;
+                    string nickname = result.nickname;
                     btn.onClick.AddListener(() =>
                     {
-                        BackendFriendManager.Instance?.SendFriendRequest(inDate, (success, msg) =>
+                        // ★ inDate가 없으면 닉네임으로 먼저 조회 후 요청
+                        if (string.IsNullOrEmpty(inDate))
                         {
-                            ShowMessage(msg);
-                            if (success)
+                            btn.interactable = false;
+                            BackendFriendManager.Instance?.ResolveInDateAndRequest(nickname, (success, msg) =>
                             {
-                                btn.interactable = false;
-                                var btnText = btn.GetComponentInChildren<TextMeshProUGUI>();
-                                if (btnText) btnText.text = "요청완료";
-                            }
-                        });
+                                ShowMessage(msg);
+                                if (success)
+                                {
+                                    var btnText = btn.GetComponentInChildren<TextMeshProUGUI>();
+                                    if (btnText) btnText.text = "요청완료";
+                                }
+                                else
+                                {
+                                    btn.interactable = true;
+                                }
+                            });
+                        }
+                        else
+                        {
+                            BackendFriendManager.Instance?.SendFriendRequest(inDate, (success, msg) =>
+                            {
+                                ShowMessage(msg);
+                                if (success)
+                                {
+                                    btn.interactable = false;
+                                    var btnText = btn.GetComponentInChildren<TextMeshProUGUI>();
+                                    if (btnText) btnText.text = "요청완료";
+                                }
+                            });
+                        }
                     });
                 }
             }

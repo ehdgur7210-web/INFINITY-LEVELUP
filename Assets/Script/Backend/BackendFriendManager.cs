@@ -153,14 +153,18 @@ public class BackendFriendManager : MonoBehaviour
     }
 
     // ═══════════════════════════════════════
-    //  유저 검색 (닉네임)
+    //  유저 검색 (닉네임 또는 랜덤)
     // ═══════════════════════════════════════
 
+    /// <summary>
+    /// 닉네임 검색. 빈 문자열이면 랜덤 유저 추천으로 전환.
+    /// </summary>
     public void SearchUser(string nickname, Action<List<FriendSearchResult>> callback = null)
     {
+        // ★ 검색어가 비어있으면 랜덤 유저 추천
         if (string.IsNullOrEmpty(nickname))
         {
-            OnFriendError?.Invoke("닉네임을 입력하세요.");
+            LoadRandomUsers(callback);
             return;
         }
 
@@ -179,7 +183,6 @@ public class BackendFriendManager : MonoBehaviour
                             nickname = rows[i].ContainsKey("nickname") ? rows[i]["nickname"]?.ToString() : "???",
                             inDate = rows[i].ContainsKey("inDate") ? rows[i]["inDate"]?.ToString() : "",
                         };
-                        // 이미 친구인지 확인
                         result.isAlreadyFriend = FriendList.Exists(f => f.inDate == result.inDate);
                         list.Add(result);
                     }
@@ -195,6 +198,55 @@ public class BackendFriendManager : MonoBehaviour
             OnSearchResultLoaded?.Invoke(list);
             callback?.Invoke(list);
         });
+    }
+
+    // ═══════════════════════════════════════
+    //  유저 추천 (랭킹 기반)
+    // ═══════════════════════════════════════
+
+    /// <summary>랭킹에서 유저 목록을 가져와 검색 결과로 표시</summary>
+    public void LoadRandomUsers(Action<List<FriendSearchResult>> callback = null)
+    {
+        if (BackendRankingManager.Instance == null)
+        {
+            OnFriendMessage?.Invoke("랭킹 시스템을 사용할 수 없습니다.");
+            callback?.Invoke(new List<FriendSearchResult>());
+            return;
+        }
+
+        // 레벨 랭킹에서 유저 목록 가져오기
+        BackendRankingManager.Instance.GetRankList(
+            RankingManager.RankType.Level,
+            (entries, success) =>
+            {
+                var list = new List<FriendSearchResult>();
+
+                if (success && entries != null)
+                {
+                    foreach (var entry in entries)
+                    {
+                        // 자기 자신 제외
+                        if (entry.isMe) continue;
+
+                        var result = new FriendSearchResult
+                        {
+                            nickname = entry.playerName,
+                            inDate = entry.gamerInDate ?? "", // ★ 랭킹에서 gamerInDate 직접 사용
+                        };
+                        result.isAlreadyFriend = FriendList.Exists(f =>
+                            (!string.IsNullOrEmpty(f.inDate) && f.inDate == result.inDate) ||
+                            f.nickname == result.nickname);
+                        list.Add(result);
+                    }
+                    Debug.Log($"[Friend] 유저 추천: {list.Count}명");
+                }
+
+                if (list.Count == 0)
+                    OnFriendMessage?.Invoke("추천할 유저가 없습니다.");
+
+                OnSearchResultLoaded?.Invoke(list);
+                callback?.Invoke(list);
+            });
     }
 
     // ═══════════════════════════════════════
@@ -222,6 +274,46 @@ public class BackendFriendManager : MonoBehaviour
                 string msg = ParseFriendError(bro, "친구 요청");
                 callback?.Invoke(false, msg);
             }
+        });
+    }
+
+    // ═══════════════════════════════════════
+    //  닉네임 → inDate 조회 후 친구 요청
+    // ═══════════════════════════════════════
+
+    /// <summary>닉네임으로 inDate를 찾은 뒤 친구 요청 (랭킹 추천 유저용)</summary>
+    public void ResolveInDateAndRequest(string nickname, Action<bool, string> callback)
+    {
+        if (string.IsNullOrEmpty(nickname))
+        {
+            callback?.Invoke(false, "닉네임이 없습니다.");
+            return;
+        }
+
+        Backend.Social.GetUserInfoByNickName(nickname, bro =>
+        {
+            if (!bro.IsSuccess())
+            {
+                callback?.Invoke(false, "유저를 찾을 수 없습니다.");
+                return;
+            }
+
+            JsonData rows = bro.FlattenRows();
+            if (rows == null || rows.Count == 0)
+            {
+                callback?.Invoke(false, "유저를 찾을 수 없습니다.");
+                return;
+            }
+
+            string inDate = rows[0].ContainsKey("inDate") ? rows[0]["inDate"]?.ToString() : "";
+            if (string.IsNullOrEmpty(inDate))
+            {
+                callback?.Invoke(false, "유저 정보를 가져올 수 없습니다.");
+                return;
+            }
+
+            Debug.Log($"[Friend] 닉네임 '{nickname}' → inDate: {inDate}");
+            SendFriendRequest(inDate, callback);
         });
     }
 
