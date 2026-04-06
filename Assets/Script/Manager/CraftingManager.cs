@@ -299,7 +299,20 @@ public class CraftingManager : MonoBehaviour
         }
         recipeSlots.Clear();
 
-        foreach (CraftRecipe recipe in knownRecipes)
+        // ★ 등급 낮은 순 정렬: 커먼 6종 → 언커먼 6종 → 레어 6종 → 에픽 6종
+        var sorted = new List<CraftRecipe>(knownRecipes);
+        sorted.Sort((a, b) =>
+        {
+            // 재료 등급 기준 (ingredients[0].item.rarity)
+            int rarityA = GetIngredientRarity(a);
+            int rarityB = GetIngredientRarity(b);
+            if (rarityA != rarityB) return rarityA.CompareTo(rarityB);
+            // 같은 등급이면 카테고리(부위)순
+            if (a.category != b.category) return a.category.CompareTo(b.category);
+            return a.recipeID.CompareTo(b.recipeID);
+        });
+
+        foreach (CraftRecipe recipe in sorted)
         {
             if (recipeSlotPrefab != null && recipeListParent != null)
             {
@@ -313,6 +326,13 @@ public class CraftingManager : MonoBehaviour
                 }
             }
         }
+    }
+
+    private int GetIngredientRarity(CraftRecipe recipe)
+    {
+        if (recipe.ingredients != null && recipe.ingredients.Length > 0 && recipe.ingredients[0].item != null)
+            return (int)recipe.ingredients[0].item.rarity;
+        return 0;
     }
 
     public List<CraftRecipe> GetRecipesByCategory(CraftCategory category)

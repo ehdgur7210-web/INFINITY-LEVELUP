@@ -1,0 +1,32 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8d89bc1074d568f4a870d9348ca36f19, type: 3}
+  m_Name: "Auto_20032_\uCEE4\uBA3C_\uC7A5\uAC11_2\uAC1C"
+  m_EditorClassIdentifier: 
+  recipeID: 20032
+  recipeName: "\uCEE4\uBA3C \uC7A5\uAC11 \u2192 \uC5B8\uCEE4\uBA3C (2\uAC1C)"
+  recipeDescription: "\uCEE4\uBA3C \uC7A5\uAC11 2\uAC1C\uB97C \uC870\uD569\uD558\uC5EC
+    \uC5B8\uCEE4\uBA3C \uB4F1\uAE09\uC73C\uB85C \uC2B9\uAE09\uD569\uB2C8\uB2E4. (\uC131\uACF5\uB960
+    50%)"
+  category: 1
+  resultItem: {fileID: 11400000, guid: def331242d205864e80ed8dcd93057ac, type: 2}
+  resultAmount: 1
+  ingredients:
+  - item: {fileID: 11400000, guid: 756351d8e9d78bb4380258075746817a, type: 2}
+    requiredAmount: 2
+  requiredLevel: 1
+  requiredGold: 1000
+  craftTime: 1
+  prerequisiteRecipes: []
+  successRate: 50
+  canFail: 1
+  recipeIcon: {fileID: -242737753, guid: 46f4c2953c264e84fa71f8f907567aa6, type: 3}

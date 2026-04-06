@@ -875,8 +875,8 @@ public class EquipmentLevelUpPanel : MonoBehaviour
                 promoteMatText.text = "최대 등급에 도달했습니다";
             else
             {
-                string matColor = matHave >= promoteMatNeeded ? "#FFFFFF" : "#FF4444";
-                promoteMatText.text = $"필요: 같은 장비 <color={matColor}>{matHave}/{promoteMatNeeded}</color>개";
+                string matColor = matHave >= promoteMatNeeded ? "#00FF00" : "#FF4444";
+                promoteMatText.text = $"필요: 같은 장비 <color={matColor}>{matHave}/{promoteMatNeeded}</color>개 (100% 확정)";
             }
         }
 
@@ -887,17 +887,10 @@ public class EquipmentLevelUpPanel : MonoBehaviour
             promoteActionBtnText.text = canPromote ? "승급하기" : "MAX";
     }
 
-    /// <summary>승급에 필요한 같은 장비 수</summary>
+    /// <summary>승급에 필요한 같은 장비 수 (10개 = 100% 확정)</summary>
     private int GetPromoteMaterialCount(ItemRarity currentRarity)
     {
-        switch (currentRarity)
-        {
-            case ItemRarity.Common: return 3;
-            case ItemRarity.Uncommon: return 5;
-            case ItemRarity.Rare: return 7;
-            case ItemRarity.Epic: return 10;
-            default: return 99;
-        }
+        return 10; // 모든 등급 10개로 통일 (100% 성공)
     }
 
     private void OnPromoteClicked()
@@ -911,33 +904,64 @@ public class EquipmentLevelUpPanel : MonoBehaviour
             return;
         }
 
-        int matNeeded = GetPromoteMaterialCount(curRarity);
+        int matNeeded = GetPromoteMaterialCount(curRarity); // 10개
         int matHave = Mathf.Max(0, currentSlot.itemCount - 1);
 
         if (matHave < matNeeded)
         {
-            UIManager.Instance?.ShowMessage("재료가 부족합니다!", Color.red);
+            UIManager.Instance?.ShowMessage($"재료가 부족합니다! ({matHave}/{matNeeded})", Color.red);
             return;
         }
 
-        // 재료 차감
+        // 재료 차감 (10개, 100% 성공)
         currentSlot.itemCount -= matNeeded;
 
-        // 승급은 실제 ScriptableObject를 변경할 수 없으므로 메시지만 표시
-        // (실제 승급 시스템은 다음 등급 장비의 ItemData를 별도로 찾아 교체하는 로직 필요)
-        UIManager.Instance?.ShowMessage(
-            $"{currentEquip.itemName} 승급 준비 완료! ({curRarity} → {curRarity + 1})", Color.green);
+        // 다음 등급 장비 찾기
+        ItemRarity nextRarity = curRarity + 1;
+        EquipmentData nextEquip = FindNextRarityEquip(currentEquip, nextRarity);
+
+        if (nextEquip != null)
+        {
+            InventoryManager.Instance?.AddItem(nextEquip, 1);
+            UIManager.Instance?.ShowMessage(
+                $"합성 성공! {nextEquip.itemName} 획득!", Color.green);
+        }
+        else
+        {
+            UIManager.Instance?.ShowMessage(
+                $"합성 성공! ({curRarity} → {nextRarity})", Color.green);
+        }
 
         SoundManager.Instance?.PlayEnhanceSuccess();
-        Debug.Log($"[EquipmentLevelUpPanel] 승급: {currentEquip.itemName} {curRarity} → {curRarity + 1}");
+        Debug.Log($"[EquipmentLevelUpPanel] 합성: {currentEquip.itemName} {curRarity} → {nextRarity} (재료 {matNeeded}개)");
 
         // 해금 맵 동기화
         InventoryManager.Instance?.SyncEquipSlotToMap(
             currentEquip.itemID, currentSlot.itemCount,
             currentSlot.enhanceLevel, currentLevel);
 
+        SaveLoadManager.Instance?.SaveGame();
         RefreshPromoteTab();
         InventoryManager.Instance?.RefreshEquipDisplay();
+    }
+
+    /// <summary>같은 부위의 다음 등급 장비 찾기</summary>
+    private EquipmentData FindNextRarityEquip(EquipmentData current, ItemRarity targetRarity)
+    {
+        if (ItemDatabase.Instance == null) return null;
+
+        var allItems = ItemDatabase.Instance.allItems;
+        if (allItems == null) return null;
+
+        foreach (var item in allItems)
+        {
+            if (item is EquipmentData equip)
+            {
+                if (equip.equipmentType == current.equipmentType && equip.rarity == targetRarity)
+                    return equip;
+            }
+        }
+        return null;
     }
 
     // ═══════════════════════════════════════════════════════════════
