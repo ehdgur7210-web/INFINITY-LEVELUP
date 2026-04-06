@@ -767,7 +767,7 @@ PlayerSettings:
   webGLMemoryGeometricGrowthCap: 96
   webGLPowerPreference: 2
   scriptingDefineSymbols:
-    Standalone: BACKND_CHA
+    Standalone: BACKND_CHAT
   additionalCompilerArguments: {}
   platformArchitecture: {}
   scriptingBackend: {}
