@@ -337,11 +337,11 @@ public class FarmInventoryUI : MonoBehaviour
     {
         RefreshCropPoints(FarmManager.Instance?.GetCropPoints() ?? 0);
 
-        // ★ 탭에 맞게 컨테이너 활성/비활성 보장
-        seedContainer?.gameObject.SetActive(currentTab == InvTab.Seeds);
-        harvestContainer?.gameObject.SetActive(currentTab == InvTab.Harvested);
-        EnsureContainerInteractable(seedContainer);
-        EnsureContainerInteractable(harvestContainer);
+        // ★ 탭에 맞게 컨테이너 활성/비활성 보장 (파괴된 참조 체크)
+        if (seedContainer != null) seedContainer.gameObject.SetActive(currentTab == InvTab.Seeds);
+        if (harvestContainer != null) harvestContainer.gameObject.SetActive(currentTab == InvTab.Harvested);
+        if (seedContainer != null) EnsureContainerInteractable(seedContainer);
+        if (harvestContainer != null) EnsureContainerInteractable(harvestContainer);
 
         RefreshCurrentTab();
         selectedItemDetail?.SetActive(false);

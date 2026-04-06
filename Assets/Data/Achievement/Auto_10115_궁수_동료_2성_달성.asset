@@ -1,0 +1,29 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ef0681394f9212f45a4fa8c230f477aa, type: 3}
+  m_Name: "Auto_10115_\uAD81\uC218_\uB3D9\uB8CC_2\uC131_\uB2EC\uC131"
+  m_EditorClassIdentifier: 
+  achievementID: 10115
+  achievementName: "\uAD81\uC218 \uB3D9\uB8CC 2\uC131 \uB2EC\uC131"
+  description: "\uAD81\uC218 \uB3D9\uB8CC\uB97C 2\uC131\uAE4C\uC9C0 \uC2B9\uC131\uD558\uC138\uC694."
+  icon: {fileID: 0}
+  type: 15
+  grade: 0
+  targetAmount: 2
+  targetID: ranger
+  reward:
+    gold: 6000
+    gem: 20
+    exp: 0
+    items: []
+    title: 
+  isHidden: 0

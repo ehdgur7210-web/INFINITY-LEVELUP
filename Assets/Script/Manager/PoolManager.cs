@@ -285,10 +285,13 @@ public class PoolManager : MonoBehaviour
 
     private void CleanupInactivePools()
     {
+        if (poolDictionary == null) return;
+
         foreach (var kvp in poolDictionary)
         {
             string tag = kvp.Key;
             Queue<GameObject> pool = kvp.Value;
+            if (!poolSettings.ContainsKey(tag)) continue;
             Pool settings = poolSettings[tag];
 
             if (pool.Count > settings.initialSize)

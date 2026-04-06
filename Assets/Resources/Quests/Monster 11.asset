@@ -1,0 +1,34 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6588ab5633149bb44b62cd7a65df6aaf, type: 3}
+  m_Name: Monster 11
+  m_EditorClassIdentifier: 
+  questID: 0
+  questName: "\uBAAC\uC2A4\uD130\uCC98\uCE58"
+  questDescription: "\uBAAC\uC2A4\uD130 10\uB9C8\uB97C \uC7A1\uC73C\uC138\uC694."
+  questObjectiveText: "\uBCF4\uC0C1 1000 \uACE8\uB4DC"
+  requiredLevel: 0
+  prerequisiteQuests: []
+  objectives:
+  - objectiveName: "\uBAAC\uC2A4\uD130\uC7A1\uAE30"
+    objectiveType: 0
+    targetID: Monster
+    requiredAmount: 10
+    currentAmount: 0
+  reward:
+    gold: 1000
+    exp: 1000
+    rewardItems:
+    - {fileID: 11400000, guid: b7fc901caa64b0c4faf64343b5d8541b, type: 2}
+    itemCounts: 
+  questGiverNPC: 
+  questCompleteNPC: 

@@ -30,19 +30,19 @@ MonoBehaviour:
   skills:
   - skillID: Ice
     skillName: "\uC5BC\uC74C\uC138\uACC4"
-    description: 
+    description: "\uC5BC\uC74C\uC138\uCE74\uC774!"
     icon: {fileID: 1718385617, guid: 503ced27e527b7b4f9a8f217d1e6fb94, type: 3}
     maxLevel: 5
     unlockCompanionLevel: 1
     baseCostGold: 10000
     baseValue: 500
     valuePerLevel: 100
-    skillType: 0
+    skillType: 1
     cooldown: 8
     damageMultiplier: 2
-    areaRadius: 2
-    skillRange: 0
-    skillEffect: {fileID: 0}
+    areaRadius: 30
+    skillRange: 5
+    skillEffect: {fileID: 4454599190343371220, guid: bbcc42ce5fdc0794c99c7b3bff0f7144, type: 3}
   spawnRadius: 10
   summonCooldown: 30
   probability: 10

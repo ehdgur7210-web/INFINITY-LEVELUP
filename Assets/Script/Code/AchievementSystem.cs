@@ -92,8 +92,19 @@ public class AchievementSystem : MonoBehaviour
     {
         progressDictionary = new Dictionary<int, AchievementProgress>();
 
+        // ★ Inspector에 등록된 업적 + Resources/Data 폴더의 모든 업적 자동 로드
+        var loaded = Resources.FindObjectsOfTypeAll<AchievementData>();
+        foreach (var a in loaded)
+        {
+            if (a != null && !allAchievements.Contains(a))
+                allAchievements.Add(a);
+        }
+
         foreach (AchievementData achievement in allAchievements)
         {
+            if (achievement == null) continue;
+            if (progressDictionary.ContainsKey(achievement.achievementID)) continue;
+
             AchievementProgress progress = new AchievementProgress(achievement);
             achievementProgress.Add(progress);
             progressDictionary[achievement.achievementID] = progress;
@@ -338,22 +349,62 @@ public class AchievementSystem : MonoBehaviour
             Destroy(child.gameObject);
         }
 
-        // 새 슬롯 생성
-        foreach (AchievementProgress progress in achievementProgress)
+        // ★ 타입별 가장 낮은 미완료 1개 + 완료(미수령) 표시
+        // 1단계: 타입별로 가장 낮은 미완료 업적 찾기
+        var nextByType = new Dictionary<AchievementType, AchievementProgress>();
+        var claimable = new List<AchievementProgress>();  // 완료+미수령
+        var rewarded = new List<AchievementProgress>();    // 수령완료
+
+        // 타입별로 목표량 낮은 순 정렬
+        var allSorted = new List<AchievementProgress>(achievementProgress);
+        allSorted.Sort((a, b) => a.achievement.targetAmount.CompareTo(b.achievement.targetAmount));
+
+        foreach (var p in allSorted)
         {
-            // 숨김 업적이고 미완성이면 스킵 (선택사항)
-            // if (progress.achievement.isHidden && !progress.isCompleted) continue;
+            if (p.achievement == null) continue;
+            if (p.achievement.isHidden && !p.isCompleted) continue;
 
-            GameObject slotObj = Instantiate(achievementSlotPrefab, achievementListParent);
-            AchievementSlot slot = slotObj.GetComponent<AchievementSlot>();
-
-            if (slot != null)
+            if (p.isRewarded)
             {
-                slot.SetupSlot(progress);
+                rewarded.Add(p);
+            }
+            else if (p.isCompleted)
+            {
+                claimable.Add(p);
+            }
+            else
+            {
+                // 미완료: 타입별 첫 번째만
+                if (!nextByType.ContainsKey(p.achievement.type))
+                    nextByType[p.achievement.type] = p;
             }
         }
 
-        Debug.Log($"업적 UI 업데이트: {achievementProgress.Count}개");
+        // 2단계: 표시 순서 = 수령 가능 → 타입별 다음 업적 → 수령완료
+        var displayList = new List<AchievementProgress>();
+        displayList.AddRange(claimable);
+
+        // 타입별 다음 업적을 목표량 낮은 순으로
+        var nextList = new List<AchievementProgress>(nextByType.Values);
+        nextList.Sort((a, b) => a.achievement.targetAmount.CompareTo(b.achievement.targetAmount));
+        displayList.AddRange(nextList);
+
+        // 수령완료는 최근 것만 일부 (너무 많으면 스크롤 길어짐)
+        rewarded.Reverse(); // 최근(높은 ID) 먼저
+        int rewardedMax = Mathf.Min(rewarded.Count, 10);
+        for (int i = 0; i < rewardedMax; i++)
+            displayList.Add(rewarded[i]);
+
+        // 3단계: 슬롯 생성
+        foreach (AchievementProgress progress in displayList)
+        {
+            GameObject slotObj = Instantiate(achievementSlotPrefab, achievementListParent);
+            AchievementSlot slot = slotObj.GetComponent<AchievementSlot>();
+            if (slot != null)
+                slot.SetupSlot(progress);
+        }
+
+        Debug.Log($"업적 UI 업데이트: {displayList.Count}개 표시 (전체 {achievementProgress.Count}개)");
     }
 
     /// <summary>

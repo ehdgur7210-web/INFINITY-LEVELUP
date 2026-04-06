@@ -30,19 +30,19 @@ MonoBehaviour:
   skills:
   - skillID: Fire
     skillName: "\uD30C\uC774\uC5B4\uC6D4"
-    description: 
+    description: "\uD30C\uC774\uC5B4\uC6D4!"
     icon: {fileID: 1615497684, guid: 2ffb92d4a6e308b44a074d2b4c39e4fb, type: 3}
     maxLevel: 5
     unlockCompanionLevel: 1
     baseCostGold: 10000
     baseValue: 500
     valuePerLevel: 100
-    skillType: 0
+    skillType: 1
     cooldown: 8
     damageMultiplier: 2
-    areaRadius: 2
-    skillRange: 0
-    skillEffect: {fileID: 0}
+    areaRadius: 30
+    skillRange: 5
+    skillEffect: {fileID: 8633066563278409231, guid: 1526457a84ad9414e9e2326a834b3018, type: 3}
   spawnRadius: 10
   summonCooldown: 30
   probability: 40

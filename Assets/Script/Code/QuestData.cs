@@ -3,11 +3,21 @@ using UnityEngine;
 // 퀘스트 타입
 public enum QuestType
 {
-    Kill,           // 몬스터 처치
-    BossKill,       // 보스처치
-    Gacha,          // 가챠
-    Enhance,        // 강화
-    Collect         // 아이템 수집
+    Kill,               // 몬스터 처치
+    BossKill,           // 보스처치
+    Gacha,              // 가챠
+    Enhance,            // 강화
+    Collect,            // 아이템 수집
+    LevelUp,            // 레벨업 (targetID: 비워두면 아무 레벨업)
+    EnhanceHelmet,      // 투구 강화
+    EnhanceArmor,       // 갑옷 강화
+    EnhanceWeaponLeft,  // 왼손 무기 강화
+    EnhanceWeaponRight, // 오른손 무기 강화
+    EnhanceGloves,      // 장갑 강화
+    EnhanceBoots,       // 신발 강화
+    CompanionAscend,    // 동료 승성 (targetID: 동료ID, 비우면 아무 동료)
+    CompanionLevelUp,   // 동료 레벨업 (targetID: 동료ID, 비우면 아무 동료)
+    EquipLevelUp        // 장비 레벨업
 }
 
 // 퀘스트 상태

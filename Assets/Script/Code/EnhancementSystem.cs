@@ -349,6 +349,40 @@ public class EnhancementSystem : MonoBehaviour
         UpdateEnhancementUI();
 
         AchievementSystem.Instance?.UpdateAchievementProgress(AchievementType.EnhanceEquipment, "", 1);
+
+        // ★ 부위별 강화 업적 진행
+        if (currentEquipment != null)
+        {
+            AchievementType achType = currentEquipment.equipmentType switch
+            {
+                EquipmentType.Helmet     => AchievementType.EnhanceHelmet,
+                EquipmentType.Armor      => AchievementType.EnhanceArmor,
+                EquipmentType.WeaponLeft => AchievementType.EnhanceWeapon,
+                EquipmentType.WeaponRight=> AchievementType.EnhanceWeapon,
+                EquipmentType.Gloves     => AchievementType.EnhanceGloves,
+                EquipmentType.Boots      => AchievementType.EnhanceBoots,
+                _ => AchievementType.EnhanceEquipment
+            };
+            string rarity = currentEquipment.rarity.ToString();
+            AchievementSystem.Instance?.UpdateAchievementProgress(achType, rarity, currentEnhanceLevel);
+        }
+
+        // ★ 부위별 강화 퀘스트 진행
+        if (currentEquipment != null && QuestManager.Instance != null)
+        {
+            QuestManager.Instance.UpdateQuestProgress(QuestType.Enhance, "", 1);
+            QuestType slotType = currentEquipment.equipmentType switch
+            {
+                EquipmentType.Helmet      => QuestType.EnhanceHelmet,
+                EquipmentType.Armor       => QuestType.EnhanceArmor,
+                EquipmentType.WeaponLeft  => QuestType.EnhanceWeaponLeft,
+                EquipmentType.WeaponRight => QuestType.EnhanceWeaponRight,
+                EquipmentType.Gloves      => QuestType.EnhanceGloves,
+                EquipmentType.Boots       => QuestType.EnhanceBoots,
+                _ => QuestType.Enhance
+            };
+            QuestManager.Instance.UpdateQuestProgress(slotType, "", 1);
+        }
     }
 
     private void OnEnhanceFail()

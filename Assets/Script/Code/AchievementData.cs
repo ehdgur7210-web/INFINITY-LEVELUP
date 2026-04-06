@@ -11,8 +11,16 @@ public enum AchievementType
     CompleteQuests,     // ����Ʈ �Ϸ�
     EnhanceEquipment,   // ��� ��ȭ
     UseSkills,          // ��ų ���
-    KillBoss,             // ����ų
-    GachaCount          //����Ƚ��
+    KillBoss,
+    GachaCount,
+    EnhanceHelmet,          // 투구 강화
+    EnhanceArmor,           // 갑옷 강화
+    EnhanceWeapon,          // 무기 강화
+    EnhanceGloves,          // 장갑 강화
+    EnhanceBoots,           // 신발 강화
+    EquipLevelUp,           // 장비 레벨업
+    CompanionAscend,        // 동료 승성
+    CompanionLevelUp        // 동료 레벨업
 }
 
 // ���� ���

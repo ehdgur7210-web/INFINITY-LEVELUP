@@ -37,8 +37,8 @@ public class QuestManager : MonoBehaviour
 
         if (availableQuests == null || availableQuests.Count == 0)
         {
-            Debug.LogError("[QuestManager] availableQuests가 비어있음!");
-            return;
+            Debug.Log("[QuestManager] availableQuests 비어있음 → 반복 퀘스트로 시작");
+            isInRepeatMode = true;
         }
 
         // ✅ 1프레임 뒤에 시작 → PlayerStats.level 초기화 보장
@@ -48,7 +48,17 @@ public class QuestManager : MonoBehaviour
     private void DelayedStart()
     {
         Debug.Log("[QuestManager] DelayedStart - 퀘스트 시작");
-        StartNextQuest();
+
+        // 반복 모드면 반복 퀘스트부터 시작
+        if (isInRepeatMode)
+        {
+            StartRepeatQuest();
+        }
+        else
+        {
+            StartNextQuest();
+        }
+        // 아래 pendingObjectiveAmounts 복원은 그대로 진행
 
         // ★ 로드된 진행도가 있으면 복원 (StartNextQuest가 새 퀘스트를 만든 직후)
         if (pendingObjectiveAmounts != null && currentQuest != null)
@@ -100,22 +110,113 @@ public class QuestManager : MonoBehaviour
     // ─────────────────────────────────────────
     // 퀘스트 시작
     // ─────────────────────────────────────────
+    // ═══════════════════════════════════════════════════════
+    //  반복 퀘스트 정의 (availableQuests 이후 무한 루프)
+    // ═══════════════════════════════════════════════════════
+
+    [Header("반복 퀘스트 설정")]
+    [SerializeField] private int 반복퀘스트보상골드 = 3000;
+    [SerializeField] private int 반복퀘스트보상경험치 = 1000;
+
+    private int repeatCycle = 0; // 반복 사이클 (보상 스케일링용)
+    private int repeatStepIndex = 0; // 현재 반복 퀘스트 단계
+
+    private static readonly (string name, QuestType type, string targetID, int amount)[] RepeatSteps =
+    {
+        ("몬스터 10마리 처치",     QuestType.Kill,            "",       10),
+        ("보스 몬스터 처치",       QuestType.BossKill,        "",        1),
+        ("레벨 1 업",             QuestType.LevelUp,         "",        1),
+        ("투구 강화 1회",          QuestType.EnhanceHelmet,   "",        1),
+        ("갑옷 강화 1회",          QuestType.EnhanceArmor,    "",        1),
+        ("왼손 무기 강화 1회",     QuestType.EnhanceWeaponLeft, "",      1),
+        ("오른손 무기 강화 1회",   QuestType.EnhanceWeaponRight,"",      1),
+        ("신발 강화 1회",          QuestType.EnhanceBoots,    "",        1),
+        ("장갑 강화 1회",          QuestType.EnhanceGloves,   "",        1),
+        ("동료 승성 1회",          QuestType.CompanionAscend, "",        1),
+        ("동료 레벨업 1회",        QuestType.CompanionLevelUp,"",        1),
+        ("장비 레벨업 1회",        QuestType.EquipLevelUp,    "",        1),
+    };
+
+    private bool isInRepeatMode = false;
+
+    private QuestProgress CreateRepeatQuest(int stepIndex)
+    {
+        var step = RepeatSteps[stepIndex];
+        float scale = 1f + repeatCycle * 0.2f; // 사이클마다 보상 20% 증가
+
+        var questData = ScriptableObject.CreateInstance<QuestData>();
+        questData.questID = 90000 + repeatCycle * 100 + stepIndex;
+        questData.questName = step.name;
+        questData.questDescription = step.name;
+        questData.questObjectiveText = $"{step.name} ({step.amount}회)";
+        questData.requiredLevel = 1;
+
+        questData.objectives = new QuestObjective[]
+        {
+            new QuestObjective
+            {
+                objectiveName = step.name,
+                objectiveType = step.type,
+                targetID = step.targetID,
+                requiredAmount = step.amount,
+                currentAmount = 0
+            }
+        };
+
+        questData.reward = new QuestReward
+        {
+            gold = (int)(반복퀘스트보상골드 * scale),
+            exp = (int)(반복퀘스트보상경험치 * scale),
+            rewardItems = new ItemData[0],
+            itemCounts = new int[0]
+        };
+
+        var progress = new QuestProgress(questData);
+        progress.status = QuestStatus.InProgress;
+        return progress;
+    }
+
+    private void StartRepeatQuest()
+    {
+        isInRepeatMode = true;
+        currentQuest = CreateRepeatQuest(repeatStepIndex);
+
+        Debug.Log($"[QuestManager] 반복 퀘스트: {RepeatSteps[repeatStepIndex].name} (사이클 {repeatCycle + 1})");
+        SetPanelActive(true);
+        UpdateQuestUI();
+    }
+
     void StartNextQuest()
     {
+        // 반복 모드 중이면 다음 반복 퀘스트
+        if (isInRepeatMode)
+        {
+            repeatStepIndex++;
+            if (repeatStepIndex >= RepeatSteps.Length)
+            {
+                repeatStepIndex = 0;
+                repeatCycle++;
+                UIManager.Instance?.ShowMessage($"반복 퀘스트 사이클 {repeatCycle + 1} 시작!", new Color(1f, 0.84f, 0f));
+            }
+            StartRepeatQuest();
+            return;
+        }
+
         if (currentQuestIndex >= availableQuests.Count)
         {
-            Debug.Log("[QuestManager] 모든 퀘스트 완료!");
-            questSlot?.ClearSlot();
-            UIManager.Instance?.ShowMessage("🎉 모든 퀘스트 완료!", Color.yellow);
+            Debug.Log("[QuestManager] 기본 퀘스트 완료 → 반복 퀘스트 시작!");
+            StartRepeatQuest();
             return;
         }
 
         QuestData nextQuest = availableQuests[currentQuestIndex];
         if (nextQuest == null) { currentQuestIndex++; StartNextQuest(); return; }
 
-        // ✅ 레벨 체크: PlayerStats.Instance 우선, 없으면 playerStats 필드, 둘 다 없으면 스킵
+        // ✅ 레벨 체크: GameManager 우선, 없으면 PlayerStats, 둘 다 없으면 통과
         int playerLevel = 999;
-        if (PlayerStats.Instance != null)
+        if (GameManager.Instance != null)
+            playerLevel = GameManager.Instance.PlayerLevel;
+        else if (PlayerStats.Instance != null)
             playerLevel = PlayerStats.Instance.level;
         else if (playerStats != null)
             playerLevel = playerStats.level;
@@ -293,7 +394,8 @@ public class QuestManager : MonoBehaviour
     public void ShowNextQuest()
     {
         currentQuest = null;
-        currentQuestIndex++;
+        if (!isInRepeatMode)
+            currentQuestIndex++;
         StartNextQuest();
     }
 
@@ -356,7 +458,11 @@ public class QuestManager : MonoBehaviour
         data.completedQuestIDs = completedQuestIDs.ToArray();
 
         // 현재 진행중인 퀘스트 인덱스 저장
-        data.activeQuestIDs = new int[] { currentQuestIndex };
+        // 반복 모드: repeatStepIndex + repeatCycle 정보도 저장
+        if (isInRepeatMode)
+            data.activeQuestIDs = new int[] { currentQuestIndex, repeatStepIndex, repeatCycle, 1 };
+        else
+            data.activeQuestIDs = new int[] { currentQuestIndex };
 
         // ★ 현재 퀘스트 목표 진행도(currentAmount) 저장 - ScriptableObject 참조 없이 순수 int[]로
         if (currentQuest != null && currentQuest.objectives != null)
@@ -395,6 +501,14 @@ public class QuestManager : MonoBehaviour
         if (data.activeQuestIDs != null && data.activeQuestIDs.Length > 0)
         {
             currentQuestIndex = data.activeQuestIDs[0];
+
+            // 반복 모드 복원
+            if (data.activeQuestIDs.Length >= 4 && data.activeQuestIDs[3] == 1)
+            {
+                repeatStepIndex = data.activeQuestIDs[1];
+                repeatCycle = data.activeQuestIDs[2];
+                isInRepeatMode = true;
+            }
         }
 
         // ★ 목표 진행도 임시 보관 (DelayedStart 후 적용)

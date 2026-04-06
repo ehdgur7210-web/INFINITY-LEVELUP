@@ -38,6 +38,15 @@ public class FarmQuestManager : MonoBehaviour
     private List<FarmQuestState> activeQuests = new List<FarmQuestState>();
     private DateTime nextRefreshTime;
 
+    // ── 무한 반복 퀘스트 ──
+    [Header("무한 반복 퀘스트")]
+    [SerializeField] private bool 무한반복모드 = true;
+    private int repeatCycle = 0; // 사이클 (0부터, 필요 수량 = 사이클+1)
+
+    // 작물 ID 순서 (밀→쌀→당근→양배추→토마토→딸기→수박→포도)
+    private static readonly int[] CropOrder = { 0, 1, 2, 3, 4, 11, 12, 13 };
+    private static readonly string[] CropNames = { "밀", "쌀", "당근", "양배추", "토마토", "딸기", "수박", "포도" };
+
     // ════════════════════════════════════════════════
     //  Unity 생명주기
     // ════════════════════════════════════════════════
@@ -56,7 +65,12 @@ public class FarmQuestManager : MonoBehaviour
     {
         if (Instance != this) return;
         if (activeQuests.Count == 0)
-            GenerateNewQuests();
+        {
+            if (무한반복모드)
+                GenerateRepeatQuests();
+            else
+                GenerateNewQuests();
+        }
     }
 
     void Update()
@@ -231,7 +245,60 @@ public class FarmQuestManager : MonoBehaviour
         UIManager.Instance?.ShowMessage(
             $"보상 수령! +{quest.cropPointReward} +{quest.goldReward}", Color.green);
 
+        // ★ 무한 반복: 모든 퀘스트 수령 완료 시 다음 사이클
+        if (무한반복모드 && AllQuestsSubmitted())
+        {
+            repeatCycle++;
+            Debug.Log($"[FarmQuestManager] 사이클 {repeatCycle} 시작! (필요 수량: {repeatCycle + 1}개)");
+            UIManager.Instance?.ShowMessage($"농장 퀘스트 사이클 {repeatCycle + 1} 시작! (수량 +1)", new Color(1f, 0.84f, 0f));
+            GenerateRepeatQuests();
+        }
+
         return true;
+    }
+
+    private bool AllQuestsSubmitted()
+    {
+        foreach (var q in activeQuests)
+            if (!q.isSubmitted) return false;
+        return activeQuests.Count > 0;
+    }
+
+    private void GenerateRepeatQuests()
+    {
+        activeQuests.Clear();
+        int amount = repeatCycle + 1; // 사이클마다 +1
+        float rewardScale = 1f + repeatCycle * 0.15f; // 사이클마다 보상 15% 증가
+
+        for (int i = 0; i < CropOrder.Length; i++)
+        {
+            int cropID = CropOrder[i];
+            string cropName = i < CropNames.Length ? CropNames[i] : "작물";
+
+            CropData crop = FarmManager.Instance?.GetCropByID(cropID);
+            if (crop != null) cropName = crop.cropName;
+
+            int baseReward = Mathf.Max(500, crop != null ? crop.cropPointReward : 500);
+
+            activeQuests.Add(new FarmQuestState
+            {
+                questIndex = i,
+                questTitle = $"{cropName} {amount}개 채집",
+                questDescription = $"{cropName}을(를) {amount}개 수확하세요!",
+                targetCropID = cropID,
+                targetCropName = cropName,
+                targetCropIcon = crop != null ? crop.seedIcon : null,
+                requiredAmount = amount,
+                currentAmount = 0,
+                cropPointReward = (int)(baseReward * amount * rewardScale),
+                goldReward = (int)(1000 * amount * rewardScale),
+                difficulty = QuestDifficulty.Normal,
+                isCompleted = false,
+                isSubmitted = false
+            });
+        }
+
+        OnQuestsRefreshed?.Invoke();
     }
 
     // ════════════════════════════════════════════════
@@ -262,6 +329,7 @@ public class FarmQuestManager : MonoBehaviour
         var data = new FarmQuestSaveData
         {
             nextRefreshTimeISO = nextRefreshTime.ToString("o"),
+            repeatCycle = repeatCycle,
             quests = new FarmQuestStateSave[activeQuests.Count]
         };
         for (int i = 0; i < activeQuests.Count; i++)
@@ -289,12 +357,14 @@ public class FarmQuestManager : MonoBehaviour
     {
         if (data == null) return;
 
+        repeatCycle = data.repeatCycle;
+
         if (!string.IsNullOrEmpty(data.nextRefreshTimeISO))
             DateTime.TryParse(data.nextRefreshTimeISO,
                 null, System.Globalization.DateTimeStyles.RoundtripKind,
                 out nextRefreshTime);
 
-        if (DateTime.Now >= nextRefreshTime) { GenerateNewQuests(); return; }
+        if (!무한반복모드 && DateTime.Now >= nextRefreshTime) { GenerateNewQuests(); return; }
 
         activeQuests.Clear();
         if (data.quests != null)
@@ -398,5 +468,6 @@ public class FarmQuestStateSave
 public class FarmQuestSaveData
 {
     public string nextRefreshTimeISO;
+    public int repeatCycle;
     public FarmQuestStateSave[] quests;
 }

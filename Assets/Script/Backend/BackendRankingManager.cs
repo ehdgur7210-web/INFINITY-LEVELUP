@@ -50,6 +50,8 @@ public class BackendRankingManager : MonoBehaviour
     [SerializeField] private string levelRankUUID = "";
     [Tooltip("농장 랭킹 UUID")]
     [SerializeField] private string farmRankUUID = "";
+    [Tooltip("뒤끝 콘솔 > 랭킹 > 길드 랭킹 UUID (Guild Rank용, 선택)")]
+    [SerializeField] private string guildRankUUID = "";
 
     [Header("랭킹 테이블")]
     [Tooltip("BackendGameDataManager와 동일한 테이블명")]
@@ -376,6 +378,56 @@ public class BackendRankingManager : MonoBehaviour
         RankingManager.RankType.CombatPower => combatPowerRankUUID,
         RankingManager.RankType.Level => levelRankUUID,
         RankingManager.RankType.Farm => farmRankUUID,
+        RankingManager.RankType.Guild => guildRankUUID,
         _ => ""
     };
+
+    /// <summary>길드 랭킹 조회 — 뒤끝 길드 랭킹 UUID가 없으면 멤버 전투력 합산으로 로컬 생성</summary>
+    public void GetGuildRankList(Action<List<RankingManager.RankEntry>, bool> onComplete)
+    {
+        if (!string.IsNullOrEmpty(guildRankUUID))
+        {
+            // 뒤끝 길드 랭킹 UUID가 설정되어 있으면 서버에서 조회
+            GetRankList(RankingManager.RankType.Guild, onComplete);
+            return;
+        }
+
+        // UUID 미설정 시 길드 목록에서 전투력 기준 정렬
+        Backend.Guild.GetGuildListV3(50, bro =>
+        {
+            if (!bro.IsSuccess())
+            {
+                onComplete?.Invoke(null, false);
+                return;
+            }
+
+            var entries = new List<RankingManager.RankEntry>();
+            JsonData rows = bro.FlattenRows();
+            if (rows != null)
+            {
+                for (int i = 0; i < rows.Count; i++)
+                {
+                    var entry = new RankingManager.RankEntry();
+                    entry.playerName = rows[i].ContainsKey("guildName") ? rows[i]["guildName"]?.ToString() : "???";
+                    entry.combatPower = 0;
+                    if (rows[i].ContainsKey("goods"))
+                    {
+                        var goods = rows[i]["goods"];
+                        if (goods.ContainsKey("totalCombatPower"))
+                            entry.combatPower = (int)(long)goods["totalCombatPower"];
+                    }
+                    entry.score = entry.combatPower;
+                    entry.isMe = BackendGuildManager.Instance != null
+                              && BackendGuildManager.Instance.IsInGuild
+                              && rows[i].ContainsKey("inDate")
+                              && rows[i]["inDate"]?.ToString() == BackendGuildManager.Instance.MyGuild.guildInDate;
+                    entries.Add(entry);
+                }
+            }
+
+            // 전투력 내림차순 정렬
+            entries.Sort((a, b) => b.score.CompareTo(a.score));
+            onComplete?.Invoke(entries, true);
+        });
+    }
 }

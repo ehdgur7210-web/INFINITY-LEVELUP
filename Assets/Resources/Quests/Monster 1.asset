@@ -1,0 +1,35 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6588ab5633149bb44b62cd7a65df6aaf, type: 3}
+  m_Name: Monster 1
+  m_EditorClassIdentifier: 
+  questID: 2
+  questName: "\uC544\uC774\uD15C\uAC15\uD654"
+  questDescription: "\uD5EC\uBA67\uC744 1\uAC15\uD654\uD558\uC138\uC694"
+  questObjectiveText: "\uBCF4\uC0C1 10000 \uACE8\uB4DC"
+  requiredLevel: 0
+  prerequisiteQuests:
+  - {fileID: 11400000, guid: b7ccfc49ba1065f4e91e7789c157bfbb, type: 2}
+  objectives:
+  - objectiveName: "\uC7A5\uBE44\uAC15\uD654"
+    objectiveType: 2
+    targetID: helmet
+    requiredAmount: 1
+    currentAmount: 0
+  reward:
+    gold: 10000
+    exp: 1000
+    rewardItems:
+    - {fileID: 11400000, guid: b7fc901caa64b0c4faf64343b5d8541b, type: 2}
+    itemCounts: 
+  questGiverNPC: 
+  questCompleteNPC: 

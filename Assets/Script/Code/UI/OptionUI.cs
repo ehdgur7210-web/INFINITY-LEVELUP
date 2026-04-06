@@ -103,6 +103,9 @@ public class OptionUI : MonoBehaviour
     [Tooltip("해상도 선택 (낮음/중/고)")]
     [SerializeField] private TMP_Dropdown 해상도드롭다운;
 
+    [Tooltip("컷씬 모드 드롭다운 (항상/1번만/끄기)")]
+    [SerializeField] private TMP_Dropdown 컷씬드롭다운;
+
     [Header("===== 로그아웃 / 종료 =====")]
     [Tooltip("로그아웃 버튼")]
     [SerializeField] private Button 로그아웃버튼;
@@ -125,6 +128,8 @@ public class OptionUI : MonoBehaviour
     public static int DamageDecimalPlaces { get; private set; } = 0;  // 0=정수
     public static int TargetFrameRate { get; private set; } = 60;
     public static int ResolutionLevel { get; private set; } = 2;       // 0=낮음, 1=중, 2=고
+    /// <summary>컷씬 모드: 0=항상, 1=1번만, 2=끄기</summary>
+    public static int CutsceneMode { get; private set; } = 1;
 
     private static readonly int[] frameRateOptions = { 30, 60, 120 };
     private static readonly float[] resolutionScales = { 0.5f, 0.75f, 1.0f };
@@ -274,6 +279,13 @@ public class OptionUI : MonoBehaviour
             해상도드롭다운.ClearOptions();
             해상도드롭다운.AddOptions(new System.Collections.Generic.List<string> { "낮음", "중", "고" });
             해상도드롭다운.onValueChanged.AddListener(OnResolutionChanged);
+        }
+
+        if (컷씬드롭다운 != null)
+        {
+            컷씬드롭다운.ClearOptions();
+            컷씬드롭다운.AddOptions(new System.Collections.Generic.List<string> { "항상", "1번만", "끄기" });
+            컷씬드롭다운.onValueChanged.AddListener(OnCutsceneModeChanged);
         }
     }
 
@@ -690,6 +702,14 @@ public class OptionUI : MonoBehaviour
         Debug.Log($"[OptionUI] 해상도: {(index == 0 ? "낮음" : index == 1 ? "중" : "고")} ({w}x{h})");
     }
 
+    private void OnCutsceneModeChanged(int index)
+    {
+        CutsceneMode = index;
+        PlayerPrefs.SetInt("opt_cutscene", index);
+        if (index == 0) CompanionCutsceneUI.ResetShownSkills(); // "항상"이면 기록 초기화
+        Debug.Log($"[OptionUI] 컷씬 모드: {(index == 0 ? "항상" : index == 1 ? "1번만" : "끄기")}");
+    }
+
     // ==========================================================
     //  앱 종료
     // ==========================================================
@@ -741,6 +761,8 @@ public class OptionUI : MonoBehaviour
 
         int resIdx = PlayerPrefs.GetInt("opt_resolution", 2); // 기본 고
         ResolutionLevel = Mathf.Clamp(resIdx, 0, 2);
+
+        CutsceneMode = PlayerPrefs.GetInt("opt_cutscene", 1); // 기본 1번만
     }
 
     private void LoadGameSettingsToUI()
@@ -781,6 +803,13 @@ public class OptionUI : MonoBehaviour
             해상도드롭다운.onValueChanged.RemoveListener(OnResolutionChanged);
             해상도드롭다운.value = ResolutionLevel;
             해상도드롭다운.onValueChanged.AddListener(OnResolutionChanged);
+        }
+
+        if (컷씬드롭다운 != null)
+        {
+            컷씬드롭다운.onValueChanged.RemoveListener(OnCutsceneModeChanged);
+            컷씬드롭다운.value = CutsceneMode;
+            컷씬드롭다운.onValueChanged.AddListener(OnCutsceneModeChanged);
         }
     }
 

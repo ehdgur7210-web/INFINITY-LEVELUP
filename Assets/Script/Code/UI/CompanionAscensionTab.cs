@@ -231,6 +231,8 @@ public class CompanionAscensionTab : MonoBehaviour
                 Color.green);
             SoundManager.Instance?.PlayQuestReward();
             Debug.Log($"[CompanionAscension] 성공: {_companion.companionName} → {_currentStars}★");
+            QuestManager.Instance?.UpdateQuestProgress(QuestType.CompanionAscend, _companion.companionID, 1);
+            AchievementSystem.Instance?.UpdateAchievementProgress(AchievementType.CompanionAscend, "", _currentStars);
         }
         else
         {

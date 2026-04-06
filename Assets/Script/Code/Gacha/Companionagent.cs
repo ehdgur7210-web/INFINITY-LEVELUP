@@ -412,7 +412,13 @@ public class CompanionAgent : MonoBehaviour, IHitable
     /// <summary>사용 가능한 스킬 인덱스 반환 (-1이면 없음)</summary>
     private int FindReadySkill()
     {
-        if (data == null || data.skills == null || skillCooldowns == null) return -1;
+        string cName = data != null ? data.companionName : "???";
+
+        if (data == null || data.skills == null || skillCooldowns == null)
+        {
+            Debug.Log($"[동료스킬] {cName}: 스킬 데이터 없음 (skills={data?.skills?.Count ?? 0})");
+            return -1;
+        }
 
         for (int i = 0; i < data.skills.Count; i++)
         {
@@ -422,11 +428,16 @@ public class CompanionAgent : MonoBehaviour, IHitable
             if (skill == null) continue;
 
             // 해금 레벨 체크
-            if (companionLevel < skill.unlockCompanionLevel) continue;
+            if (companionLevel < skill.unlockCompanionLevel)
+            {
+                Debug.Log($"[동료스킬] {cName}: {skill.skillName} 레벨 부족 (현재 Lv.{companionLevel}, 필요 Lv.{skill.unlockCompanionLevel})");
+                continue;
+            }
 
             // 쿨타임 체크
             if (skillCooldowns[i] > 0f) continue;
 
+            Debug.Log($"[동료스킬] {cName}: {skill.skillName} 발동! (타입:{skill.skillType}, 범위:{skill.areaRadius})");
             return i;
         }
 
@@ -459,8 +470,26 @@ public class CompanionAgent : MonoBehaviour, IHitable
                 break;
 
             case CompanionSkillType.AreaDamage:
-                DealAreaDamage(target.position, skill.areaRadius, baseDmg);
-                SpawnEffect(fx, target.position, 1f);
+                // 컷씬 연출 후 데미지 적용
+                if (CompanionCutsceneUI.Instance != null && OptionUI.CutsceneMode != 2)
+                {
+                    string cName = data != null ? data.companionName : "동료";
+                    Sprite portrait = data != null ? data.fullIllust ?? data.portrait : null;
+                    Vector3 pos = target.position;
+                    float radius = skill.areaRadius;
+                    float dmg = baseDmg;
+                    GameObject skillFx = fx;
+                    CompanionCutsceneUI.Instance.PlayCutscene(cName, skill.skillName, portrait, pos, () =>
+                    {
+                        DealAreaDamage(pos, radius, dmg);
+                        SpawnEffect(skillFx, pos, 1f);
+                    });
+                }
+                else
+                {
+                    DealAreaDamage(target.position, skill.areaRadius, baseDmg);
+                    SpawnEffect(fx, target.position, 1f);
+                }
                 break;
 
             case CompanionSkillType.Heal:

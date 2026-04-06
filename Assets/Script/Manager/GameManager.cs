@@ -217,6 +217,7 @@ public class GameManager : MonoBehaviour
 
             GiveLevelUpReward();
             TutorialManager.Instance?.OnPlayerLevelUp(playerLevel);
+            QuestManager.Instance?.UpdateQuestProgress(QuestType.LevelUp, "", levelUpCount);
             OnExpChanged?.Invoke(playerExp, playerLevel);
 
             UIManager.Instance?.OnLevelUp(playerLevel);

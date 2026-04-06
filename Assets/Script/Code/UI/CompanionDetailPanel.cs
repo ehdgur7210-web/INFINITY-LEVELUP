@@ -421,6 +421,8 @@ public class CompanionDetailPanel : MonoBehaviour
 
         SoundManager.Instance?.PlayQuestReward();
         UIManager.Instance?.ShowMessage($"{_currentCompanion.companionName} Lv.{_currentLevel} 달성!", Color.green);
+        QuestManager.Instance?.UpdateQuestProgress(QuestType.CompanionLevelUp, _currentCompanion.companionID, 1);
+        AchievementSystem.Instance?.UpdateAchievementProgress(AchievementType.CompanionLevelUp, "", _currentLevel);
     }
 
     private void OnMaxLevelUpClicked()
@@ -479,6 +481,9 @@ public class CompanionDetailPanel : MonoBehaviour
         SoundManager.Instance?.PlayQuestReward();
         UIManager.Instance?.ShowMessage(
             $"{_currentCompanion.companionName} Lv.{_currentLevel} 달성! (+{gained}레벨)", Color.green);
+        if (gained > 0)
+            QuestManager.Instance?.UpdateQuestProgress(QuestType.CompanionLevelUp, _currentCompanion.companionID, gained);
+            AchievementSystem.Instance?.UpdateAchievementProgress(AchievementType.CompanionLevelUp, "", _currentLevel);
     }
 
     // ─────────────────────────────────────────────────────────────

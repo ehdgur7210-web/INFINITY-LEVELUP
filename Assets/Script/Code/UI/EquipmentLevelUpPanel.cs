@@ -622,6 +622,8 @@ public class EquipmentLevelUpPanel : MonoBehaviour
         UIManager.Instance?.ShowMessage($"{currentEquip.itemName} Lv.{currentLevel} 달성!", Color.green);
 
         Debug.Log($"[EquipmentLevelUpPanel] 레벨업: {currentEquip.itemName} Lv.{currentLevel - 1} → Lv.{currentLevel}");
+        QuestManager.Instance?.UpdateQuestProgress(QuestType.EquipLevelUp, "", 1);
+        AchievementSystem.Instance?.UpdateAchievementProgress(AchievementType.EquipLevelUp, "", currentLevel);
 
         SaveLoadManager.Instance?.SaveGame();
 

@@ -41,6 +41,8 @@ public class TopMenuManager : MonoBehaviour
     [SerializeField] private Button auctionButton;
     [SerializeField] private Button rankingButton;
     [SerializeField] private Button settingsButton;
+    [SerializeField] private Button guildButton;
+    [SerializeField] private Button friendButton;
 
     [Header("알림 배지 (선택)")]
     [SerializeField] private GameObject inventoryBadge;
@@ -159,6 +161,8 @@ public class TopMenuManager : MonoBehaviour
             case "auction": auctionButton = btn; btn.onClick.AddListener(OnAuctionButtonClicked); break;
             case "ranking": rankingButton = btn; btn.onClick.AddListener(OnRankingButtonClicked); break;
             case "settings": settingsButton = btn; btn.onClick.AddListener(OnSettingsButtonClicked); break;
+            case "guild": guildButton = btn; btn.onClick.AddListener(OnGuildButtonClicked); break;
+            case "friend": friendButton = btn; btn.onClick.AddListener(OnFriendButtonClicked); break;
             case "toggle":
                 toggleButton = btn;
                 btn.onClick.RemoveAllListeners();
@@ -478,6 +482,26 @@ public class TopMenuManager : MonoBehaviour
                 rm.OpenPanel();
             }
         }
+        PlayButtonSound();
+    }
+
+    private void OnGuildButtonClicked()
+    {
+        if (IsButtonOnCooldown()) return;
+        if (IsBlockedByTutorial(guildButton)) return;
+        ToggleWithBanner("길드",
+            () => GuildUI.Instance?.Show(),
+            () => GuildUI.Instance?.Hide());
+        PlayButtonSound();
+    }
+
+    private void OnFriendButtonClicked()
+    {
+        if (IsButtonOnCooldown()) return;
+        if (IsBlockedByTutorial(friendButton)) return;
+        ToggleWithBanner("친구",
+            () => FriendUI.Instance?.Show(),
+            () => FriendUI.Instance?.Hide());
         PlayButtonSound();
     }
 

@@ -30,19 +30,19 @@ MonoBehaviour:
   skills:
   - skillID: Tree
     skillName: "\uC138\uACC4\uC218"
-    description: 
+    description: "\uC774\uADF8\uB77C\uB4DC\uC2E4"
     icon: {fileID: -788349098, guid: 503ced27e527b7b4f9a8f217d1e6fb94, type: 3}
     maxLevel: 5
     unlockCompanionLevel: 1
     baseCostGold: 10000
     baseValue: 500
     valuePerLevel: 100
-    skillType: 0
+    skillType: 1
     cooldown: 8
     damageMultiplier: 2
-    areaRadius: 2
-    skillRange: 0
-    skillEffect: {fileID: 0}
+    areaRadius: 30
+    skillRange: 5
+    skillEffect: {fileID: 502666597231726368, guid: f0fff41d8e12e9a42b349eeb12c7cf48, type: 3}
   spawnRadius: 10
   summonCooldown: 30
   probability: 10

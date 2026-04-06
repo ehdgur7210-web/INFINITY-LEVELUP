@@ -30,7 +30,7 @@ public class RankingManager : MonoBehaviour
 
     // ═══ 중첩 타입 ════════════════════════════════════════════════
 
-    public enum RankType { CombatPower, Level, Farm }
+    public enum RankType { CombatPower, Level, Farm, Guild }
 
     public class RankEntry
     {
@@ -71,6 +71,7 @@ public class RankingManager : MonoBehaviour
     public Button tabCombatBtn;
     public Button tabLevelBtn;
     public Button tabFarmBtn;
+    public Button tabGuildBtn;
     public Color tabActiveColor = new Color(1f, 0.85f, 0.3f);
     public Color tabInactiveColor = new Color(0.5f, 0.5f, 0.5f);
 
@@ -209,6 +210,7 @@ public class RankingManager : MonoBehaviour
         tabCombatBtn?.onClick.AddListener(() => OnTabClick(RankType.CombatPower));
         tabLevelBtn?.onClick.AddListener(() => OnTabClick(RankType.Level));
         tabFarmBtn?.onClick.AddListener(() => OnTabClick(RankType.Farm));
+        tabGuildBtn?.onClick.AddListener(() => OnTabClick(RankType.Guild));
         closeButton?.onClick.AddListener(ClosePanel);
         UpdateTabColors();
     }
@@ -369,6 +371,7 @@ public class RankingManager : MonoBehaviour
         RankType.CombatPower => "전투력 순위",
         RankType.Level       => "탐험 순위",
         RankType.Farm        => "농장 순위",
+        RankType.Guild       => "길드 순위",
         _                    => "랭킹"
     };
 
@@ -401,12 +404,24 @@ public class RankingManager : MonoBehaviour
         List<RankEntry> serverEntries = null;
         bool success = false;
 
-        BackendRankingManager.Instance.GetRankList(currentType, (entries, ok) =>
+        if (currentType == RankType.Guild)
         {
-            serverEntries = entries;
-            success = ok;
-            done = true;
-        });
+            BackendRankingManager.Instance.GetGuildRankList((entries, ok) =>
+            {
+                serverEntries = entries;
+                success = ok;
+                done = true;
+            });
+        }
+        else
+        {
+            BackendRankingManager.Instance.GetRankList(currentType, (entries, ok) =>
+            {
+                serverEntries = entries;
+                success = ok;
+                done = true;
+            });
+        }
 
         float timeout = 5f;
         while (!done && timeout > 0f)

@@ -94,6 +94,12 @@ public class BackendManager : MonoBehaviour
                 // ★ 채팅 서버 연결
                 BackendChatManager.Instance?.ConnectChat();
 
+                // ★ 길드 초기화
+                BackendGuildManager.Instance?.InitAfterLogin();
+
+                // ★ 친구 초기화
+                BackendFriendManager.Instance?.InitAfterLogin();
+
                 onSuccess?.Invoke();
             }
             else
