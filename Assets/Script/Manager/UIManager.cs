@@ -416,7 +416,7 @@ public class UIManager : MonoBehaviour
 
         if (hpText != null)
         {
-            hpText.text = $"{(int)currentHp} / {(int)maxHp}";
+            hpText.text = $"{FormatKoreanUnit((long)currentHp)} / {FormatKoreanUnit((long)maxHp)}";
             hpText.color = (maxHp > 0 && currentHp / maxHp < 0.3f) ? Color.red : Color.white;
         }
     }
@@ -438,7 +438,7 @@ public class UIManager : MonoBehaviour
             int requiredExp = GameManager.Instance.GetRequiredExpForLevel(level);
 
             if (expText != null)
-                expText.text = $"{exp:N0} / {requiredExp:N0}";
+                expText.text = $"{FormatKoreanUnit((long)exp)} / {FormatKoreanUnit((long)requiredExp)}";
 
             // ★ 슬라이더 즉시 반영 (Smooth 전 초기값)
             if (expSlider != null)
@@ -516,13 +516,13 @@ public class UIManager : MonoBehaviour
         if (defenseText != null)
         {
             float totalDefense = stats.defense + stats.bonusDefense;
-            defenseText.text = $"방어력:{totalDefense:F0}";
+            defenseText.text = $"방어력:{FormatKoreanUnit((long)totalDefense)}";
             defenseText.color = stats.bonusDefense > 0 ? Color.green : Color.white;
         }
 
         if (maxHpText != null)
         {
-            maxHpText.text = $"체력:{stats.maxHealth:F0}";
+            maxHpText.text = $"체력:{FormatKoreanUnit((long)stats.maxHealth)}";
             maxHpText.color = stats.bonusMaxHp > 0 ? Color.green : Color.white;
         }
 
@@ -545,9 +545,7 @@ public class UIManager : MonoBehaviour
     #endregion
     private string FormatStat(float value)
     {
-        if (value >= 1000000f) return $"{value / 1000000f:F1}M";
-        if (value >= 1000f) return $"{value / 1000f:F1}K";
-        return $"{value:F0}";
+        return FormatKoreanUnit((long)value);
     }
     #region 상단 헤더 타이틀
 
