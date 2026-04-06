@@ -138,7 +138,7 @@ public class BackendChatManager : MonoBehaviour
             int playerLevel = 1;
             int cp = 0;
             if (GameManager.Instance != null) playerLevel = GameManager.Instance.PlayerLevel;
-            if (CombatPowerManager.Instance != null) cp = CombatPowerManager.Instance.CombatPower;
+            if (CombatPowerManager.Instance != null) cp = CombatPowerManager.Instance.TotalCombatPower;
 
             var args = new ChatClientArguments
             {
@@ -308,9 +308,9 @@ public class BackendChatManager : MonoBehaviour
 
     public void OnChatMessage(MessageInfo messageInfo)
     {
-        ChannelType channel = ResolveChannelType(messageInfo.GetChannelGroup());
-        string senderName = messageInfo.GetSenderName();
-        string msg = messageInfo.GetMessage();
+        ChannelType channel = ResolveChannelType(messageInfo.ChannelGroup);
+        string senderName = messageInfo.GamerName;
+        string msg = messageInfo.Message;
         Debug.Log($"[BackendChat] 메시지 수신: {senderName} > {msg}");
 
         if (msg.StartsWith("$$RESCUE$$"))
@@ -319,7 +319,7 @@ public class BackendChatManager : MonoBehaviour
         var chatMsg = new ChatMessage
         {
             channel = channel, senderNickname = senderName,
-            senderInDate = messageInfo.GetGamerName(), message = msg,
+            senderInDate = messageInfo.GamerName, message = msg,
             timestamp = DateTime.Now.ToString("HH:mm"),
             isSystem = false, isRescue = false, combatPower = 0
         };
@@ -328,11 +328,11 @@ public class BackendChatManager : MonoBehaviour
 
     public void OnWhisperMessage(WhisperMessageInfo messageInfo)
     {
-        Debug.Log($"[BackendChat] 귓속말 수신: {messageInfo.GetSenderName()} > {messageInfo.GetMessage()}");
+        Debug.Log($"[BackendChat] 귓속말 수신: {messageInfo.FromGamerName} > {messageInfo.Message}");
         var chatMsg = new ChatMessage
         {
-            channel = ChannelType.Private, senderNickname = messageInfo.GetSenderName(),
-            senderInDate = messageInfo.GetGamerName(), message = messageInfo.GetMessage(),
+            channel = ChannelType.Private, senderNickname = messageInfo.FromGamerName,
+            senderInDate = messageInfo.FromGamerName, message = messageInfo.Message,
             timestamp = DateTime.Now.ToString("HH:mm"),
             isSystem = false, isRescue = false, combatPower = 0
         };
@@ -341,9 +341,9 @@ public class BackendChatManager : MonoBehaviour
 
     public void OnJoinChannel(ChannelInfo channelInfo)
     {
-        string group = channelInfo.GetChannelGroup();
-        string chName = channelInfo.GetChannelName();
-        UInt64 chNumber = channelInfo.GetChannelNumber();
+        string group = channelInfo.ChannelGroup;
+        string chName = channelInfo.ChannelName;
+        UInt64 chNumber = channelInfo.ChannelNumber;
         Debug.Log($"[BackendChat] 채널 입장 완료: group={group}, name={chName}, number={chNumber}");
 
         ChannelType type = ResolveChannelType(group);
@@ -367,7 +367,7 @@ public class BackendChatManager : MonoBehaviour
 
     public void OnLeaveChannel(ChannelInfo channelInfo)
     {
-        ChannelType type = ResolveChannelType(channelInfo.GetChannelGroup());
+        ChannelType type = ResolveChannelType(channelInfo.ChannelGroup);
         JoinedChannels.Remove(type);
         Debug.Log($"[BackendChat] 서버 채널 퇴장: {type}");
     }
