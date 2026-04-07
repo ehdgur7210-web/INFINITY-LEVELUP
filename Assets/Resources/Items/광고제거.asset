@@ -17,7 +17,7 @@ MonoBehaviour:
   itemDescription: 
   itemType: 0
   rarity: 0
-  itemIcon: {fileID: 0}
+  itemIcon: {fileID: -430970738, guid: d4a5d41a796228844bbff5d864f39cc5, type: 3}
   background: {fileID: 0}
   maxStack: 9999
   isConsumable: 0

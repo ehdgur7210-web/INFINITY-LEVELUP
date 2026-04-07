@@ -91,6 +91,17 @@ public class EnhancementCropCostPatch : MonoBehaviour
 
         int cpCost = GetCropPointCost(currentEnhanceLevel);
 
+        if (GameManager.Instance == null)
+        {
+            Debug.LogError("[EnhancementCropCostPatch] GameManager.Instance가 null입니다.");
+            return false;
+        }
+        if (FarmManager.Instance == null)
+        {
+            Debug.LogError("[EnhancementCropCostPatch] FarmManager.Instance가 null입니다.");
+            return false;
+        }
+
         GameManager.Instance.SpendGold(goldCost);
         FarmManager.Instance.SpendCropPoints(cpCost);
 

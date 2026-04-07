@@ -104,10 +104,60 @@ public class InventoryManager : MonoBehaviour
 
     private class EquipUnlockData
     {
-        public int count;
+        public bool isUnlocked;
+
+        // ★ 인스턴스 리스트 — 각 장비를 개별로 추적 (강화수치/아이템레벨 제각각)
+        public List<EquipInstance> instances = new List<EquipInstance>();
+
+        // ─── 호환 프로퍼티 (기존 코드 깨지지 않도록 read-only) ───
+        public int count => instances?.Count ?? 0;
+
+        /// <summary>가장 높은 강화 수치 (UI 표시용 — 인벤 슬롯에서 대표값)</summary>
+        public int enhanceLevel
+        {
+            get
+            {
+                if (instances == null || instances.Count == 0) return 0;
+                int max = 0;
+                foreach (var ins in instances)
+                    if (ins.enhanceLevel > max) max = ins.enhanceLevel;
+                return max;
+            }
+        }
+
+        /// <summary>가장 높은 아이템 레벨</summary>
+        public int itemLevel
+        {
+            get
+            {
+                if (instances == null || instances.Count == 0) return 0;
+                int max = 0;
+                foreach (var ins in instances)
+                    if (ins.itemLevel > max) max = ins.itemLevel;
+                return max;
+            }
+        }
+    }
+
+    /// <summary>장비 인스턴스 — 개별 장비 1개의 강화수치/아이템레벨/장착여부</summary>
+    [System.Serializable]
+    public class EquipInstance
+    {
+        public string instanceId;   // GUID, 식별용
         public int enhanceLevel;
         public int itemLevel;
-        public bool isUnlocked;
+        public bool isEquipped;     // 현재 슬롯에 장착 중인지
+
+        public static EquipInstance Create(int enhance = 0, int level = 0)
+        {
+            return new EquipInstance
+            {
+                instanceId = System.Guid.NewGuid().ToString(),
+                enhanceLevel = enhance,
+                itemLevel = level,
+                isEquipped = false
+            };
+        }
     }
 
     private class GeneralItemEntry
@@ -989,22 +1039,17 @@ public class InventoryManager : MonoBehaviour
             }
         }
 
-        if (equipUnlockMap.TryGetValue(id, out EquipUnlockData data))
+        if (!equipUnlockMap.TryGetValue(id, out EquipUnlockData data))
         {
-            data.count += count;
-            if (enhance > data.enhanceLevel) data.enhanceLevel = enhance;
-            if (level > data.itemLevel) data.itemLevel = level;
-            data.isUnlocked = true;
+            data = new EquipUnlockData { isUnlocked = true };
+            equipUnlockMap[id] = data;
         }
-        else
+
+        // ★ count만큼 인스턴스를 새로 추가 (각각 enhance/level은 인자값으로)
+        data.isUnlocked = true;
+        for (int i = 0; i < count; i++)
         {
-            equipUnlockMap[id] = new EquipUnlockData
-            {
-                count = count,
-                enhanceLevel = enhance,
-                itemLevel = level,
-                isUnlocked = true
-            };
+            data.instances.Add(EquipInstance.Create(enhance, level));
         }
 
         Debug.Log($"[InventoryManager] 장비 해금/추가: {item.itemName} x{count} (총 {equipUnlockMap[id].count}개)");
@@ -1105,7 +1150,12 @@ public class InventoryManager : MonoBehaviour
             return false;
         }
 
-        data.count -= count;
+        // ★ 인스턴스 리스트의 끝에서부터 count개 제거
+        //   (강화 수치 낮은 것부터 제거하고 싶다면 정렬 후 제거)
+        for (int i = 0; i < count && data.instances.Count > 0; i++)
+        {
+            data.instances.RemoveAt(data.instances.Count - 1);
+        }
         Debug.Log($"[InventoryManager] 장비 제거: {item.itemName} x{count} (남은: {data.count})");
 
         if (currentTab == InvenTabType.Equip)
@@ -1257,9 +1307,20 @@ public class InventoryManager : MonoBehaviour
     {
         if (equipUnlockMap.TryGetValue(itemID, out EquipUnlockData data))
         {
-            data.count = count;
-            data.enhanceLevel = enhance;
-            data.itemLevel = level;
+            // ★ 인스턴스 리스트 기반으로 동기화
+            //   count가 줄면 끝에서부터 제거, 늘면 새 인스턴스 추가
+            //   enhance/level은 첫 번째 인스턴스에만 반영 (단일 강화 호환)
+            while (data.instances.Count > count)
+                data.instances.RemoveAt(data.instances.Count - 1);
+            while (data.instances.Count < count)
+                data.instances.Add(EquipInstance.Create(enhance, level));
+
+            // 첫 번째 인스턴스의 enhance/level 갱신 (기존 단일 강화 시스템과 호환)
+            if (data.instances.Count > 0)
+            {
+                data.instances[0].enhanceLevel = enhance;
+                data.instances[0].itemLevel = level;
+            }
         }
     }
 
@@ -1397,14 +1458,32 @@ public class InventoryManager : MonoBehaviour
         foreach (var kv in equipUnlockMap)
         {
             if (!kv.Value.isUnlocked) continue;
+
+            // ★ 인스턴스 리스트를 SaveData 형식으로 변환
+            var saveInstances = new List<EquipInstanceData>();
+            if (kv.Value.instances != null)
+            {
+                foreach (var ins in kv.Value.instances)
+                {
+                    saveInstances.Add(new EquipInstanceData
+                    {
+                        instanceId = ins.instanceId,
+                        enhanceLevel = ins.enhanceLevel,
+                        itemLevel = ins.itemLevel,
+                        isEquipped = ins.isEquipped
+                    });
+                }
+            }
+
             dataList.Add(new InventoryItemData
             {
                 itemID = kv.Key,
-                count = kv.Value.count,
+                count = kv.Value.count,        // 호환용 (count = instances.Count)
                 slotIndex = -1,
-                enhanceLevel = kv.Value.enhanceLevel,
+                enhanceLevel = kv.Value.enhanceLevel,  // 호환용 (max)
                 isUnlocked = true,
-                itemLevel = kv.Value.itemLevel
+                itemLevel = kv.Value.itemLevel, // 호환용 (max)
+                instances = saveInstances       // ★ 신규 형식
             });
         }
 
@@ -1455,13 +1534,35 @@ public class InventoryManager : MonoBehaviour
 
             if (itemData is EquipmentData)
             {
-                equipUnlockMap[data.itemID] = new EquipUnlockData
+                var unlock = new EquipUnlockData { isUnlocked = data.isUnlocked };
+
+                // ★ 신규 형식 (instances 있음) → 그대로 복원
+                if (data.instances != null && data.instances.Count > 0)
                 {
-                    count = data.count,
-                    enhanceLevel = data.enhanceLevel,
-                    itemLevel = data.itemLevel,
-                    isUnlocked = data.isUnlocked
-                };
+                    foreach (var insData in data.instances)
+                    {
+                        unlock.instances.Add(new EquipInstance
+                        {
+                            instanceId = string.IsNullOrEmpty(insData.instanceId)
+                                ? System.Guid.NewGuid().ToString()
+                                : insData.instanceId,
+                            enhanceLevel = insData.enhanceLevel,
+                            itemLevel = insData.itemLevel,
+                            isEquipped = insData.isEquipped
+                        });
+                    }
+                }
+                // ★ 기존 형식 (instances 없음) → count만큼 인스턴스 자동 생성 (마이그레이션)
+                else if (data.count > 0)
+                {
+                    for (int i = 0; i < data.count; i++)
+                    {
+                        unlock.instances.Add(EquipInstance.Create(data.enhanceLevel, data.itemLevel));
+                    }
+                    Debug.Log($"[InventoryManager] 마이그레이션: ID {data.itemID} → {data.count}개 인스턴스 (+{data.enhanceLevel})");
+                }
+
+                equipUnlockMap[data.itemID] = unlock;
             }
             else
             {

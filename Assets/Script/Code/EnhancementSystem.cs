@@ -21,6 +21,10 @@ public class EnhancementSystem : MonoBehaviour
 {
     public static EnhancementSystem Instance;
 
+    [Header("강화 한계")]
+    [Tooltip("최대 강화 수치")]
+    public int maxEnhanceLevel = 20;
+
     [Header("강화 비용 설정")]
     public int baseEnhanceCost = 100;
     public float costMultiplier = 1.5f;
@@ -245,7 +249,7 @@ public class EnhancementSystem : MonoBehaviour
             return;
         }
 
-        if (currentEnhanceLevel >= 30)
+        if (currentEnhanceLevel >= maxEnhanceLevel)
         {
             UIManager.Instance?.ShowMessage("최대 강화 레벨!", Color.yellow);
             return;
@@ -283,7 +287,7 @@ public class EnhancementSystem : MonoBehaviour
     public void SafeEnhance()
     {
         if (currentEquipment == null) return;
-        if (currentEnhanceLevel >= 30) return;
+        if (currentEnhanceLevel >= maxEnhanceLevel) return;
 
         int goldCost = CalculateEnhanceCost(currentEnhanceLevel) * 3; // 안전강화 3배
 
@@ -614,12 +618,10 @@ public class EnhancementSystem : MonoBehaviour
 
     private Color GetEnhanceColor(int level)
     {
-        if (level >= 30) return new Color(1f, 0.2f, 0.2f, 1f);
-        if (level >= 25) return new Color(1f, 0.5f, 0f, 1f);
-        if (level >= 20) return new Color(1f, 1f, 0f, 1f);
-        if (level >= 15) return new Color(0.3f, 0.5f, 1f, 1f);
-        if (level >= 10) return new Color(0.1f, 0.1f, 0.6f, 1f);
-        if (level >= 5) return new Color(0.6f, 0.2f, 1f, 1f);
+        if (level >= 20) return new Color(1f, 0.2f, 0.2f, 1f); // 빨강 (최강)
+        if (level >= 15) return new Color(1f, 0.5f, 0f, 1f);   // 주황
+        if (level >= 10) return new Color(1f, 1f, 0f, 1f);     // 노랑
+        if (level >= 5)  return new Color(0.3f, 0.5f, 1f, 1f); // 하늘
         return Color.white;
     }
 }

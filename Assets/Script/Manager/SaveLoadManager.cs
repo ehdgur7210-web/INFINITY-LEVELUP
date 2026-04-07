@@ -1238,6 +1238,19 @@ public class InventoryItemData
     public int enhanceLevel;
     public bool isUnlocked;
     public int itemLevel;
+
+    // ★ 인스턴스 리스트 — 신규 형식 (Step 1)
+    //   기존 세이브에는 없음 → 로드 시 count로부터 자동 생성 (마이그레이션)
+    public List<EquipInstanceData> instances;
+}
+
+[System.Serializable]
+public class EquipInstanceData
+{
+    public string instanceId;
+    public int enhanceLevel;
+    public int itemLevel;
+    public bool isEquipped;
 }
 
 [System.Serializable]
