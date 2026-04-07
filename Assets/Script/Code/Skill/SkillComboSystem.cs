@@ -224,11 +224,20 @@ public class SkillComboSystem : MonoBehaviour
                   (combo >= ComboType.FiveOfAKind ? $" (Lv.{comboLevel})" : ""));
     }
 
-    [Header("===== 강화 → 스킬 등급 확률 =====")]
-    [Tooltip("강화 1당 상위 등급 확률 증가 (%) — 기본 3이면 강화+10 = +30% 상위 확률")]
+    [Header("===== 강화/레벨 → 스킬 등급 확률 =====")]
+    [Tooltip("강화 1당 진행도 (%) — 기본 3이면 강화 20강 = +60% 진행도")]
     [SerializeField] private float enhanceBoostPerLevel = 3f;
 
-    /// <summary>슬롯에 랜덤 등급의 스킬을 배정 (강화 수치 → 상위 등급 확률 증가)</summary>
+    [Tooltip("캐릭터 레벨 N당 +1% 진행도 — 기본 5면 레벨 100 = +20% 진행도")]
+    [SerializeField] private float playerLevelPer1Percent = 5f;
+
+    [Tooltip("기본 가중치 (Common, Uncommon, Rare, Epic, Legendary) — 상위 등급일수록 가파르게 낮춤")]
+    [SerializeField] private float[] baseRarityWeights = { 1000f, 250f, 60f, 12f, 1.5f };
+
+    [Tooltip("진행도가 가중치에 영향을 주는 강도 (1.0 = 표준)")]
+    [SerializeField] private float progressInfluence = 1.0f;
+
+    /// <summary>슬롯에 랜덤 등급의 스킬을 배정 (강화+레벨 → 상위 확률 증가, 하위 확률 감소)</summary>
     private void RandomizeSlotSkill(EquipmentType eqType, int slotIndex)
     {
         if (EquipmentManager.Instance == null || EquipmentSkillSystem.Instance == null) return;
@@ -240,12 +249,15 @@ public class SkillComboSystem : MonoBehaviour
 
         int maxRarity = (int)eq.rarity;
         int enhLevel = EquipmentManager.Instance.GetEnhanceLevel(eqType);
+        int playerLv = GameManager.Instance != null ? GameManager.Instance.PlayerLevel : 1;
 
-        // ★ 강화 수치에 따른 가중치 계산
-        // 강화 없으면: 하위 등급 확률 높음
-        // 강화 높으면: 상위 등급 확률 높음
-        float enhBoost = enhLevel * enhanceBoostPerLevel; // 강화+10 → 30% 보너스
-        int selectedRarity = GetWeightedRarity(maxRarity, enhBoost);
+        // ★ 진행도 = 강화 보너스 + 레벨 보너스
+        // 예) 강화 20강 + 레벨 110 = 60 + 22 = 82% 진행도
+        float enhBoost = enhLevel * enhanceBoostPerLevel;
+        float lvBoost = playerLevelPer1Percent > 0 ? (playerLv / playerLevelPer1Percent) : 0f;
+        float totalBoost = enhBoost + lvBoost;
+
+        int selectedRarity = GetWeightedRarity(maxRarity, totalBoost);
 
         SkillData skill = mapping.GetSkillByRarity((ItemRarity)selectedRarity);
         if (skill == null)
@@ -259,26 +271,31 @@ public class SkillComboSystem : MonoBehaviour
     }
 
     /// <summary>
-    /// 가중치 기반 등급 선택.
-    /// 기본: 하위 등급일수록 확률 높음.
-    /// enhBoost가 높으면 상위 등급 확률 증가.
+    /// 가중치 기반 등급 선택 (피벗 방식).
+    /// - 상위 등급일수록 기본 가중치가 가파르게 낮음 (Legendary 매우 희귀)
+    /// - progressBoost가 높을수록: 상위는 ×증가, 하위는 ÷감소 (양방향 보정)
+    /// - pivot = maxRarity / 2 — 중심 등급을 기준으로 위/아래로 갈수록 보정 강해짐
     /// </summary>
-    private int GetWeightedRarity(int maxRarity, float enhBoost)
+    private int GetWeightedRarity(int maxRarity, float progressBoost)
     {
         if (maxRarity <= 0) return 0;
 
-        // 각 등급별 가중치 (0=Common, 1=Uncommon, ...)
-        // 기본 가중치: Common=100, Uncommon=60, Rare=30, Epic=15, Legendary=5
-        float[] baseWeights = { 100f, 60f, 30f, 15f, 5f };
+        float pivot = maxRarity / 2f;
+        float boostFraction = (progressBoost / 100f) * progressInfluence;
 
         float totalWeight = 0f;
         float[] weights = new float[maxRarity + 1];
 
-        for (int i = 0; i <= maxRarity && i < baseWeights.Length; i++)
+        for (int i = 0; i <= maxRarity && i < baseRarityWeights.Length; i++)
         {
-            // 상위 등급일수록 enhBoost의 영향이 큼
-            float boost = 1f + (enhBoost / 100f) * (i + 1);
-            weights[i] = baseWeights[i] * boost;
+            // 피벗 기준 거리: 상위(+) / 하위(-)
+            float distance = i - pivot;
+            float modifier = 1f + boostFraction * distance;
+
+            // 하위 등급은 0.05 이하로 떨어지지 않도록 클램프 (완전 차단 방지)
+            modifier = Mathf.Max(0.05f, modifier);
+
+            weights[i] = baseRarityWeights[i] * modifier;
             totalWeight += weights[i];
         }
 

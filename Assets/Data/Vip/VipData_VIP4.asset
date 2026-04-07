@@ -10,49 +10,58 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 48dca2a85d5fc1949bc551a1908931ff, type: 3}
-  m_Name: VipData_VIP1
+  m_Name: VipData_VIP4
   m_EditorClassIdentifier: Assembly-CSharp::VipData
-  vipLevel: 1
-  requiredVipExp: 2000
-  displayName: VIP1
+  vipLevel: 4
+  requiredVipExp: 8000
+  displayName: VIP4
   gradeColor: {r: 1, g: 1, b: 1, a: 1}
-  badgeSprite: {fileID: 34735933, guid: 2808dddc89ff0a84989e4c5161989a6f, type: 3}
-  buttonIcon: {fileID: -395076482, guid: 4589e5d170afc514491fe5efeb40dc59, type: 3}
+  badgeSprite: {fileID: -1781390670, guid: 2808dddc89ff0a84989e4c5161989a6f, type: 3}
+  buttonIcon: {fileID: 1458297607, guid: 4589e5d170afc514491fe5efeb40dc59, type: 3}
   benefits:
-  - description: "\uACBD\uD5D8\uCE58\uC99D\uAC005%"
-    value: 5
+  - description: "\uACBD\uD5D8\uCE58\uC0C1\uC2B920%"
+    value: 20
     benefitType: 4
-  - description: "\uACF5\uACA9\uB825\uC99D\uAC005%"
-    value: 5
+  - description: "\uACF5\uACA9\uB825\uC99D\uAC0020%"
+    value: 20
     benefitType: 5
   giftInfo:
     freeGiftIcon: {fileID: -1008463639, guid: 718b15ddd5900c54d830250b7e813d2c, type: 3}
-    freeGiftDescription: "\uCD08\uBCF4\uC790 \uC120\uBB3C"
+    freeGiftDescription: "\uBB34\uB8CC\uC120\uBB3C"
     freeRewards:
     - rewardType: 0
-      amount: 50000
-      item: {fileID: 0}
-    - rewardType: 1
-      amount: 1000
-      item: {fileID: 0}
-    - rewardType: 2
-      amount: 20
-      item: {fileID: 0}
-    paidGiftIcon: {fileID: -1507623211, guid: 718b15ddd5900c54d830250b7e813d2c, type: 3}
-    paidGiftPrice: 100
-    paidGiftOriginalValue: 10000
-    discountPercent: 900%
-    paidRewards:
-    - rewardType: 0
-      amount: 200000
+      amount: 400000
       item: {fileID: 0}
     - rewardType: 1
       amount: 3000
       item: {fileID: 0}
     - rewardType: 2
-      amount: 40
+      amount: 60
       item: {fileID: 0}
     - rewardType: 3
-      amount: 20
+      amount: 30
+      item: {fileID: 0}
+    - rewardType: 4
+      amount: 400
+      item: {fileID: 0}
+    paidGiftIcon: {fileID: -1507623211, guid: 718b15ddd5900c54d830250b7e813d2c, type: 3}
+    paidGiftPrice: 1000
+    paidGiftOriginalValue: 100000
+    discountPercent: 900%
+    paidRewards:
+    - rewardType: 0
+      amount: 2000000
+      item: {fileID: 0}
+    - rewardType: 1
+      amount: 12000
+      item: {fileID: 0}
+    - rewardType: 2
+      amount: 120
+      item: {fileID: 0}
+    - rewardType: 3
+      amount: 60
+      item: {fileID: 0}
+    - rewardType: 4
+      amount: 800
       item: {fileID: 0}
   defaultDurationDays: 30

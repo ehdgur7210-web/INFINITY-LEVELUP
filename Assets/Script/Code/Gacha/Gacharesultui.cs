@@ -46,6 +46,12 @@ public class GachaResultUI : MonoBehaviour
     public Button closeButton;         // X 닫기 버튼
     public TextMeshProUGUI resultTitleText;     // 상단 타이틀 TMP (선택)
 
+    [Header("다시뽑기 버튼 (선택)")]
+    [Tooltip("1회 다시뽑기 버튼")]
+    public Button rePullSingleButton;
+    [Tooltip("10회 다시뽑기 버튼")]
+    public Button rePullTenButton;
+
     [Header("슬롯 등장 타이밍")]
     [Tooltip("슬롯 하나가 등장하는 간격 (초). 작을수록 빠르게 나열됨")]
     public float slotRevealInterval = 0.03f;        // 각 슬롯 사이 딜레이
@@ -106,6 +112,18 @@ public class GachaResultUI : MonoBehaviour
     {
         if (closeButton != null)
             closeButton.onClick.AddListener(ClosePanel);
+
+        // ★ 다시뽑기 버튼 — 티켓 부족 시 SpendTickets()가 ConfirmDialog 표시
+        if (rePullSingleButton != null)
+        {
+            rePullSingleButton.onClick.RemoveAllListeners();
+            rePullSingleButton.onClick.AddListener(OnRePullSingleClicked);
+        }
+        if (rePullTenButton != null)
+        {
+            rePullTenButton.onClick.RemoveAllListeners();
+            rePullTenButton.onClick.AddListener(OnRePullTenClicked);
+        }
 
         // ★ 시작 시 결과 패널 숨기기
         if (resultPanel != null)
@@ -526,6 +544,26 @@ public class GachaResultUI : MonoBehaviour
 
         if (audioSource != null && revealSound != null)
             audioSource.PlayOneShot(revealSound);
+    }
+
+    // ════════════════════════════════════════════════════════════
+    //  ★ 다시뽑기 버튼 핸들러
+    //     - 티켓 충분하면 즉시 가챠 실행 (결과 슬롯 교체)
+    //     - 티켓 부족하면 GachaManager.SpendTickets()가 ConfirmDialog 표시
+    // ════════════════════════════════════════════════════════════
+
+    private void OnRePullSingleClicked()
+    {
+        SoundManager.Instance?.PlayButtonClick();
+        if (GachaManager.Instance == null) return;
+        GachaManager.Instance.PerformSingleGacha();
+    }
+
+    private void OnRePullTenClicked()
+    {
+        SoundManager.Instance?.PlayButtonClick();
+        if (GachaManager.Instance == null) return;
+        GachaManager.Instance.PerformTenGacha();
     }
 
     // ════════════════════════════════════════════════════════════

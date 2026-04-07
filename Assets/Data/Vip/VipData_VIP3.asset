@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: VipData_VIP3
   m_EditorClassIdentifier: Assembly-CSharp::VipData
   vipLevel: 3
-  requiredVipExp: 300
+  requiredVipExp: 6000
   displayName: VIP3
   gradeColor: {r: 1, g: 1, b: 1, a: 1}
   badgeSprite: {fileID: -1207408573, guid: 2808dddc89ff0a84989e4c5161989a6f, type: 3}
@@ -22,13 +22,46 @@ MonoBehaviour:
   - description: "\uACBD\uD5D8\uCE58\uC0C1\uC2B915%"
     value: 15
     benefitType: 4
+  - description: "\uACF5\uACA9\uB825\uC99D\uAC0015%"
+    value: 15
+    benefitType: 5
   giftInfo:
-    freeGiftIcon: {fileID: 887270928, guid: 1444431b77da9df4ab99433412f61a8f, type: 3}
+    freeGiftIcon: {fileID: -1008463639, guid: 718b15ddd5900c54d830250b7e813d2c, type: 3}
     freeGiftDescription: "\uBB34\uB8CC\uC120\uBB3C"
-    freeRewards: []
-    paidGiftIcon: {fileID: 1310883521, guid: 1444431b77da9df4ab99433412f61a8f, type: 3}
-    paidGiftPrice: 1000
-    paidGiftOriginalValue: 10000
-    discountPercent: 90%
-    paidRewards: []
+    freeRewards:
+    - rewardType: 0
+      amount: 200000
+      item: {fileID: 0}
+    - rewardType: 1
+      amount: 2000
+      item: {fileID: 0}
+    - rewardType: 2
+      amount: 40
+      item: {fileID: 0}
+    - rewardType: 3
+      amount: 20
+      item: {fileID: 0}
+    - rewardType: 4
+      amount: 200
+      item: {fileID: 0}
+    paidGiftIcon: {fileID: -1507623211, guid: 718b15ddd5900c54d830250b7e813d2c, type: 3}
+    paidGiftPrice: 500
+    paidGiftOriginalValue: 50000
+    discountPercent: 900%
+    paidRewards:
+    - rewardType: 0
+      amount: 1000000
+      item: {fileID: 0}
+    - rewardType: 1
+      amount: 8000
+      item: {fileID: 0}
+    - rewardType: 2
+      amount: 80
+      item: {fileID: 0}
+    - rewardType: 3
+      amount: 40
+      item: {fileID: 0}
+    - rewardType: 4
+      amount: 400
+      item: {fileID: 0}
   defaultDurationDays: 30

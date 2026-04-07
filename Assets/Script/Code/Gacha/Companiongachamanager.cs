@@ -59,6 +59,12 @@ public class CompanionGachaManager : MonoBehaviour
     public Button resultCloseBtn;
     public GameObject resultBackground;
 
+    [Header("다시뽑기 버튼 (선택)")]
+    [Tooltip("결과창의 1회 다시뽑기 버튼")]
+    public Button rePullSingleBtn;
+    [Tooltip("결과창의 10회 다시뽑기 버튼")]
+    public Button rePullTenBtn;
+
     [Header("상세 팝업 (resultPanel 자식, 최상단 SortOrder)")]
     [Tooltip("resultPanel 자식으로 배치. 슬롯 클릭 시 표시, 아무 곳 터치 시 닫힘")]
     public GameObject detailOverlay;                // 상세 팝업 루트 GO
@@ -139,6 +145,26 @@ public class CompanionGachaManager : MonoBehaviour
         if (tenPullBtn != null) tenPullBtn.onClick.AddListener(PerformTenPull);
         if (closePanelBtn != null) closePanelBtn.onClick.AddListener(CloseGachaPanel);
         if (resultCloseBtn != null) resultCloseBtn.onClick.AddListener(CloseResultPanel);
+
+        // ★ 결과창 다시뽑기 버튼 — 티켓 부족 시 SpendCompanionTickets()가 ConfirmDialog 표시
+        if (rePullSingleBtn != null)
+        {
+            rePullSingleBtn.onClick.RemoveAllListeners();
+            rePullSingleBtn.onClick.AddListener(() =>
+            {
+                SoundManager.Instance?.PlayButtonClick();
+                PerformSinglePull();
+            });
+        }
+        if (rePullTenBtn != null)
+        {
+            rePullTenBtn.onClick.RemoveAllListeners();
+            rePullTenBtn.onClick.AddListener(() =>
+            {
+                SoundManager.Instance?.PlayButtonClick();
+                PerformTenPull();
+            });
+        }
 
         if (resultBackground != null)
         {
@@ -383,14 +409,15 @@ public class CompanionGachaManager : MonoBehaviour
         return false;
     }
 
-    /// <summary>동료 뽑기 티켓 차감</summary>
+    /// <summary>동료 뽑기 티켓 차감 — 부족 시 ConfirmDialog 팝업</summary>
     private bool SpendCompanionTickets(int amount)
     {
         if (ResourceBarManager.Instance != null)
         {
             if (!ResourceBarManager.Instance.SpendCompanionTickets(amount))
             {
-                UIManager.Instance?.ShowMessage("재화가 부족합니다!", Color.red);
+                int held = ResourceBarManager.Instance.companionTickets;
+                ShowCompanionTicketShortageDialog(amount, held);
                 return false;
             }
             RefreshTicketUI();
@@ -398,15 +425,23 @@ public class CompanionGachaManager : MonoBehaviour
         }
 
         // GameDataBridge 폴백
-        if (GameDataBridge.CurrentData != null && GameDataBridge.CurrentData.companionTickets >= amount)
+        int bridgeHeld = GameDataBridge.CurrentData?.companionTickets ?? 0;
+        if (GameDataBridge.CurrentData != null && bridgeHeld >= amount)
         {
             GameDataBridge.CurrentData.companionTickets -= amount;
             RefreshTicketUI();
             return true;
         }
 
-        UIManager.Instance?.ShowMessage("재화가 부족합니다!", Color.red);
+        ShowCompanionTicketShortageDialog(amount, bridgeHeld);
         return false;
+    }
+
+    private void ShowCompanionTicketShortageDialog(int needed, int held)
+    {
+        UIManager.Instance?.ShowConfirmDialog(
+            $"동료티켓이부족합니다.\n필요:{needed}개\n보유:{held}개",
+            onConfirm: null);
     }
 
     // ═══════════════════════════════════════════════════════════════
@@ -551,7 +586,7 @@ public class CompanionGachaManager : MonoBehaviour
 
         if (!ResourceBarManager.Instance.SpendCompanionTickets(cost))
         {
-            UIManager.Instance?.ShowMessage($"티켓 {cost}개 필요!", Color.red);
+            ShowCompanionTicketShortageDialog(cost, ResourceBarManager.Instance.companionTickets);
             return false;
         }
 
@@ -809,6 +844,10 @@ public class CompanionGachaManager : MonoBehaviour
 
         CloseGachaPanel();
         HideMainUI();  // 전설 연출 시에만 월드+UI 숨김
+
+        // ★ 결과창이 열려있으면 (다시뽑기 케이스) 숨김 — 전설 연출 뒤에 비치는 것 방지
+        if (resultPanel != null && resultPanel.activeSelf)
+            resultPanel.SetActive(false);
 
         // 장비 가챠 애니메이션 패널이 켜져있으면 끄기 (검정 화면 가림 방지)
         if (GachaManager.Instance != null && GachaManager.Instance.gachaAnimationPanel != null)

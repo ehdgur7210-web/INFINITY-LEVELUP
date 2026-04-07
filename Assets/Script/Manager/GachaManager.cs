@@ -51,10 +51,27 @@ public class GachaManager : MonoBehaviour
     public int gachaCountForLevelUp = 10;
     public int currentGachaCount = 0;
 
-    // ★ 레벨 1→2 전환 비용 (GachaEquipmentTierManager가 없을 경우 여기서 직접 사용)
-    [Header("레벨 1→2 업그레이드 비용 (티어매니저 미사용 시 직접 설정)")]
-    public int lv1to2GoldCost = 500;
-    public int lv1to2CropPointCost = 100;
+    // ★ 레벨별 업그레이드 비용 (각 레벨에서 다음 레벨로 가는 비용)
+    [Header("레벨별 업그레이드 비용")]
+    [Tooltip("인덱스 0 = 레벨 1→2, 인덱스 1 = 레벨 2→3, ... 인덱스 N = 레벨 N+1→N+2\n비어있거나 해당 인덱스의 비용이 0이면 무료")]
+    public GachaLevelUpCost[] gachaLevelUpCosts = new GachaLevelUpCost[]
+    {
+        new GachaLevelUpCost { goldCost = 500,    cropPointCost = 100 },  // 1→2
+        new GachaLevelUpCost { goldCost = 2000,   cropPointCost = 300 },  // 2→3
+        new GachaLevelUpCost { goldCost = 5000,   cropPointCost = 500 },  // 3→4
+        new GachaLevelUpCost { goldCost = 10000,  cropPointCost = 1000 }, // 4→5
+    };
+
+    // 하위 호환 (legacy 필드 — gachaLevelUpCosts[0]에서 자동 매핑)
+    public int lv1to2GoldCost => gachaLevelUpCosts != null && gachaLevelUpCosts.Length > 0 ? gachaLevelUpCosts[0].goldCost : 500;
+    public int lv1to2CropPointCost => gachaLevelUpCosts != null && gachaLevelUpCosts.Length > 0 ? gachaLevelUpCosts[0].cropPointCost : 100;
+
+    [System.Serializable]
+    public class GachaLevelUpCost
+    {
+        public int goldCost;
+        public int cropPointCost;
+    }
 
     [Header("UI 참조")]
     public GameObject gachaPanel;
@@ -539,43 +556,58 @@ public class GachaManager : MonoBehaviour
     }
 
     /// <summary>
-    /// 레벨업 비용 지불
-    /// - GachaEquipmentTierManager가 있으면 위임, 없으면 직접 처리
+    /// 레벨업 비용 지불 — gachaLevelUpCosts 배열 우선 사용
+    /// fromLevel 1 → index 0, fromLevel 2 → index 1, ...
+    /// 배열 범위 밖이거나 비용 0이면 무료
     /// </summary>
     private bool TryPayLevelUpCost(int fromLevel)
     {
-        // GachaEquipmentTierManager에 위임
-        if (GachaEquipmentTierManager.Instance != null)
-            return GachaEquipmentTierManager.Instance.TryPayLevelUpCost(fromLevel);
+        int costIndex = fromLevel - 1; // fromLevel 1 → index 0
 
-        // 티어매니저 없을 때 직접 처리 (레벨 1→2만 비용 적용)
-        if (fromLevel != 1) return true;
+        // 배열 범위 밖이면 무료
+        if (gachaLevelUpCosts == null || costIndex < 0 || costIndex >= gachaLevelUpCosts.Length)
+            return true;
 
-        int goldCost = lv1to2GoldCost;
-        int cpCost = lv1to2CropPointCost;
+        GachaLevelUpCost cost = gachaLevelUpCosts[costIndex];
+
+        // 비용이 둘 다 0이면 무료
+        if (cost.goldCost <= 0 && cost.cropPointCost <= 0)
+            return true;
 
         long currentGold = GameManager.Instance != null ? GameManager.Instance.PlayerGold : 0;
         long currentCP = FarmManager.Instance != null ? FarmManager.Instance.GetCropPoints() : 0;
 
-        if (GameManager.Instance == null || currentGold < goldCost)
+        // 골드 확인
+        if (cost.goldCost > 0)
         {
-            UIManager.Instance?.ShowMessage(
-                $"골드가 부족합니다.\n현재: {UIManager.FormatKoreanUnit(currentGold)}G / 필요: {goldCost:N0}G", Color.red);
-            return false;
+            if (GameManager.Instance == null || currentGold < cost.goldCost)
+            {
+                UIManager.Instance?.ShowConfirmDialog(
+                    $"가챠레벨업에골드가부족합니다.\n필요:{cost.goldCost:N0}G\n보유:{UIManager.FormatKoreanUnit(currentGold)}G",
+                    onConfirm: null);
+                return false;
+            }
         }
 
-        if (FarmManager.Instance == null || currentCP < cpCost)
+        // CropPoint 확인
+        if (cost.cropPointCost > 0)
         {
-            UIManager.Instance?.ShowMessage(
-                $"수확 포인트가 필요합니다.\n현재: {currentCP} / 필요: {cpCost}", Color.red);
-            return false;
+            if (FarmManager.Instance == null || currentCP < cost.cropPointCost)
+            {
+                UIManager.Instance?.ShowConfirmDialog(
+                    $"가챠레벨업을하기위해선\n작물포인트가필요합니다.\n필요:{cost.cropPointCost}CP\n보유:{currentCP}CP",
+                    onConfirm: null);
+                return false;
+            }
         }
 
-        GameManager.Instance.SpendGold(goldCost);
-        FarmManager.Instance.SpendCropPoints(cpCost);
+        // 차감
+        if (cost.goldCost > 0) GameManager.Instance.SpendGold(cost.goldCost);
+        if (cost.cropPointCost > 0) FarmManager.Instance.SpendCropPoints(cost.cropPointCost);
 
         UIManager.Instance?.ShowMessage(
-            $"레벨 1→2 업그레이드! -{goldCost:N0}G / -{cpCost}CP", Color.cyan);
+            $"레벨 {fromLevel}→{fromLevel + 1} 업그레이드!\n-{cost.goldCost:N0}G / -{cost.cropPointCost}CP",
+            Color.cyan);
         return true;
     }
 
@@ -665,7 +697,10 @@ public class GachaManager : MonoBehaviour
 
         if (!ResourceBarManager.Instance.SpendEquipmentTickets(amount))
         {
-            UIManager.Instance?.ShowMessage($"장비 티켓 {amount}개가 필요합니다!", Color.red);
+            int held = ResourceBarManager.Instance.GetEquipmentTickets();
+            UIManager.Instance?.ShowConfirmDialog(
+                $"장비티켓이부족합니다.\n필요:{amount}개\n보유:{held}개",
+                onConfirm: null);
             return false;
         }
         return true;
@@ -742,13 +777,18 @@ public class GachaManager : MonoBehaviour
     // ★ 레벨업 비용 미리보기 (UI 표시용)
     public string GetLevelUpCostText()
     {
-        if (currentLevel != 1) return "자동 레벨업 (뽑기 10회 달성 시)";
+        int costIdx = currentLevel - 1;
 
-        if (GachaEquipmentTierManager.Instance != null)
-            return $"{GachaEquipmentTierManager.Instance.lv1to2GoldCost:N0}G + " +
-                   $"{GachaEquipmentTierManager.Instance.lv1to2CropPointCost}CP";
+        // 배열 범위 밖 → 비용 없음
+        if (gachaLevelUpCosts == null || costIdx < 0 || costIdx >= gachaLevelUpCosts.Length)
+            return $"자동 레벨업 (뽑기 {gachaCountForLevelUp}회 달성 시)";
 
-        return $"{lv1to2GoldCost:N0}G + {lv1to2CropPointCost}CP";
+        var cost = gachaLevelUpCosts[costIdx];
+        if (cost.goldCost <= 0 && cost.cropPointCost <= 0)
+            return $"자동 레벨업 (뽑기 {gachaCountForLevelUp}회 달성 시)";
+
+        return $"Lv.{currentLevel}→{currentLevel + 1}: {cost.goldCost:N0}G + {cost.cropPointCost}CP\n" +
+               $"(뽑기 {gachaCountForLevelUp}회 달성 시 자동)";
     }
 
     // ════════════════════════════════════════════════════════

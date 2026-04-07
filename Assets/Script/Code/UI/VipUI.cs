@@ -516,13 +516,13 @@ public class VipUI : MonoBehaviour
         if (tabParent == null || !tabParent.gameObject.scene.isLoaded)
             tabParent = transform;
 
-        // 하단 ScrollRect 스크롤만 차단 (enabled=false는 Viewport 크기를 0으로 리셋하므로 금지)
+        // 가로 스크롤 활성화 — VIP 아이콘 위에서 드래그로 탭 이동 가능
         ScrollRect scrollRect = tabParent.GetComponent<ScrollRect>();
         if (scrollRect == null)
             scrollRect = tabParent.GetComponentInParent<ScrollRect>();
         if (scrollRect != null)
         {
-            scrollRect.horizontal = false;
+            scrollRect.horizontal = true;
             scrollRect.vertical = false;
             scrollRect.enabled = true;
         }

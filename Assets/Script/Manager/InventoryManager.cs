@@ -301,6 +301,7 @@ public class InventoryManager : MonoBehaviour
             }
         }
 
+
         // 정렬: 레어도(높→낮) → 타입 → ID
         allEquips.Sort((a, b) =>
         {
@@ -312,10 +313,11 @@ public class InventoryManager : MonoBehaviour
         });
 
         // ★ 풀에서 슬롯 가져오기 (Instantiate 대신 재사용)
+        // ★ allEquips는 List<EquipmentData>이므로 EquipFilter 체크 불필요
+        //   (외부 SO가 itemType을 잘못 설정해도 EquipmentData면 무조건 표시)
         foreach (var eq in allEquips)
         {
             if (eq == null) continue;
-            if (!EquipFilter.Contains(eq.itemType)) continue;
 
             GameObject slotObj = GetOrCreateEquipSlot(prefab);
             slotObj.transform.localPosition = Vector3.zero;
@@ -971,6 +973,21 @@ public class InventoryManager : MonoBehaviour
     private bool AddEquipItem(ItemData item, int count, int enhance, int level, bool refreshUI = true)
     {
         int id = item.itemID;
+
+        // ★ ItemDatabase에 미등록된 장비면 자동 등록 (오프라인 보상 등에서 외부 SO가 들어올 때)
+        if (item is EquipmentData equipData && ItemDatabase.Instance != null && ItemDatabase.Instance.allEquipments != null)
+        {
+            bool foundInDB = false;
+            foreach (var eq in ItemDatabase.Instance.allEquipments)
+            {
+                if (eq != null && eq.itemID == id) { foundInDB = true; break; }
+            }
+            if (!foundInDB)
+            {
+                ItemDatabase.Instance.allEquipments.Add(equipData);
+                Debug.Log($"[InventoryManager] ItemDatabase에 자동 등록: {item.itemName} (ID:{id})");
+            }
+        }
 
         if (equipUnlockMap.TryGetValue(id, out EquipUnlockData data))
         {

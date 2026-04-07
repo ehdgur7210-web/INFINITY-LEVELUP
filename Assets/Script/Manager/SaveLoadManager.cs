@@ -426,7 +426,7 @@ public class SaveLoadManager : MonoBehaviour
             data.offlineGoldRate           = OfflineRewardManager.Instance.goldPerMinute;
             data.offlineExpRate            = OfflineRewardManager.Instance.expPerMinute;
             data.offlineGemRate            = OfflineRewardManager.Instance.gemPerMinute;
-            data.offlineEquipTicketRate    = OfflineRewardManager.Instance.equipmentTicketsPerMinute;
+            data.offlineEquipTicketRate    = 0f; // ★ 장비티켓 보상 제거됨 (호환성 유지)
         }
         else if (GameDataBridge.CurrentData != null)
         {

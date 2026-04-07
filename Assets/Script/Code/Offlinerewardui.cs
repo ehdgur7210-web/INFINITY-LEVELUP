@@ -43,11 +43,12 @@ public class OfflineRewardUI : MonoBehaviour
     [SerializeField] private TextMeshProUGUI durationText;
     [SerializeField] private Slider durationSlider;
 
-    [Header("수익 미리보기")]
+    [Header("수익 미리보기 — 텍스트")]
     [SerializeField] private TextMeshProUGUI goldAmountText;
     [SerializeField] private TextMeshProUGUI gemAmountText;
     [SerializeField] private TextMeshProUGUI expAmountText;
-    [SerializeField] private TextMeshProUGUI equiAmountText;
+    [SerializeField] private TextMeshProUGUI companionTicketAmountText;
+    [SerializeField] private TextMeshProUGUI cropPointAmountText;
 
     [Header("아이템 그리드")]
     [SerializeField] private Transform itemGridParent;
@@ -66,6 +67,10 @@ public class OfflineRewardUI : MonoBehaviour
     private List<GameObject> spawnedSlots = new List<GameObject>();
     private bool isPanelOpen = true;
 
+    // 수령 직후 일시 정지 플래그 (1프레임만 사용)
+    private bool isShowingClaimed = false;
+    private Coroutine claimedDisplayCoroutine; // 호환용 (현재 미사용)
+
 
     void Start()
     {
@@ -78,6 +83,7 @@ public class OfflineRewardUI : MonoBehaviour
 
         // ★ 매니저 이벤트 구독
         OfflineRewardManager.OnRewardUpdated += RefreshUI;
+        OfflineRewardManager.OnRewardClaimed += OnRewardClaimedHandler;
 
         // ★ 튜토리얼 미완료 시 팝업 자동 열기 안 함 (tutorialPhase 0 = 아직 안 한 상태)
         bool tutorialNotDone = (GameDataBridge.CurrentData?.tutorialPhase ?? 0) < 99;
@@ -138,6 +144,8 @@ public class OfflineRewardUI : MonoBehaviour
             if (goldAmountText != null) goldAmountText.text = FormatNumber(reward.goldReward);
             if (gemAmountText != null) gemAmountText.text = FormatNumber(reward.gemReward);
             if (expAmountText != null) expAmountText.text = FormatNumber(reward.expReward);
+            if (companionTicketAmountText != null) companionTicketAmountText.text = FormatNumber(reward.companionTicketReward);
+            if (cropPointAmountText != null) cropPointAmountText.text = FormatNumber(reward.cropPointReward);
 
             // ── 수령 버튼 상태 ──
             bool canClaim = OfflineRewardManager.Instance.IsClaimable;
@@ -184,6 +192,7 @@ public class OfflineRewardUI : MonoBehaviour
     void OnDestroy()
     {
         OfflineRewardManager.OnRewardUpdated -= RefreshUI;
+        OfflineRewardManager.OnRewardClaimed -= OnRewardClaimedHandler;
     }
 
     // ═══════════════════════════════════════════════
@@ -255,10 +264,14 @@ public class OfflineRewardUI : MonoBehaviour
         if (goldAmountText != null) goldAmountText.text = FormatNumber(reward.goldReward);
         if (gemAmountText != null) gemAmountText.text = FormatNumber(reward.gemReward);
         if (expAmountText != null) expAmountText.text = FormatNumber(reward.expReward);
-        if (equiAmountText != null) equiAmountText.text = FormatNumber(reward.equipmentTicketReward);
+        if (companionTicketAmountText != null) companionTicketAmountText.text = FormatNumber(reward.companionTicketReward);
+        if (cropPointAmountText != null) cropPointAmountText.text = FormatNumber(reward.cropPointReward);
 
-        // ── 아이템 그리드 ──
-        RefreshItemGrid(reward.itemRewards);
+        // ── 아이템 그리드 (일반 아이템 + 장비 드랍) ──
+        // ★ Manager가 결과를 캐싱하므로 매 갱신마다 같은 결과 → 깜빡이지 않음
+        // ★ 수령 직후 클레임 표시 중이면 스크롤 갱신 스킵
+        if (!isShowingClaimed)
+            RefreshItemGrid(reward.itemRewards, reward.equipmentDropResults);
 
         // ── 수령 버튼 상태 ──
         bool canClaim = OfflineRewardManager.Instance?.IsClaimable ?? false;
@@ -276,30 +289,72 @@ public class OfflineRewardUI : MonoBehaviour
         }
     }
 
-    // ── 아이템 슬롯 갱신 ──────────────────────────
-    private void RefreshItemGrid(List<OfflineItemRewardResult> items)
+    // ── 아이템 슬롯 갱신 (일반 아이템 + 장비 드랍 통합) ──────────────────────────
+    private void RefreshItemGrid(List<OfflineItemRewardResult> items, List<OfflineEquipmentDropResult> equipDrops)
     {
         foreach (var s in spawnedSlots)
             if (s != null) Destroy(s);
         spawnedSlots.Clear();
 
         if (itemGridParent == null || itemSlotPrefab == null) return;
-        if (items == null || items.Count == 0) return;
 
-        foreach (var item in items)
+        // 일반 아이템
+        if (items != null)
         {
-            if (item.item == null) continue;
-            GameObject slot = Instantiate(itemSlotPrefab, itemGridParent);
-            spawnedSlots.Add(slot);
-
-            Image icon = slot.GetComponentInChildren<Image>();
-            if (icon != null && item.item.itemIcon != null)
-                icon.sprite = item.item.itemIcon;
-
-            TextMeshProUGUI txt = slot.GetComponentInChildren<TextMeshProUGUI>();
-            if (txt != null)
-                txt.text = item.amount > 1 ? $"x{item.amount}" : "";
+            foreach (var item in items)
+            {
+                if (item.item == null) continue;
+                SpawnSlot(item.item.itemIcon, item.amount);
+            }
         }
+
+        // 장비 드랍
+        if (equipDrops != null)
+        {
+            foreach (var eq in equipDrops)
+            {
+                if (eq.equipment == null) continue;
+                SpawnSlot(eq.equipment.itemIcon, eq.amount);
+            }
+        }
+    }
+
+    private void SpawnSlot(Sprite iconSprite, int amount)
+    {
+        GameObject slot = Instantiate(itemSlotPrefab, itemGridParent);
+        spawnedSlots.Add(slot);
+
+        Image icon = slot.GetComponentInChildren<Image>();
+        if (icon != null && iconSprite != null)
+            icon.sprite = iconSprite;
+
+        TextMeshProUGUI txt = slot.GetComponentInChildren<TextMeshProUGUI>();
+        if (txt != null)
+            txt.text = amount > 1 ? $"x{amount}" : "";
+    }
+
+    // ═══════════════════════════════════════════════
+    // ★ 수령 후 처리 — 스크롤 즉시 정리, 패널은 열어둠
+    //   (사용자가 2배보상 등 다른 작업을 이어갈 수 있도록)
+    // ═══════════════════════════════════════════════
+    private void OnRewardClaimedHandler(OfflineRewardData claimed)
+    {
+        if (claimed == null) return;
+
+        // 기존 표시 중지
+        if (claimedDisplayCoroutine != null)
+        {
+            StopCoroutine(claimedDisplayCoroutine);
+            claimedDisplayCoroutine = null;
+        }
+
+        // 스크롤 영역 즉시 정리
+        isShowingClaimed = false;
+        foreach (var s in spawnedSlots)
+            if (s != null) Destroy(s);
+        spawnedSlots.Clear();
+
+        // 패널은 열어둠 — 사용자가 닫기/2배보상 등 직접 선택
     }
 
     // ── 캐릭터 이미지 ─────────────────────────────

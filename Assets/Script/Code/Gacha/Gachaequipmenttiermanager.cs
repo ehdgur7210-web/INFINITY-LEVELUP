@@ -197,9 +197,9 @@ public class GachaEquipmentTierManager : MonoBehaviour
             long currentGold = GameManager.Instance != null ? GameManager.Instance.PlayerGold : 0;
             if (currentGold < cost.goldCost)
             {
-                UIManager.Instance?.ShowMessage(
-                    $"레벨업 비용 부족!\n골드 {cost.goldCost:N0}G 필요 " +
-                    $"(보유 {UIManager.FormatKoreanUnit(currentGold)}G)", Color.red);
+                UIManager.Instance?.ShowConfirmDialog(
+                    $"가챠레벨업에골드가부족합니다.\n필요:{cost.goldCost:N0}G\n보유:{UIManager.FormatKoreanUnit(currentGold)}G",
+                    onConfirm: null);
                 return false;
             }
         }
@@ -210,8 +210,9 @@ public class GachaEquipmentTierManager : MonoBehaviour
             long curCp = FarmManager.Instance != null ? FarmManager.Instance.GetCropPoints() : 0;
             if (curCp < cost.cropPointCost)
             {
-                UIManager.Instance?.ShowMessage(
-                    $"레벨업 비용 부족!\n작물 포인트 {cost.cropPointCost}CP 필요 (보유 {curCp}CP)", Color.red);
+                UIManager.Instance?.ShowConfirmDialog(
+                    $"가챠레벨업을하기위해선\n작물포인트가필요합니다.\n필요:{cost.cropPointCost}CP\n보유:{curCp}CP",
+                    onConfirm: null);
                 return false;
             }
         }

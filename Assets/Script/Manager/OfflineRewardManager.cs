@@ -17,7 +17,8 @@ public class OfflineRewardManager : MonoBehaviour
     public int goldPerMinute = 5;
     public int expPerMinute = 3;
     public int gemPerMinute = 3;
-    public float equipmentTicketsPerMinute = 0.1f;  // 분당 0.1개 = 10분에 1개
+    public float companionTicketsPerMinute = 0.05f; // 분당 0.05개 = 20분에 1개
+    public int cropPointsPerMinute = 2;             // 분당 2 작물 포인트
 
     [Header("보상 배율")]
     [SerializeField] private float rewardMultiplier = 1.0f;
@@ -29,6 +30,17 @@ public class OfflineRewardManager : MonoBehaviour
     [Header("아이템 보상")]
     [SerializeField] private OfflineItemReward[] offlineItemRewards;
 
+    [Header("★ 오프라인 장비 드랍")]
+    [Tooltip("등급별 풀 (Common/Uncommon/Rare 각각의 EquipmentData 배열을 등록)")]
+    [SerializeField] private OfflineEquipmentDrop[] equipmentDrops;
+
+    [Tooltip("분당 1회 굴림 — 이 확률로 성공하면 등급 룰렛 후 1개 드랍")]
+    [Range(0f, 100f)]
+    [SerializeField] private float equipmentDropChancePerMinute = 80f;
+
+    [Tooltip("세션당 최대 장비 드랍 수 (인벤 폭주 방지)")]
+    [SerializeField] private int maxEquipmentDropsPerSession = 300;
+
     [Header("설정")]
     [SerializeField] private float maxAccumulateHours = 24f;
     [SerializeField] private float minClaimMinutes = 1f;
@@ -39,6 +51,12 @@ public class OfflineRewardManager : MonoBehaviour
     private float tickTimer = 0f;   // Update() 내 1초 카운터
     private float uiNotifyTimer = 0f;   // UI 이벤트 발행 간격
     private bool initialized = false;
+
+    // ★ 드랍 결과 캐싱 — 매 갱신마다 랜덤이 다시 굴려지지 않도록
+    //    같은 분(minute) 안에서는 캐시 반환, 새 분으로 넘어가면 새로 굴림
+    private int cachedDropMinute = -1;
+    private List<OfflineItemRewardResult> cachedItemDrops;
+    private List<OfflineEquipmentDropResult> cachedEquipmentDrops;
 
     // ── 이벤트 ──────────────────────────────────
     public static event Action<OfflineRewardData> OnRewardUpdated;
@@ -66,7 +84,10 @@ public class OfflineRewardManager : MonoBehaviour
                 Instance.goldPerMinute = goldPerMinute;
                 Instance.expPerMinute = expPerMinute;
                 Instance.gemPerMinute = gemPerMinute;
-                Instance.equipmentTicketsPerMinute = equipmentTicketsPerMinute;
+                Instance.companionTicketsPerMinute = companionTicketsPerMinute;
+                Instance.cropPointsPerMinute = cropPointsPerMinute;
+                if (equipmentDrops != null && equipmentDrops.Length > 0)
+                    Instance.equipmentDrops = equipmentDrops;
                 Debug.Log("[OfflineRewardManager] 씬 전환 감지 → 보상 데이터 갱신 완료!");
             }
             enabled = false;
@@ -204,18 +225,83 @@ public class OfflineRewardManager : MonoBehaviour
         float goldRate      = (saved != null && saved.offlineGoldRate > 0)      ? saved.offlineGoldRate      : goldPerMinute;
         float expRate       = (saved != null && saved.offlineExpRate > 0)        ? saved.offlineExpRate       : expPerMinute;
         float gemRate       = (saved != null && saved.offlineGemRate > 0)        ? saved.offlineGemRate       : gemPerMinute;
-        float equipTickRate = (saved != null && saved.offlineEquipTicketRate > 0) ? saved.offlineEquipTicketRate : equipmentTicketsPerMinute;
 
         reward.goldReward = Mathf.RoundToInt(goldRate * minutes * rewardMultiplier * waveBonus);
         reward.expReward = Mathf.RoundToInt(expRate * minutes * rewardMultiplier * waveBonus);
         reward.gemReward = Mathf.RoundToInt(gemRate * minutes * rewardMultiplier * waveBonus);
-        reward.equipmentTicketReward = Mathf.RoundToInt(equipTickRate * minutes * rewardMultiplier * waveBonus);  // ★ 추가
+        reward.companionTicketReward = Mathf.RoundToInt(companionTicketsPerMinute * minutes * rewardMultiplier * waveBonus);
+        reward.cropPointReward = Mathf.RoundToInt(cropPointsPerMinute * minutes * rewardMultiplier * waveBonus);
 
-        reward.itemRewards = CalculateItemRewards(minutes, waveBonus);
+        // ★ 드랍 결과 캐시 — 같은 분(minute) 안에서는 동일 결과 반환
+        int currentMinute = Mathf.FloorToInt(minutes);
+        if (cachedDropMinute != currentMinute || cachedItemDrops == null || cachedEquipmentDrops == null)
+        {
+            cachedItemDrops = CalculateItemRewards(minutes, waveBonus);
+            cachedEquipmentDrops = CalculateEquipmentDrops(minutes);
+            cachedDropMinute = currentMinute;
+        }
+        reward.itemRewards = cachedItemDrops;
+        reward.equipmentDropResults = cachedEquipmentDrops;
         reward.baseMultiplier = rewardMultiplier;
         reward.waveBonus = waveBonus;
         reward.currentWave = savedWave;
         return reward;
+    }
+
+    // ═══════════════════════════════════════════════
+    // ★ 오프라인 장비 드랍 계산
+    //   - 분당 1회 굴림
+    //   - equipmentDropChancePerMinute 확률로 성공
+    //   - 성공 시 가중치 룰렛으로 등급 결정 → 풀에서 랜덤 선택
+    // ═══════════════════════════════════════════════
+    private List<OfflineEquipmentDropResult> CalculateEquipmentDrops(float minutes)
+    {
+        var grouped = new Dictionary<EquipmentData, int>();
+
+        if (equipmentDrops == null || equipmentDrops.Length == 0)
+            return new List<OfflineEquipmentDropResult>();
+
+        // 가중치 합 계산
+        float totalWeight = 0f;
+        foreach (var d in equipmentDrops)
+            if (d != null && d.pool != null && d.pool.Length > 0) totalWeight += Mathf.Max(0f, d.weight);
+
+        if (totalWeight <= 0f)
+            return new List<OfflineEquipmentDropResult>();
+
+        int totalRolls = Mathf.FloorToInt(minutes); // 분당 1회
+        int successCount = 0;
+
+        for (int i = 0; i < totalRolls && successCount < maxEquipmentDropsPerSession; i++)
+        {
+            // 1) 드랍 시도
+            if (UnityEngine.Random.Range(0f, 100f) > equipmentDropChancePerMinute) continue;
+
+            // 2) 등급 룰렛
+            float roll = UnityEngine.Random.Range(0f, totalWeight);
+            float cumulative = 0f;
+            OfflineEquipmentDrop selected = null;
+            foreach (var d in equipmentDrops)
+            {
+                if (d == null || d.pool == null || d.pool.Length == 0) continue;
+                cumulative += Mathf.Max(0f, d.weight);
+                if (roll <= cumulative) { selected = d; break; }
+            }
+            if (selected == null) continue;
+
+            // 3) 풀에서 랜덤 1개
+            EquipmentData picked = selected.pool[UnityEngine.Random.Range(0, selected.pool.Length)];
+            if (picked == null) continue;
+
+            if (grouped.ContainsKey(picked)) grouped[picked]++;
+            else grouped[picked] = 1;
+            successCount++;
+        }
+
+        var results = new List<OfflineEquipmentDropResult>(grouped.Count);
+        foreach (var kvp in grouped)
+            results.Add(new OfflineEquipmentDropResult { equipment = kvp.Key, amount = kvp.Value });
+        return results;
     }
 
     private List<OfflineItemRewardResult> CalculateItemRewards(float minutes, float waveBonus)
@@ -272,12 +358,13 @@ public class OfflineRewardManager : MonoBehaviour
         // ★ 일반 수령은 최소 누적 시간 필요, 2배 보상은 누적 시간 무관 (고정 8시간분)
         if (!isAdClaim && !IsClaimable) return;
 
-        int finalGold, finalExp, finalGem, finalTicket;
+        int finalGold, finalExp, finalGem, finalCompTicket, finalCropPoint;
         string label;
 
         if (isAdClaim)
         {
             // ★ 2배 보상: 시간당 레이트 × 8시간 (누적 시간 무관)
+            //    아이템/장비는 미지급 — 8시간분 화폐만 지급
             if (GetTodayAdClaimCount() >= maxAdClaimPerDay)
             {
                 UIManager.Instance?.ShowMessage(
@@ -294,12 +381,12 @@ public class OfflineRewardManager : MonoBehaviour
             float goldRate  = (saved != null && saved.offlineGoldRate > 0) ? saved.offlineGoldRate : goldPerMinute;
             float expRate   = (saved != null && saved.offlineExpRate > 0) ? saved.offlineExpRate : expPerMinute;
             float gemRate   = (saved != null && saved.offlineGemRate > 0) ? saved.offlineGemRate : gemPerMinute;
-            float tickRate  = (saved != null && saved.offlineEquipTicketRate > 0) ? saved.offlineEquipTicketRate : equipmentTicketsPerMinute;
 
-            finalGold   = Mathf.RoundToInt(goldRate * adMinutes * rewardMultiplier * waveBonus);
-            finalExp    = Mathf.RoundToInt(expRate * adMinutes * rewardMultiplier * waveBonus);
-            finalGem    = Mathf.RoundToInt(gemRate * adMinutes * rewardMultiplier * waveBonus);
-            finalTicket = Mathf.RoundToInt(tickRate * adMinutes * rewardMultiplier * waveBonus);
+            finalGold       = Mathf.RoundToInt(goldRate * adMinutes * rewardMultiplier * waveBonus);
+            finalExp        = Mathf.RoundToInt(expRate * adMinutes * rewardMultiplier * waveBonus);
+            finalGem        = Mathf.RoundToInt(gemRate * adMinutes * rewardMultiplier * waveBonus);
+            finalCompTicket = Mathf.RoundToInt(companionTicketsPerMinute * adMinutes * rewardMultiplier * waveBonus);
+            finalCropPoint  = Mathf.RoundToInt(cropPointsPerMinute * adMinutes * rewardMultiplier * waveBonus);
 
             todayAdClaimCount++;
             label = $"2배 보상! ({(int)adBonusHours}시간분)\n남은 횟수: {RemainingAdClaims}/{maxAdClaimPerDay}";
@@ -308,15 +395,16 @@ public class OfflineRewardManager : MonoBehaviour
         {
             // ★ 일반 수령: 누적 시간 기반
             OfflineRewardData reward = CalculateCurrentReward();
-            finalGold   = Mathf.RoundToInt(reward.goldReward * bonusMultiplier);
-            finalExp    = Mathf.RoundToInt(reward.expReward * bonusMultiplier);
-            finalGem    = Mathf.RoundToInt(reward.gemReward * bonusMultiplier);
-            finalTicket = Mathf.RoundToInt(reward.equipmentTicketReward * bonusMultiplier);
+            finalGold       = Mathf.RoundToInt(reward.goldReward * bonusMultiplier);
+            finalExp        = Mathf.RoundToInt(reward.expReward * bonusMultiplier);
+            finalGem        = Mathf.RoundToInt(reward.gemReward * bonusMultiplier);
+            finalCompTicket = Mathf.RoundToInt(reward.companionTicketReward * bonusMultiplier);
+            finalCropPoint  = Mathf.RoundToInt(reward.cropPointReward * bonusMultiplier);
             label = "보상 수령!";
         }
 
         // ── 지급 ──
-        Debug.Log($"[RewardManager] 지급 시도 — 골드:{finalGold} EXP:{finalExp} 젬:{finalGem} 티켓:{finalTicket} | GameManager:{GameManager.Instance != null}");
+        Debug.Log($"[RewardManager] 지급 시도 — 골드:{finalGold} EXP:{finalExp} 젬:{finalGem} 동료T:{finalCompTicket} CP:{finalCropPoint}");
 
         if (GameManager.Instance != null)
         {
@@ -335,26 +423,81 @@ public class OfflineRewardManager : MonoBehaviour
             Debug.LogError("[RewardManager] GameManager.Instance가 null! 보상 지급 불가!");
         }
 
-        if (finalTicket > 0 && ResourceBarManager.Instance != null)
-            ResourceBarManager.Instance.AddEquipmentTickets(finalTicket);
+        if (ResourceBarManager.Instance != null && finalCompTicket > 0)
+            ResourceBarManager.Instance.AddCompanionTickets(finalCompTicket);
 
-        // 일반 수령일 때만 아이템 보상
-        if (!isAdClaim)
+        if (finalCropPoint > 0)
         {
-            OfflineRewardData reward = CalculateCurrentReward();
-            if (reward.itemRewards != null && InventoryManager.Instance != null)
-                foreach (var item in reward.itemRewards)
-                    InventoryManager.Instance.AddItem(item.item, item.amount);
+            if (FarmManager.Instance != null)
+                FarmManager.Instance.AddCropPoints(finalCropPoint);
+            else if (GameDataBridge.CurrentData != null)
+                GameDataBridge.CurrentData.cropPoints += finalCropPoint;
         }
 
-        UIManager.Instance?.ShowMessage(
-            $"{label}\n골드:{finalGold} EXP:{finalExp} 젬:{finalGem} 티켓:{finalTicket}",
-            Color.yellow);
+        // ★ 클레임된 보상 데이터 (이벤트로 UI에 전달)
+        OfflineRewardData claimedReward = new OfflineRewardData
+        {
+            goldReward = finalGold,
+            expReward = finalExp,
+            gemReward = finalGem,
+            companionTicketReward = finalCompTicket,
+            cropPointReward = finalCropPoint,
+            itemRewards = new List<OfflineItemRewardResult>(),
+            equipmentDropResults = new List<OfflineEquipmentDropResult>()
+        };
 
-        OnRewardClaimed?.Invoke(CalculateCurrentReward());
+        // ★ 일반 수령: 누적 시간 기반 / 2배 보상: 8시간분 새로 굴림
+        //    둘 다 아이템 + 장비 드랍 지급
+        {
+            List<OfflineItemRewardResult> itemList;
+            List<OfflineEquipmentDropResult> equipList;
 
-        // ★ 누적 리셋
+            if (isAdClaim)
+            {
+                // 2배 보상: 8시간분 새로 굴려서 지급 (캐시 우회)
+                float adMinutes = adBonusHours * 60f;
+                SaveData savedAd = GameDataBridge.CurrentData;
+                int savedWaveAd = WaveSpawner.Instance?.CurrentWaveIndex ?? (savedAd?.offlineCurrentWave ?? 0);
+                float waveBonusAd = 1f + (savedWaveAd * waveRewardBonusPercent / 100f);
+
+                itemList = CalculateItemRewards(adMinutes, waveBonusAd);
+                equipList = CalculateEquipmentDrops(adMinutes);
+            }
+            else
+            {
+                // 일반 수령: 캐시된 결과 사용
+                OfflineRewardData reward = CalculateCurrentReward();
+                itemList = reward.itemRewards;
+                equipList = reward.equipmentDropResults;
+            }
+
+            if (itemList != null && InventoryManager.Instance != null)
+                foreach (var item in itemList)
+                {
+                    InventoryManager.Instance.AddItem(item.item, item.amount);
+                    claimedReward.itemRewards.Add(item);
+                }
+
+            if (equipList != null && InventoryManager.Instance != null)
+                foreach (var eq in equipList)
+                    if (eq.equipment != null && eq.amount > 0)
+                    {
+                        InventoryManager.Instance.AddItem(eq.equipment, eq.amount, false);
+                        claimedReward.equipmentDropResults.Add(eq);
+                    }
+
+            // 장비 추가 후 인벤 갱신 1회
+            InventoryManager.Instance?.RefreshEquipDisplay();
+        }
+
+        // ★ 토스트 메시지 제거 — 대신 OnRewardClaimed 이벤트로 UI가 스크롤에 표시
+        OnRewardClaimed?.Invoke(claimedReward);
+
+        // ★ 누적 리셋 + 캐시 초기화 (다음 누적부터 새로 굴림)
         accumulatedMinutes = 0f;
+        cachedDropMinute = -1;
+        cachedItemDrops = null;
+        cachedEquipmentDrops = null;
         SaveCurrentTime();
 
         // 2배 횟수 저장
@@ -367,7 +510,7 @@ public class OfflineRewardManager : MonoBehaviour
         NotifyUI();
         SaveLoadManager.Instance?.SaveGame();
 
-        Debug.Log($"[RewardManager] 수령 완료 — 골드:{finalGold} EXP:{finalExp} 젬:{finalGem} 티켓:{finalTicket}" +
+        Debug.Log($"[RewardManager] 수령 완료 — 골드:{finalGold} EXP:{finalExp} 젬:{finalGem} 동료T:{finalCompTicket} CP:{finalCropPoint}" +
                   (isAdClaim ? $" [2배보상 {todayAdClaimCount}/{maxAdClaimPerDay}]" : ""));
     }
 
@@ -388,7 +531,6 @@ public class OfflineRewardManager : MonoBehaviour
             data.offlineGoldRate           = goldPerMinute;
             data.offlineExpRate            = expPerMinute;
             data.offlineGemRate            = gemPerMinute;
-            data.offlineEquipTicketRate    = equipmentTicketsPerMinute;
             data.accumulatedOfflineMinutes = accumulatedMinutes;
             if (WaveSpawner.Instance != null)
                 data.offlineCurrentWave = WaveSpawner.Instance.CurrentWaveIndex;
@@ -445,8 +587,10 @@ public class OfflineRewardData
     public int goldReward;
     public int expReward;
     public int gemReward;
-    public int equipmentTicketReward;  // ★ 추가
+    public int companionTicketReward;
+    public int cropPointReward;
     public List<OfflineItemRewardResult> itemRewards;
+    public List<OfflineEquipmentDropResult> equipmentDropResults;
     public float baseMultiplier;
     public float waveBonus;
     public int currentWave;
@@ -478,4 +622,28 @@ public class OfflineItemReward
     [Min(1)] public int minAmount = 1;
     [Min(1)] public int maxAmount = 1;
     public int maxTotalPerSession = 10;
+}
+
+// ═══════════════════════════════════════════════════════════
+// ★ 오프라인 장비 드랍 — 등급별 풀
+// ═══════════════════════════════════════════════════════════
+
+[System.Serializable]
+public class OfflineEquipmentDrop
+{
+    [Tooltip("이 풀의 등급 (Common/Uncommon/Rare 권장)")]
+    public ItemRarity rarity = ItemRarity.Common;
+
+    [Tooltip("가중치 (예: 70/25/5)")]
+    [Range(0f, 100f)] public float weight = 70f;
+
+    [Tooltip("이 등급에서 뽑힐 수 있는 장비들")]
+    public EquipmentData[] pool;
+}
+
+[System.Serializable]
+public class OfflineEquipmentDropResult
+{
+    public EquipmentData equipment;
+    public int amount;
 }
