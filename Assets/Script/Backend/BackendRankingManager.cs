@@ -63,6 +63,34 @@ public class BackendRankingManager : MonoBehaviour
     /// <summary>서버 통신 중 여부</summary>
     public bool IsBusy { get; private set; }
 
+    // ══════════════════════════════════════════════════════
+    //  ★ 호출 한도 보호 — 쓰로틀링 + 변경 감지 + 403 잠금
+    // ══════════════════════════════════════════════════════
+
+    [Header("호출 빈도 제한 (배치 전송)")]
+    [Tooltip("랭킹 서버 전송 주기(초). 이 주기로만 서버에 등록. 기본 1800초 = 30분")]
+    [SerializeField] private float batchInterval = 1800f;
+
+    [Tooltip("403 호출 한도 초과 시 잠금 시간(초). 이 시간 동안 모든 랭킹 호출 차단")]
+    [SerializeField] private float quotaLockDuration = 600f;
+
+    [Tooltip("게임 시작 후 첫 전송까지 대기 시간(초). 로그인 직후 폭주 방지")]
+    [SerializeField] private float initialDelay = 60f;
+
+    /// <summary>마지막 갱신 시 점수 — 변경 없으면 호출 스킵</summary>
+    private int _lastCombat = -1;
+    private int _lastLevel = -1;
+    private long _lastFarm = -1;
+
+    /// <summary>점수 변경됨 → 다음 배치 주기에 전송 필요</summary>
+    private bool _isDirty = false;
+
+    /// <summary>403 호출 한도 초과 → 이 시각까지 모든 랭킹 호출 차단</summary>
+    private float _quotaLockedUntil = 0f;
+
+    /// <summary>배치 전송 코루틴 핸들</summary>
+    private Coroutine _batchCoroutine;
+
     /// <summary>현재 조회 중인 랭킹 타입 (ParseRankList에서 내 점수 오버라이드에 사용)</summary>
     private RankingManager.RankType currentRankType;
 
@@ -90,11 +118,40 @@ public class BackendRankingManager : MonoBehaviour
             Debug.LogWarning("[BackendRanking] ⚠ farmRankUUID가 비어있음! Inspector에서 뒤끝 콘솔 UUID를 입력하세요.");
 
         Debug.Log($"[BackendRanking] 초기화 — UUID: combat={combatPowerRankUUID}, level={levelRankUUID}, farm={farmRankUUID}");
+        Debug.Log($"[BackendRanking] 배치 전송 모드: {batchInterval}초마다 (초기 {initialDelay}초 대기)");
+
+        // ★ 배치 전송 코루틴 시작
+        _batchCoroutine = StartCoroutine(BatchUpdateLoop());
     }
 
     void OnDestroy()
     {
+        if (_batchCoroutine != null)
+        {
+            StopCoroutine(_batchCoroutine);
+            _batchCoroutine = null;
+        }
         if (Instance == this) Instance = null;
+    }
+
+    /// <summary>
+    /// ★ 배치 전송 루프 — 일정 주기로만 서버 호출
+    /// 점수가 바뀌었을 때만(_isDirty) 실제 전송, 아니면 스킵
+    /// </summary>
+    private IEnumerator BatchUpdateLoop()
+    {
+        // 게임 시작 직후엔 다른 매니저 초기화 충돌 방지로 잠시 대기
+        yield return new WaitForSeconds(initialDelay);
+
+        while (true)
+        {
+            if (_isDirty && Time.realtimeSinceStartup >= _quotaLockedUntil)
+            {
+                Debug.Log("[BackendRanking] ▶ 배치 전송 시도 (변경 감지됨)");
+                DoUpdateAllScoresInternal();
+            }
+            yield return new WaitForSeconds(batchInterval);
+        }
     }
 
     // ══════════════════════════════════════════════════════
@@ -107,16 +164,42 @@ public class BackendRankingManager : MonoBehaviour
     /// </summary>
     public void UpdateAllScores()
     {
-        // ★ null 안전성
+        // ★ 즉시 전송하지 않고 더티 플래그만 세움
+        //   실제 전송은 BatchUpdateLoop가 batchInterval(기본 30분) 주기로 처리
+        //   이렇게 하면 강화/저장 등으로 자주 호출돼도 호출 한도에 안 걸림
+
         if (BackendManager.Instance == null || !BackendManager.Instance.IsLoggedIn)
-        {
-            Debug.LogWarning("[BackendRanking] ⚠ 로그인 안 됨 → 랭킹 갱신 스킵");
             return;
-        }
+
+        // 점수 변경 감지: 동일하면 더티 표시조차 안 함
+        int curCombat = CombatPowerManager.Instance?.TotalCombatPower ?? 0;
+        int curLevel = GameManager.Instance?.PlayerLevel ?? 1;
+        long curFarm = FarmManager.Instance?.GetCropPoints() ?? 0;
+        if (curCombat == _lastCombat && curLevel == _lastLevel && curFarm == _lastFarm)
+            return;
+
+        _isDirty = true;
+        // 실제 전송은 BatchUpdateLoop에서 처리
+    }
+
+    /// <summary>
+    /// 배치 루프에서 호출하는 실제 전송 로직.
+    /// 외부에서 호출 금지 — UpdateAllScores를 사용하세요.
+    /// </summary>
+    private void DoUpdateAllScoresInternal()
+    {
+        if (BackendManager.Instance == null || !BackendManager.Instance.IsLoggedIn)
+            return;
+
+        // 전송 시점의 최신 점수로 갱신
+        _lastCombat = CombatPowerManager.Instance?.TotalCombatPower ?? 0;
+        _lastLevel = GameManager.Instance?.PlayerLevel ?? 1;
+        _lastFarm = FarmManager.Instance?.GetCropPoints() ?? 0;
+        _isDirty = false; // 전송 시작 → 더티 해제 (실패 시 콜백에서 복원)
 
         // ✅ Bug5 수정: RowInDate 없으면 SaveToServer로 행 먼저 생성 후 갱신
         string rowInDate = BackendGameDataManager.Instance?.RowInDate;
-        Debug.Log($"[BackendRanking] ▶ UpdateAllScores 호출 — RowInDate:{(rowInDate ?? "null")}");
+        Debug.Log($"[BackendRanking] ▶ DoUpdateAllScoresInternal — RowInDate:{(rowInDate ?? "null")}");
 
         if (string.IsNullOrEmpty(rowInDate))
         {
@@ -200,22 +283,30 @@ public class BackendRankingManager : MonoBehaviour
             }
             else if (callback.GetStatusCode() == "428")
             {
-                // 428 Precondition Required: 서버 랭킹 집계 중 → 정상 응답, 재시도
-                Debug.Log($"[BackendRanking] {label} 랭킹 집계 중 (428), 3초 후 재시도...");
-                StartCoroutine(RetryUpdateAfterDelay(3f));
+                // 428 Precondition Required: 서버 랭킹 집계 중 → 다음 배치 주기에 자연 재시도
+                Debug.Log($"[BackendRanking] {label} 랭킹 집계 중 (428), 다음 배치 주기에 재시도");
+                _isDirty = true; // 더티 복원 → 다음 BatchUpdateLoop에서 재전송
+            }
+            else if (callback.GetStatusCode() == "503"
+                  || callback.GetErrorCode() == "ThrottlingException"
+                  || callback.GetErrorCode() == "ProtocolError")
+            {
+                // 503/Throttling/ProtocolError: 뒤끝 서버 일시 장애 → 다음 배치 주기에 자연 재시도
+                Debug.LogWarning($"[BackendRanking] ⚠ {label} 랭킹 일시 실패 (서버 혼잡): {callback.GetErrorCode()}");
+                _isDirty = true;
+            }
+            else if (callback.GetStatusCode() == "403"
+                  || (callback.GetMessage() != null && callback.GetMessage().Contains("call limit exceeded")))
+            {
+                // ★ 403 호출 한도 초과 → 잠금 활성화 (이후 모든 호출 차단)
+                _quotaLockedUntil = Time.realtimeSinceStartup + quotaLockDuration;
+                Debug.LogWarning($"[BackendRanking] ⚠ 호출 한도 초과 — {quotaLockDuration}초 동안 모든 랭킹 갱신 잠금. (뒤끝 무료 티어 일일 한도 초과 가능성)");
             }
             else
             {
                 Debug.LogError($"[BackendRanking] ❌ {label} 랭킹 갱신 실패: statusCode={callback.GetStatusCode()}, errorCode={callback.GetErrorCode()}, msg={callback.GetMessage()}");
             }
         });
-    }
-
-    /// <summary>랭킹 집계 중(428) 시 재시도 코루틴</summary>
-    private IEnumerator RetryUpdateAfterDelay(float delay)
-    {
-        yield return new WaitForSeconds(delay);
-        UpdateAllScores();
     }
 
     // ══════════════════════════════════════════════════════

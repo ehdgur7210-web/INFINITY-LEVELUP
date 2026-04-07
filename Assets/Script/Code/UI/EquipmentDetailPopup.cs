@@ -40,6 +40,10 @@ public class EquipmentDetailPopup : MonoBehaviour
     public TextMeshProUGUI nextStatsText;
     public Image arrowImage;
 
+    [Header("최종 강화 스탯 (선택)")]
+    [Tooltip("MaxLv + Max강화 적용 시 최종 스탯을 표시할 텍스트. 미연결 시 currentStatsText 하단에 자동 추가")]
+    public TextMeshProUGUI maxEnhanceStatsText;
+
     [Header("레벨업 비용")]
     public TextMeshProUGUI goldCostText;
     public Image materialIcon;
@@ -167,7 +171,13 @@ public class EquipmentDetailPopup : MonoBehaviour
     {
         EquipmentStats curStats = currentEquip.GetLeveledStats(curLv);
 
-        string cur = FormatStats(curStats);
+        // ★ 현재 강화 단계 반영 (장착 전이라도 슬롯의 enhanceLevel 사용)
+        float curEnhMult = 1f + (currentSlot.enhanceLevel * 0.1f);
+        EquipmentStats curStatsEnh = ApplyEnhanceMult(curStats, curEnhMult);
+
+        string cur = FormatStats(curStatsEnh);
+        if (currentSlot.enhanceLevel > 0)
+            cur = $"<color=#FFD700>+{currentSlot.enhanceLevel}</color>\n" + cur;
         if (currentStatsText != null) currentStatsText.text = cur;
 
         if (isMaxLevel)
@@ -178,11 +188,47 @@ public class EquipmentDetailPopup : MonoBehaviour
         else
         {
             EquipmentStats nextStats = currentEquip.GetLeveledStats(curLv + 1);
-            string next = FormatStatsWithDiff(curStats, nextStats);
+            EquipmentStats nextStatsEnh = ApplyEnhanceMult(nextStats, curEnhMult);
+            string next = FormatStatsWithDiff(curStatsEnh, nextStatsEnh);
             if (nextStatsText != null) nextStatsText.text = next;
             if (arrowImage != null)
                 arrowImage.gameObject.SetActive(true);
         }
+
+        // ── ★ 최종 강화 스탯 미리보기 (MaxLv + Max강화 적용) ──
+        int maxLv = currentEquip.maxItemLevel;
+        int maxEnh = EnhancementSystem.Instance != null ? EnhancementSystem.Instance.maxEnhanceLevel : 20;
+        float maxEnhMult = 1f + (maxEnh * 0.1f);
+        EquipmentStats finalStats = ApplyEnhanceMult(currentEquip.GetLeveledStats(maxLv), maxEnhMult);
+
+        // ★ 현재 단계와 무관하게 항상 표시 (+12든 +13이든 풀강 시 최종 수치 미리보기)
+        string finalLine = $"<color=#FFD700>풀강 시 최종 (Lv.{maxLv} / +{maxEnh} 기준)</color>\n" + FormatStats(finalStats);
+
+        if (maxEnhanceStatsText != null)
+        {
+            maxEnhanceStatsText.text = finalLine;
+        }
+        else if (currentStatsText != null)
+        {
+            // 인스펙터 미연결 시 currentStatsText 하단에 합쳐서 표시
+            currentStatsText.text += "\n\n" + finalLine;
+        }
+    }
+
+    /// <summary>강화 배율을 스탯에 곱해 새 EquipmentStats 반환</summary>
+    private EquipmentStats ApplyEnhanceMult(EquipmentStats src, float mult)
+    {
+        return new EquipmentStats
+        {
+            attack         = Mathf.RoundToInt(src.attack * mult),
+            defense        = Mathf.RoundToInt(src.defense * mult),
+            health         = Mathf.RoundToInt(src.health * mult),
+            mana           = Mathf.RoundToInt(src.mana * mult),
+            criticalRate   = Mathf.RoundToInt(src.criticalRate * mult),
+            criticalDamage = src.criticalDamage * mult,
+            attackSpeed    = src.attackSpeed * mult,
+            moveSpeed      = src.moveSpeed * mult,
+        };
     }
 
     private void RefreshLevelUpCost(int curLv, bool isMaxLevel)

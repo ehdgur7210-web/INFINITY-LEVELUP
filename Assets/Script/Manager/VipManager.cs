@@ -98,6 +98,9 @@ public class VipManager : MonoBehaviour
     /// <summary>서버 행의 inDate (UPDATE 시 사용)</summary>
     private string _serverInDate = null;
 
+    /// <summary>★ 뒤끝 콘솔에 vipinfo 테이블이 없을 때 true → 이후 서버 호출 전부 스킵</summary>
+    private bool _tableMissing = false;
+
     // ─────────────────────────────────────────
     // 이벤트 (VipUI가 구독해서 UI 갱신)
     // ─────────────────────────────────────────
@@ -149,11 +152,20 @@ public class VipManager : MonoBehaviour
     /// </summary>
     public void LoadVipDataFromServer()
     {
+        if (_tableMissing) return; // 콘솔에 테이블 없음 → 호출 자체 스킵
+
         // GetMyData: 내 유저의 vipinfo 테이블 전체 조회
         Backend.GameData.GetMyData(tableName, new Where(), callback =>
         {
             if (!callback.IsSuccess())
             {
+                // ★ 테이블 없음 감지 → 플래그 설정 (이후 호출 전부 스킵)
+                if (IsTableMissingError(callback.GetMessage()))
+                {
+                    _tableMissing = true;
+                    Debug.LogWarning($"[VipManager] 뒤끝 콘솔에 '{tableName}' 테이블이 없습니다. 콘솔에서 Private 테이블을 생성하세요. (이후 VIP 서버 호출은 모두 스킵됩니다)");
+                    return;
+                }
                 Debug.LogError($"[VipManager] 로드 실패: {callback.GetMessage()}");
                 return;
             }
@@ -212,6 +224,12 @@ public class VipManager : MonoBehaviour
         {
             if (!callback.IsSuccess())
             {
+                if (IsTableMissingError(callback.GetMessage()))
+                {
+                    _tableMissing = true;
+                    Debug.LogWarning($"[VipManager] '{tableName}' 테이블 없음 → 초기 데이터 생성 스킵. 뒤끝 콘솔에서 Private 테이블 생성 필요.");
+                    return;
+                }
                 Debug.LogError($"[VipManager] 초기 데이터 생성 실패: {callback.GetMessage()}");
                 return;
             }
@@ -220,6 +238,14 @@ public class VipManager : MonoBehaviour
             Debug.Log("[VipManager] 초기 데이터 생성 완료 → 재로드");
             LoadVipDataFromServer();
         });
+    }
+
+    /// <summary>뒤끝 에러 메시지에 "table not found" 또는 "찾을 수 없" 포함 여부</summary>
+    private static bool IsTableMissingError(string msg)
+    {
+        if (string.IsNullOrEmpty(msg)) return false;
+        return msg.IndexOf("table not found", StringComparison.OrdinalIgnoreCase) >= 0
+            || msg.IndexOf("찾을 수 없", StringComparison.Ordinal) >= 0;
     }
 
     // ─────────────────────────────────────────
@@ -232,6 +258,9 @@ public class VipManager : MonoBehaviour
     /// </summary>
     private void SaveToServer(Action onSuccess = null, Action onFail = null)
     {
+        // ★ 테이블 없음이면 서버 호출 스킵
+        if (_tableMissing) return;
+
         // ★ 로그인 상태 확인 (미로그인 시 서버 저장 스킵)
         string userInDate = null;
         try { userInDate = Backend.UserInDate; } catch { }
@@ -254,6 +283,13 @@ public class VipManager : MonoBehaviour
             {
                 if (!callback.IsSuccess())
                 {
+                    if (IsTableMissingError(callback.GetMessage()))
+                    {
+                        _tableMissing = true;
+                        Debug.LogWarning($"[VipManager] '{tableName}' 테이블 없음 → 이후 서버 호출 스킵");
+                        onFail?.Invoke();
+                        return;
+                    }
                     Debug.LogError($"[VipManager] 저장 실패: {callback.GetMessage()}");
                     onFail?.Invoke();
                     return;
@@ -269,6 +305,13 @@ public class VipManager : MonoBehaviour
             {
                 if (!callback.IsSuccess())
                 {
+                    if (IsTableMissingError(callback.GetMessage()))
+                    {
+                        _tableMissing = true;
+                        Debug.LogWarning($"[VipManager] '{tableName}' 테이블 없음 → 이후 서버 호출 스킵. 뒤끝 콘솔에서 Private 테이블 생성 필요.");
+                        onFail?.Invoke();
+                        return;
+                    }
                     Debug.LogError($"[VipManager] 저장 실패 (Insert): {callback.GetMessage()}");
                     onFail?.Invoke();
                     return;

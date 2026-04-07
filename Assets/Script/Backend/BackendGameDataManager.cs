@@ -404,6 +404,18 @@ public class BackendGameDataManager : MonoBehaviour
                 string errorCode = callback.GetErrorCode();
                 string message = callback.GetMessage();
 
+                // ★ 503/Throttling/ProtocolError: 뒤끝 서버 일시 장애
+                //   → Insert로 재시도하지 않음 (어차피 같이 실패 + 중복 행 생성 위험)
+                //   → Warning + 다음 저장 주기에 자연 재시도
+                if (statusCode == "503"
+                 || errorCode == "ThrottlingException"
+                 || errorCode == "ProtocolError")
+                {
+                    Debug.LogWarning($"[BackendGameData] ⚠ Update 일시 실패 (서버 혼잡): {errorCode} — 다음 저장 주기에 재시도");
+                    onComplete?.Invoke(false);
+                    return;
+                }
+
                 Debug.LogError($"[BackendGameData] ❌ Update 실패!\n" +
                     $"  호출: Backend.GameData.UpdateV2(\"{tableName}\", \"{_rowInDate}\")\n" +
                     $"  statusCode: {statusCode}\n" +

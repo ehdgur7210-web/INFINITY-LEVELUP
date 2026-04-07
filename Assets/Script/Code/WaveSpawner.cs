@@ -96,15 +96,14 @@ public class WaveSpawner : MonoBehaviour
 
     private IEnumerator WaitForSaveDataAndStart()
     {
-        // SaveLoadManager.ApplySaveData()가 2프레임 후 실행 → 최대 10프레임 대기
-        int maxWait = 10;
+        // SaveLoadManager.ApplySaveData()가 2프레임 후 실행. 백엔드 로드/씬 매니저 초기화
+        // 지연을 감안해 최대 60프레임(약 1초)까지 대기
+        int maxWait = 60;
         for (int i = 0; i < maxWait && !_saveDataApplied; i++)
             yield return null;
 
         if (!_saveDataApplied)
         {
-            Debug.LogWarning($"[WaveSpawner] ⚠ ApplySaveData 타임아웃! PendingWaveIndex={PendingWaveIndex}, GameDataBridge.offlineCurrentWave={GameDataBridge.CurrentData?.offlineCurrentWave ?? -1}");
-
             // ★ 1순위: PendingWaveIndex (ApplySaveData에서 보관한 값 — SaveGame 덮어쓰기에 안전)
             if (PendingWaveIndex >= 0)
             {
@@ -118,9 +117,15 @@ public class WaveSpawner : MonoBehaviour
                 CurrentWaveIndex = GameDataBridge.CurrentData.offlineCurrentWave;
                 Debug.Log($"[WaveSpawner] ★ GameDataBridge 폴백 복원 성공: Wave {CurrentWaveIndex} ({StageLabel})");
             }
+            // 3순위: 세이브 자체가 없는 신규 플레이어 (정상 케이스)
+            else if (!GameDataBridge.HasData)
+            {
+                Debug.Log("[WaveSpawner] 세이브 없음 → 1-1부터 시작 (신규 플레이어)");
+            }
+            // 4순위: 세이브는 있는데 웨이브 정보가 0/없음 — 신규 캐릭터 슬롯
             else
             {
-                Debug.LogError($"[WaveSpawner] ❌ 웨이브 복원 실패! CurrentWaveIndex={CurrentWaveIndex} (0이면 초기화 버그)");
+                Debug.Log($"[WaveSpawner] 세이브에 웨이브 정보 없음(offlineCurrentWave={GameDataBridge.CurrentData?.offlineCurrentWave ?? -1}) → 1-1부터 시작");
             }
         }
 
