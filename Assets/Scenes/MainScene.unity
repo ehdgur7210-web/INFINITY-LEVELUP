@@ -656,11 +656,14 @@ MonoBehaviour:
   filterButtonPrefab: {fileID: 4341549055628690543, guid: a919e4e353f10e8448cea176882c53f1, type: 3}
   slotContainer: {fileID: 1778938305}
   slotPrefab: {fileID: 536407083820493777, guid: 4417ab7f1c1f1b7498d5a8cc131136ee, type: 3}
+  rarityDropdown: {fileID: 0}
   infoText: {fileID: 155930883}
   bulkEnhanceButton: {fileID: 601743470}
   autoEnhanceButton: {fileID: 1330359520}
   maxEnhanceLevel: 20
   maxBulkCount: 200
+  autoEnhanceDelay: 0.15
+  autoEnhanceMaxPasses: 200
 --- !u!114 &15307184
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -97929,78 +97932,78 @@ MonoBehaviour:
     comboName: "\uB458"
     description: "\uB450\uAC1C\uC758 \uC870\uD569\uC2A4\uD0AC"
     icon: {fileID: 0}
-    effectPrefab: {fileID: 0}
+    effectPrefab: {fileID: 5018313717184830769, guid: 3b4810b1846d8e24298f59a6f8fdae7b, type: 3}
     sound: {fileID: 0}
-    baseDamage: 1000
+    baseDamage: 300
     areaRadius: 10
   tripleSkill:
     comboName: "\uC14B"
     description: "\uC138\uAC1C\uC758 \uC870\uD569\uC2A4\uD0AC"
     icon: {fileID: 0}
-    effectPrefab: {fileID: 0}
+    effectPrefab: {fileID: 693552303230340820, guid: 5ef3501b5b8d0f244bbb3771217afb26, type: 3}
     sound: {fileID: 0}
-    baseDamage: 5000
+    baseDamage: 500
     areaRadius: 15
   straightSkill:
     comboName: "\uC2A4\uD2B8\uB808\uC774\uD2B8"
     description: "1 2 3 4 5\uAC00 \uC5F0\uC18D\uC73C\uB85C \uB098\uC624\uB2E4\uB2C8!"
     icon: {fileID: 0}
-    effectPrefab: {fileID: 0}
+    effectPrefab: {fileID: 5280648209428486394, guid: 098ef2ac28edd344d9ae132cc8c01337, type: 3}
     sound: {fileID: 0}
-    baseDamage: 10000
+    baseDamage: 1000
     areaRadius: 20
   fullHouseSkill:
     comboName: "\uD480\uD558\uC6B0\uC2A4"
     description: "\uD480\uD558\uC6B0\uC2A4\uB2E4!"
     icon: {fileID: 0}
-    effectPrefab: {fileID: 0}
+    effectPrefab: {fileID: 5457749654455867208, guid: e7257f5ece5dc124e91d4064c51fe135, type: 3}
     sound: {fileID: 0}
-    baseDamage: 20000
+    baseDamage: 2000
     areaRadius: 30
   fourOfAKindSkill:
-    comboName: 
-    description: 
+    comboName: "\uD3EC"
+    description: "4\uAC1C!"
     icon: {fileID: 0}
-    effectPrefab: {fileID: 0}
+    effectPrefab: {fileID: 2097955727188757769, guid: f5f3a0c1fe1b1ba448593476aaf1b6bf, type: 3}
     sound: {fileID: 0}
-    baseDamage: 100
+    baseDamage: 3000
     areaRadius: 5
   fiveOfAKindSkills:
-  - comboName: 
-    description: 
+  - comboName: "1\uBE60"
+    description: "1\uC774 \uB2E4\uC12F\uAC1C!"
     icon: {fileID: 0}
-    effectPrefab: {fileID: 0}
+    effectPrefab: {fileID: 8796043290497693099, guid: 946b15e227b4de04da7a6199a52563a3, type: 3}
     sound: {fileID: 0}
-    baseDamage: 100
-    areaRadius: 5
-  - comboName: 
-    description: 
+    baseDamage: 5000
+    areaRadius: 20
+  - comboName: "2\uBE60"
+    description: "2\uAC00 \uB2E4\uC12F\uAC1C!"
     icon: {fileID: 0}
-    effectPrefab: {fileID: 0}
+    effectPrefab: {fileID: 7584972273357522792, guid: cc71ff284b2b6134ca0b2dbffa088e69, type: 3}
     sound: {fileID: 0}
-    baseDamage: 100
-    areaRadius: 5
-  - comboName: 
-    description: 
+    baseDamage: 7000
+    areaRadius: 30
+  - comboName: "3\uBE60"
+    description: "3\uC774 \uB2E4\uC12F\uAC1C!"
     icon: {fileID: 0}
-    effectPrefab: {fileID: 0}
+    effectPrefab: {fileID: 3480532895101187936, guid: 942ed26718fd95041ba6ab53d5d6639e, type: 3}
     sound: {fileID: 0}
-    baseDamage: 100
-    areaRadius: 5
-  - comboName: 
-    description: 
+    baseDamage: 10000
+    areaRadius: 40
+  - comboName: "4\uBE60"
+    description: "4\uAC00 \uB2E4\uC12F\uAC1C!"
     icon: {fileID: 0}
-    effectPrefab: {fileID: 0}
+    effectPrefab: {fileID: 5569663167702603721, guid: 42d5e228ce883fd4ab532d1022118823, type: 3}
     sound: {fileID: 0}
-    baseDamage: 100
-    areaRadius: 5
-  - comboName: 
-    description: 
+    baseDamage: 15000
+    areaRadius: 50
+  - comboName: "\uC624\uBE60"
+    description: "5\uAC00 \uB2E4\uC12F\uAC1C!"
     icon: {fileID: 0}
-    effectPrefab: {fileID: 0}
+    effectPrefab: {fileID: 5721063562124741898, guid: 4338477180a71bc43b8114357e452d42, type: 3}
     sound: {fileID: 0}
-    baseDamage: 100
-    areaRadius: 5
+    baseDamage: 20000
+    areaRadius: 100
   sixOfAKindSkills:
   - comboName: 
     description: 

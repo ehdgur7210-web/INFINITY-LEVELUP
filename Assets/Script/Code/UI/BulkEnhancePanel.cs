@@ -1,3 +1,4 @@
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
@@ -32,20 +33,34 @@ public class BulkEnhancePanel : MonoBehaviour
     [SerializeField] private Transform slotContainer;
     [SerializeField] private GameObject slotPrefab;
 
+    [Header("등급 필터 (선택)")]
+    [Tooltip("등급 선택용 드롭다운 (전체/Common/Uncommon/Rare/Epic/Legendary). 비어두면 항상 '전체' 사용")]
+    [SerializeField] private TMP_Dropdown rarityDropdown;
+
     [Header("하단 정보")]
     [SerializeField] private TextMeshProUGUI infoText;       // "강화수치 +5 / 50개 / 비용 5,000G"
     [SerializeField] private Button bulkEnhanceButton;       // 일괄 강화 버튼
-    [SerializeField] private Button autoEnhanceButton;       // 자동 강화 버튼 (Phase 2용)
+    [SerializeField] private Button autoEnhanceButton;       // 자동 강화 버튼
 
     [Header("설정")]
     [SerializeField] private int maxEnhanceLevel = 20;       // +0 ~ +20
     [SerializeField] private int maxBulkCount = 50;          // 한 번에 강화할 최대 개수
+    [Tooltip("자동 강화 1회 패스 사이 대기 시간(초)")]
+    [SerializeField] private float autoEnhanceDelay = 0.15f;
+    [Tooltip("자동 강화 안전 상한 (무한 루프 방지)")]
+    [SerializeField] private int autoEnhanceMaxPasses = 200;
 
     // 런타임 상태
     private List<BulkFilterButton> _filterButtons = new List<BulkFilterButton>();
     private List<BulkEnhanceSlot> _slots = new List<BulkEnhanceSlot>();
-    private int _currentFilter = 0;  // 현재 선택된 강화수치
+    private int _currentFilter = 0;                  // 현재 선택된 강화수치
+    private ItemRarity? _currentRarity = null;       // null = 전체
     private List<DisplayEntry> _currentDisplayList = new List<DisplayEntry>();
+
+    // 자동 강화 상태
+    private bool _autoEnhanceRunning = false;
+    private Coroutine _autoEnhanceCoroutine;
+    private string _autoEnhanceButtonOriginalLabel;
 
     private class DisplayEntry
     {
@@ -83,9 +98,42 @@ public class BulkEnhancePanel : MonoBehaviour
             bulkEnhanceButton.onClick.AddListener(OnBulkEnhanceClicked);
 
         if (autoEnhanceButton != null)
+        {
             autoEnhanceButton.onClick.AddListener(OnAutoEnhanceClicked);
+            var lbl = autoEnhanceButton.GetComponentInChildren<TextMeshProUGUI>(true);
+            if (lbl != null) _autoEnhanceButtonOriginalLabel = lbl.text;
+        }
+
+        // 등급 드롭다운 초기화
+        if (rarityDropdown != null)
+        {
+            rarityDropdown.ClearOptions();
+            rarityDropdown.AddOptions(new List<string>
+            {
+                "전체 등급", "노멀", "언커먼", "레어", "에픽", "레전더리"
+            });
+            rarityDropdown.onValueChanged.RemoveAllListeners();
+            rarityDropdown.onValueChanged.AddListener(OnRarityDropdownChanged);
+            rarityDropdown.value = 0;
+            rarityDropdown.RefreshShownValue();
+        }
 
         BuildFilterButtons();
+    }
+
+    private void OnRarityDropdownChanged(int idx)
+    {
+        // 0 = 전체, 1~5 = ItemRarity 0~4
+        _currentRarity = idx == 0 ? (ItemRarity?)null : (ItemRarity)(idx - 1);
+        RefreshFilterButtons();
+        SelectFilter(_currentFilter);
+    }
+
+    /// <summary>장비가 현재 등급 필터 조건을 만족하는지</summary>
+    private bool MatchesRarity(EquipmentData eq)
+    {
+        if (_currentRarity == null) return true;
+        return eq != null && eq.rarity == _currentRarity.Value;
     }
 
     // ═══════════════════════════════════════════════
@@ -223,6 +271,7 @@ public class BulkEnhancePanel : MonoBehaviour
         foreach (var eq in ItemDatabase.Instance.allEquipments)
         {
             if (eq == null) continue;
+            if (!MatchesRarity(eq)) continue;
             var instances = GetInstancesForEquipment(eq);
             if (instances == null) continue;
             foreach (var ins in instances)
@@ -288,6 +337,7 @@ public class BulkEnhancePanel : MonoBehaviour
             foreach (var eq in ItemDatabase.Instance.allEquipments)
             {
                 if (eq == null) continue;
+                if (!MatchesRarity(eq)) continue;
                 var instances = GetInstancesForEquipment(eq);
                 if (instances == null) continue;
                 foreach (var ins in instances)
@@ -422,19 +472,39 @@ public class BulkEnhancePanel : MonoBehaviour
 
     private void ExecuteBulkEnhance(int targetCount, int totalGoldCost, int totalCpCost)
     {
-        // CropPoint 사전 검증 (확인 다이얼로그 사이에 잔량이 변했을 수 있음)
+        if (!DoBulkEnhancePass(targetCount, totalGoldCost, totalCpCost, out int success, out int fail, showResultMessage: true))
+            return;
+
+        // UI 갱신
+        SaveLoadManager.Instance?.SaveGame();
+        RefreshFilterButtons();
+        SelectFilter(_currentFilter);
+        CombatPowerManager.Instance?.Recalculate();
+    }
+
+    /// <summary>
+    /// 단일 일괄강화 패스 — 비용 차감 + 강화 시도. 자동강화에서도 재사용.
+    /// </summary>
+    /// <returns>차감 성공 여부 (false면 자원 부족 등)</returns>
+    private bool DoBulkEnhancePass(int targetCount, int totalGoldCost, int totalCpCost,
+        out int success, out int fail, bool showResultMessage)
+    {
+        success = 0;
+        fail = 0;
+
+        // CropPoint 검증
         long curCp = FarmManager.Instance != null ? FarmManager.Instance.GetCropPoints() : 0;
         if (totalCpCost > 0 && (FarmManager.Instance == null || curCp < totalCpCost))
         {
             UIManager.Instance?.ShowMessage("작물 포인트 부족", Color.red);
-            return;
+            return false;
         }
 
         // 골드 차감
         if (GameManager.Instance == null || !GameManager.Instance.SpendGold(totalGoldCost))
         {
             UIManager.Instance?.ShowMessage("골드 차감 실패", Color.red);
-            return;
+            return false;
         }
 
         // CropPoint 차감
@@ -443,10 +513,7 @@ public class BulkEnhancePanel : MonoBehaviour
             FarmManager.Instance.SpendCropPoints(totalCpCost);
         }
 
-        // 성공률 계산용
-        int success = 0, fail = 0;
-
-        // 처음 N개에 대해 강화 시도
+        // 강화 시도
         for (int i = 0; i < targetCount && i < _currentDisplayList.Count; i++)
         {
             var entry = _currentDisplayList[i];
@@ -459,7 +526,7 @@ public class BulkEnhancePanel : MonoBehaviour
                 entry.instance.enhanceLevel++;
                 success++;
 
-                // 업적: 전체 강화 카운트 + 부위별 카운트
+                // 업적: 전체 강화 카운트
                 AchievementSystem.Instance?.UpdateAchievementProgress(
                     AchievementType.EnhanceEquipment, "", 1);
             }
@@ -471,24 +538,20 @@ public class BulkEnhancePanel : MonoBehaviour
             }
         }
 
-        // 사운드 (1회만 — 다중 인스턴스 강화는 결과 우세 기준으로 재생)
+        // 사운드
         if (success > 0)
             SoundManager.Instance?.PlayEnhanceSuccess();
         else if (fail > 0)
             SoundManager.Instance?.PlayEnhanceFail();
 
-        // 결과 메시지
-        UIManager.Instance?.ShowMessage(
-            $"일괄강화완료!\n성공:{success}\n실패:{fail}",
-            success > fail ? Color.green : Color.yellow);
+        if (showResultMessage)
+        {
+            UIManager.Instance?.ShowMessage(
+                $"일괄강화완료!\n성공:{success}\n실패:{fail}",
+                success > fail ? Color.green : Color.yellow);
+        }
 
-        // 저장
-        SaveLoadManager.Instance?.SaveGame();
-
-        // UI 갱신
-        RefreshFilterButtons();
-        SelectFilter(_currentFilter);
-        CombatPowerManager.Instance?.Recalculate();
+        return true;
     }
 
     private bool RollEnhanceSuccess(int level)
@@ -506,12 +569,153 @@ public class BulkEnhancePanel : MonoBehaviour
     }
 
     // ═══════════════════════════════════════════════
-    // 자동 강화 (Phase 2 — 추후 구현)
+    // 자동 강화 — 자원 소진/리스트 비움까지 반복
     // ═══════════════════════════════════════════════
 
     private void OnAutoEnhanceClicked()
     {
-        UIManager.Instance?.ShowMessage("자동강화는준비중입니다.", Color.yellow);
-        // TODO: 목표 강화수치까지 자동 루프 강화
+        SoundManager.Instance?.PlayButtonClick();
+
+        if (_autoEnhanceRunning)
+        {
+            StopAutoEnhance("사용자 중지");
+            return;
+        }
+
+        if (_currentDisplayList == null || _currentDisplayList.Count == 0)
+        {
+            UIManager.Instance?.ShowMessage("강화할 장비가 없습니다.", Color.yellow);
+            return;
+        }
+
+        if (_currentFilter >= maxEnhanceLevel)
+        {
+            UIManager.Instance?.ShowMessage("최대 강화 수치입니다!", Color.yellow);
+            return;
+        }
+
+        // 확인 다이얼로그
+        UIManager.Instance?.ShowConfirmDialog(
+            $"+{_currentFilter}장비를\n자원이 소진될 때까지\n자동 강화합니다.\n\n시작하시겠습니까?",
+            onConfirm: StartAutoEnhance);
+    }
+
+    private void StartAutoEnhance()
+    {
+        if (_autoEnhanceRunning) return;
+        _autoEnhanceRunning = true;
+        SetAutoEnhanceButtonLabel("중지");
+        _autoEnhanceCoroutine = StartCoroutine(AutoEnhanceLoop());
+    }
+
+    private void StopAutoEnhance(string reason)
+    {
+        if (!_autoEnhanceRunning) return;
+        _autoEnhanceRunning = false;
+
+        if (_autoEnhanceCoroutine != null)
+        {
+            StopCoroutine(_autoEnhanceCoroutine);
+            _autoEnhanceCoroutine = null;
+        }
+
+        SetAutoEnhanceButtonLabel(_autoEnhanceButtonOriginalLabel ?? "자동강화");
+
+        if (!string.IsNullOrEmpty(reason))
+            Debug.Log($"[BulkEnhancePanel] 자동강화 종료: {reason}");
+    }
+
+    private void SetAutoEnhanceButtonLabel(string text)
+    {
+        if (autoEnhanceButton == null) return;
+        var lbl = autoEnhanceButton.GetComponentInChildren<TextMeshProUGUI>(true);
+        if (lbl != null) lbl.text = text;
+    }
+
+    private IEnumerator AutoEnhanceLoop()
+    {
+        int totalSuccess = 0, totalFail = 0, passes = 0;
+        string stopReason = "완료";
+
+        while (_autoEnhanceRunning && passes < autoEnhanceMaxPasses)
+        {
+            // 강화할 인스턴스 없음
+            if (_currentDisplayList == null || _currentDisplayList.Count == 0)
+            {
+                stopReason = "강화할 장비 없음";
+                break;
+            }
+
+            // 최대 강화 도달
+            if (_currentFilter >= maxEnhanceLevel)
+            {
+                stopReason = "최대 강화 수치 도달";
+                break;
+            }
+
+            int targetCount = Mathf.Min(_currentDisplayList.Count, maxBulkCount);
+            int totalGoldCost = CalculateBulkCost(_currentFilter, targetCount);
+            int totalCpCost = CalculateBulkCropCost(_currentFilter, targetCount);
+
+            // 자원 사전 확인
+            long currentGold = GameManager.Instance?.PlayerGold ?? 0;
+            long currentCp = FarmManager.Instance != null ? FarmManager.Instance.GetCropPoints() : 0;
+
+            if (currentGold < totalGoldCost)
+            {
+                stopReason = "골드 부족";
+                break;
+            }
+            if (totalCpCost > 0 && currentCp < totalCpCost)
+            {
+                stopReason = "작물포인트 부족";
+                break;
+            }
+
+            // 1패스 실행
+            if (!DoBulkEnhancePass(targetCount, totalGoldCost, totalCpCost,
+                                    out int passSuccess, out int passFail, showResultMessage: false))
+            {
+                stopReason = "패스 실패";
+                break;
+            }
+
+            totalSuccess += passSuccess;
+            totalFail += passFail;
+            passes++;
+
+            // UI 갱신
+            RefreshFilterButtons();
+            SelectFilter(_currentFilter);
+            CombatPowerManager.Instance?.Recalculate();
+
+            // 무한 루프 방지: 진전이 없는 경우(전부 실패하고 +0이라 강화수치 변화 없음) 종료
+            if (passSuccess == 0 && _currentFilter == 0)
+            {
+                stopReason = "진전 없음 (+0 실패 반복)";
+                break;
+            }
+
+            yield return new WaitForSeconds(autoEnhanceDelay);
+        }
+
+        if (passes >= autoEnhanceMaxPasses)
+            stopReason = "안전 상한 도달";
+
+        // 결과 + 저장
+        SaveLoadManager.Instance?.SaveGame();
+
+        UIManager.Instance?.ShowMessage(
+            $"자동강화 종료\n사유: {stopReason}\n총 성공: {totalSuccess}\n총 실패: {totalFail}",
+            Color.cyan);
+
+        StopAutoEnhance(stopReason);
+    }
+
+    void OnDisable()
+    {
+        // 패널이 닫힐 때 자동강화 중이면 강제 종료
+        if (_autoEnhanceRunning)
+            StopAutoEnhance("패널 비활성화");
     }
 }
