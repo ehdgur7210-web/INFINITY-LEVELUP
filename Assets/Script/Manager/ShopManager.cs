@@ -18,11 +18,31 @@ public class ShopManager : MonoBehaviour
 
     [Header("상점 UI")]
     [HideInInspector] public GameObject shopPanel;
+    [Tooltip("폴백용 — 탭 패널이 없을 때 사용 (일일/주간/월간 패널이 설정되어 있으면 무시됨)")]
     [SerializeField] private Transform shopSlotParent;
     [SerializeField] private GameObject shopSlotPrefab;
 
+    /// <summary>
+    /// 현재 탭에 맞는 슬롯 부모 반환
+    /// dailyShopPanel/weeklyShopPanel/monthlyShopPanel을 직접 슬롯 부모로 사용
+    /// (이 필드들이 각 탭의 Content GameObject로 설정되어 있음)
+    /// </summary>
+    private Transform GetCurrentSlotParent()
+    {
+        GameObject panel = currentTab switch
+        {
+            ShopTabType.Daily   => dailyShopPanel,
+            ShopTabType.Weekly  => weeklyShopPanel,
+            ShopTabType.Monthly => monthlyShopPanel,
+            _ => null
+        };
+        return panel != null ? panel.transform : shopSlotParent;
+    }
+
     [Header("상점 데이터")]
     [SerializeField] private ShopData shopData; // ScriptableObject로 관리
+
+    private List<ShopPackage> currentPackages = new List<ShopPackage>();
 
     [Header("상점 탭 버튼")]
     [SerializeField] private Button dailyTabButton;
@@ -197,17 +217,19 @@ public class ShopManager : MonoBehaviour
             img.color = isActive ? activeTabColor : inactiveTabColor;
     }
 
-    /// <summary>현재 탭에 맞는 아이템을 ShopData에서 로드</summary>
+    /// <summary>현재 탭에 맞는 아이템 + 패키지를 ShopData에서 로드</summary>
     private void LoadItemsForCurrentTab()
     {
         if (shopData != null)
         {
             currentItems = shopData.GetItemsByTab(currentTab);
+            currentPackages = shopData.GetPackagesByTab(currentTab);
         }
         else
         {
             Debug.LogWarning("[ShopManager] ShopData가 설정되지 않았습니다!");
             currentItems = new List<ItemData>();
+            currentPackages = new List<ShopPackage>();
         }
 
         // 폴백: 아이템이 비어있으면 자동 로드
@@ -362,7 +384,33 @@ public class ShopManager : MonoBehaviour
             CreateShopSlot(displayItems[i]);
         }
 
-        Debug.Log($"상점 새로고침: {displayCount}/{displayItems.Count}개 아이템 표시 (최대 {maxDisplayCount}개)");
+        // ★ 교환 패키지 슬롯 (젬으로 동료티켓/골드 교환)
+        if (currentPackages != null)
+        {
+            foreach (var pkg in currentPackages)
+            {
+                if (pkg != null) CreatePackageSlot(pkg);
+            }
+        }
+
+        Debug.Log($"상점 새로고침: {displayCount}/{displayItems.Count}개 아이템 + {currentPackages?.Count ?? 0}개 패키지 표시");
+    }
+
+    private void CreatePackageSlot(ShopPackage pkg)
+    {
+        Transform parent = GetCurrentSlotParent();
+        if (shopSlotPrefab == null || parent == null) return;
+
+        GameObject slotObj = Instantiate(shopSlotPrefab, parent);
+        ShopSlot slot = slotObj.GetComponent<ShopSlot>();
+        if (slot == null)
+        {
+            Destroy(slotObj);
+            return;
+        }
+
+        slot.SetupPackage(pkg);
+        shopSlots.Add(slot);
     }
 
     /// <summary>
@@ -372,10 +420,25 @@ public class ShopManager : MonoBehaviour
     {
         List<ItemData> items = new List<ItemData>(currentItems);
 
-        // 카테고리 필터
+        // 카테고리 필터 — Equipment 자동 매칭
         if (currentFilter != ItemType.Misc) // Misc는 전체
         {
-            items = items.Where(item => item.itemType == currentFilter).ToList();
+            items = items.Where(item =>
+            {
+                if (item == null) return false;
+                if (item.itemType == currentFilter) return true;
+
+                // ★ EquipmentData는 EquipmentType으로 카테고리 매칭
+                if (item is EquipmentData eq)
+                {
+                    if (currentFilter == ItemType.Weapon)
+                        return eq.equipmentType == EquipmentType.WeaponLeft || eq.equipmentType == EquipmentType.WeaponRight;
+                    if (currentFilter == ItemType.Armor)
+                        return eq.equipmentType == EquipmentType.Helmet || eq.equipmentType == EquipmentType.Armor
+                            || eq.equipmentType == EquipmentType.Gloves || eq.equipmentType == EquipmentType.Boots;
+                }
+                return false;
+            }).ToList();
         }
 
         // 검색어 필터
@@ -403,13 +466,14 @@ public class ShopManager : MonoBehaviour
             return;
         }
 
-        if (shopSlotPrefab == null || shopSlotParent == null)
+        Transform parent = GetCurrentSlotParent();
+        if (shopSlotPrefab == null || parent == null)
         {
-            Debug.LogError("[ShopManager] shopSlotPrefab 또는 shopSlotParent가 null! Inspector 연결 필요!");
+            Debug.LogError($"[ShopManager] shopSlotPrefab 또는 슬롯부모가 null! 탭={currentTab}");
             return;
         }
 
-        GameObject slotObj = Instantiate(shopSlotPrefab, shopSlotParent);
+        GameObject slotObj = Instantiate(shopSlotPrefab, parent);
         ShopSlot slot = slotObj.GetComponent<ShopSlot>();
 
         // ✅ SlotPrefab에 ShopSlot 컴포넌트가 없는 경우 방어
@@ -622,6 +686,69 @@ public class ShopManager : MonoBehaviour
     }
 
     /// <summary>
+    /// ★ 패키지 구매 (젬 → 동료티켓/장비티켓/골드/젬 교환)
+    /// </summary>
+    public void BuyPackage(ShopPackage pkg)
+    {
+        if (pkg == null || GameManager.Instance == null) return;
+
+        // 젬 확인
+        if (GameManager.Instance.PlayerGem < pkg.gemCost)
+        {
+            UIManager.Instance?.ShowConfirmDialog(
+                $"다이아가부족합니다.\n필요:{pkg.gemCost}\n보유:{GameManager.Instance.PlayerGem}",
+                onConfirm: null);
+            return;
+        }
+
+        // 차감
+        if (!GameManager.Instance.SpendGem(pkg.gemCost))
+            return;
+
+        // 보상 지급
+        switch (pkg.rewardType)
+        {
+            case PackageRewardType.CompanionTicket:
+                if (ResourceBarManager.Instance != null)
+                    ResourceBarManager.Instance.AddCompanionTickets(pkg.rewardAmount);
+                else if (GameDataBridge.CurrentData != null)
+                    GameDataBridge.CurrentData.companionTickets += pkg.rewardAmount;
+                break;
+
+            case PackageRewardType.EquipmentTicket:
+                if (ResourceBarManager.Instance != null)
+                    ResourceBarManager.Instance.AddEquipmentTickets(pkg.rewardAmount);
+                else if (GameDataBridge.CurrentData != null)
+                    GameDataBridge.CurrentData.equipmentTickets += pkg.rewardAmount;
+                break;
+
+            case PackageRewardType.Gold:
+                GameManager.Instance.AddGold(pkg.rewardAmount);
+                break;
+
+            case PackageRewardType.Gem:
+                GameManager.Instance.AddGem(pkg.rewardAmount);
+                break;
+
+            case PackageRewardType.CropPoint:
+                if (FarmManager.Instance != null)
+                    FarmManager.Instance.AddCropPoints(pkg.rewardAmount);
+                else if (GameDataBridge.CurrentData != null)
+                    GameDataBridge.CurrentData.cropPoints += pkg.rewardAmount;
+                break;
+        }
+
+        SoundManager.Instance?.PlayPurchaseSound();
+        SaveLoadManager.Instance?.SaveGame();
+
+        UIManager.Instance?.ShowMessage(
+            $"{pkg.packageName}구매완료!",
+            Color.green);
+
+        Debug.Log($"[ShopManager] 패키지 구매: {pkg.packageName} -{pkg.gemCost}젬 → {pkg.rewardType} +{pkg.rewardAmount}");
+    }
+
+    /// <summary>
     /// 아이템 판매
     /// </summary>
     public void SellItem(ItemData item, int count = 1)
@@ -655,97 +782,5 @@ public class ShopManager : MonoBehaviour
     }
 }
 
-/// <summary>
-/// 상점 탭 타입
-/// </summary>
-public enum ShopTabType
-{
-    Daily,      // 일일상점
-    Weekly,     // 주간상점
-    Monthly     // 월간상점
-}
-
-/// <summary>
-/// 상점 데이터 ScriptableObject
-/// - 일일/주간/월간 아이템 분리
-/// - 할인율 설정
-/// </summary>
-[CreateAssetMenu(fileName = "ShopData", menuName = "Game/Shop Data")]
-public class ShopData : ScriptableObject
-{
-    [Header("일일상점 아이템")]
-    public List<ItemData> dailyItems = new List<ItemData>();
-
-    [Header("주간상점 아이템")]
-    public List<ItemData> weeklyItems = new List<ItemData>();
-
-    [Header("월간상점 아이템")]
-    public List<ItemData> monthlyItems = new List<ItemData>();
-
-    [Header("기본 아이템 (폴백용)")]
-    public List<ItemData> baseItems = new List<ItemData>();
-
-    [Header("희귀 아이템 (낮은 확률로 등장)")]
-    public List<ItemData> rareItems = new List<ItemData>();
-
-    [Header("할인 설정")]
-    public List<CategoryDiscount> discounts = new List<CategoryDiscount>();
-
-    /// <summary>탭별 아이템 가져오기</summary>
-    public List<ItemData> GetItemsByTab(ShopTabType tab)
-    {
-        List<ItemData> items = tab switch
-        {
-            ShopTabType.Daily   => new List<ItemData>(dailyItems),
-            ShopTabType.Weekly  => new List<ItemData>(weeklyItems),
-            ShopTabType.Monthly => new List<ItemData>(monthlyItems),
-            _ => new List<ItemData>()
-        };
-
-        // 탭 전용 아이템이 비어있으면 baseItems + rareItems 폴백
-        if (items.Count == 0)
-        {
-            items.AddRange(baseItems);
-            foreach (var item in rareItems)
-            {
-                if (Random.Range(0f, 1f) <= 0.3f)
-                    items.Add(item);
-            }
-        }
-
-        return items;
-    }
-
-    /// <summary>모든 아이템 가져오기 (폴백용)</summary>
-    public List<ItemData> GetAllItems()
-    {
-        List<ItemData> allItems = new List<ItemData>();
-        allItems.AddRange(dailyItems);
-        allItems.AddRange(weeklyItems);
-        allItems.AddRange(monthlyItems);
-        allItems.AddRange(baseItems);
-        return allItems;
-    }
-
-    /// <summary>카테고리별 할인율 가져오기</summary>
-    public float GetDiscountRate(ItemType itemType)
-    {
-        foreach (var discount in discounts)
-        {
-            if (discount.itemType == itemType)
-                return discount.discountRate;
-        }
-        return 0f;
-    }
-}
-
-/// <summary>
-/// 카테고리별 할인 설정
-/// </summary>
-[System.Serializable]
-public class CategoryDiscount
-{
-    public ItemType itemType;
-    [Range(0f, 1f)]
-    public float discountRate; // 0.2 = 20% 할인
-}
+// ★ ShopData, ShopTabType, ShopPackage, PackageRewardType, CategoryDiscount는
+//   Assets/Script/Code/ShopData.cs 파일로 분리됨 (None script 에러 방지)

@@ -11,12 +11,23 @@ public class ShopSlot : MonoBehaviour
     public ItemData itemData;           // 판매할 아이템 데이터
     public int itemPrice;               // 판매 가격
 
+    // ★ 교환 패키지 모드 (null이면 일반 아이템 모드)
+    [HideInInspector] public ShopPackage packageData;
+
     [Header("UI 참조")]
     public Image itemIconImage;         // 아이템 아이콘
     public Image backgroundImage;       // ⭐ 배경 (등급별 색상)
     public TextMeshProUGUI itemNameText;// 아이템 이름
     public TextMeshProUGUI priceText;   // 가격 텍스트
     public Button buyButton;            // 구매 버튼
+
+    [Header("가격 아이콘 (선택)")]
+    [Tooltip("가격 옆에 표시되는 화폐 아이콘 — 패키지면 다이아, 일반이면 골드로 자동 전환")]
+    public Image priceIconImage;
+    [Tooltip("골드 스프라이트 (일반 아이템 구매용)")]
+    public Sprite goldIconSprite;
+    [Tooltip("다이아 스프라이트 (패키지 구매용)")]
+    public Sprite gemIconSprite;
 
     void Start()
     {
@@ -30,12 +41,24 @@ public class ShopSlot : MonoBehaviour
     }
 
     /// <summary>
-    /// 슬롯 설정
+    /// 슬롯 설정 (일반 아이템)
     /// </summary>
     public void SetupSlot(ItemData item, int price)
     {
         itemData = item;
+        packageData = null;
         itemPrice = price;
+        UpdateSlotUI();
+    }
+
+    /// <summary>
+    /// 슬롯 설정 (교환 패키지 — 젬으로 동료티켓/골드 등 구매)
+    /// </summary>
+    public void SetupPackage(ShopPackage pkg)
+    {
+        packageData = pkg;
+        itemData = null;
+        itemPrice = pkg != null ? pkg.gemCost : 0;
         UpdateSlotUI();
     }
 
@@ -44,9 +67,41 @@ public class ShopSlot : MonoBehaviour
     /// </summary>
     void UpdateSlotUI()
     {
+        // ★ 패키지 모드 (젬 교환)
+        if (packageData != null)
+        {
+            if (itemIconImage != null)
+            {
+                itemIconImage.sprite = packageData.icon;
+                itemIconImage.color = Color.white;
+            }
+
+            // 패키지 배경: 보라색
+            if (backgroundImage != null)
+            {
+                backgroundImage.color = new Color(0.45f, 0.2f, 0.85f, 0.55f);
+                backgroundImage.gameObject.SetActive(true);
+            }
+
+            if (itemNameText != null)
+                itemNameText.text = packageData.packageName;
+
+            // ★ 가격 텍스트는 숫자만 (아이콘은 별도 Image)
+            if (priceText != null)
+                priceText.text = $"{packageData.gemCost}";
+
+            // ★ 가격 아이콘 → 다이아 스프라이트로 교체
+            if (priceIconImage != null && gemIconSprite != null)
+            {
+                priceIconImage.sprite = gemIconSprite;
+                priceIconImage.gameObject.SetActive(true);
+            }
+            return;
+        }
+
+        // 일반 아이템 모드
         if (itemData != null)
         {
-            // 아이템 아이콘
             if (itemIconImage != null)
             {
                 itemIconImage.sprite = itemData.itemIcon;
@@ -65,7 +120,14 @@ public class ShopSlot : MonoBehaviour
             // 가격
             if (priceText != null)
             {
-                priceText.text = $"{itemPrice} G";
+                priceText.text = $"{itemPrice}";
+            }
+
+            // ★ 가격 아이콘 → 골드 스프라이트로 교체
+            if (priceIconImage != null && goldIconSprite != null)
+            {
+                priceIconImage.sprite = goldIconSprite;
+                priceIconImage.gameObject.SetActive(true);
             }
         }
     }
@@ -114,8 +176,21 @@ public class ShopSlot : MonoBehaviour
     /// </summary>
     public void OnBuyButtonClicked()
     {
-        if (itemData == null) return;
         SoundManager.Instance?.PlayButtonClick();
+
+        // ★ 패키지 모드
+        if (packageData != null)
+        {
+            string msg = $"{packageData.packageName}\n{packageData.gemCost}다이아로구매하시겠습니까?";
+            UIManager.Instance?.ShowConfirmDialog(
+                msg,
+                onConfirm: () => ShopManager.Instance?.BuyPackage(packageData),
+                onCancel: null
+            );
+            return;
+        }
+
+        if (itemData == null) return;
 
         // ★ 구매 확인 다이얼로그 — 아이템 이름 + 가격 표시
         string rarityName = GetRarityDisplayName(itemData.rarity);

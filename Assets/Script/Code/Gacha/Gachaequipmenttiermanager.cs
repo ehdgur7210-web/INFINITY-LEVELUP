@@ -282,9 +282,9 @@ public class GachaEquipmentTierManager : MonoBehaviour
 
     public string GetTierName(EquipmentTier tier) => tier switch
     {
-        EquipmentTier.Atom => "⚛️ 원자 장비 뽑기",
-        EquipmentTier.Molecule => "🔬 분자 장비 뽑기",
-        EquipmentTier.DNA => "🧬 DNA 장비 뽑기",
+        EquipmentTier.Atom => "원자 장비 뽑기",
+        EquipmentTier.Molecule => "분자 장비 뽑기",
+        EquipmentTier.DNA => "DNA 장비 뽑기",
         _ => "장비 뽑기"
     };
 

@@ -219,7 +219,7 @@ public class FarmQuestPanelUI : MonoBehaviour
     private void OnQuestCompleted(FarmQuestState q)
     {
         RefreshQuestList();
-        UIManager.Instance?.ShowMessage($"🎉 퀘스트 완료! {q.questTitle}", Color.yellow);
+        UIManager.Instance?.ShowMessage($"퀘스트 완료! {q.questTitle}", Color.yellow);
     }
     private void OnCropPointsChanged(long pts)
     {

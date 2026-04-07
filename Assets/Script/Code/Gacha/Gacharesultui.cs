@@ -523,7 +523,7 @@ public class GachaResultUI : MonoBehaviour
         if (resultTitleText == null) return;
 
         int lv = GetCurrentGachaLevel();
-        string tierName = lv >= 5 ? "🧬 DNA 장비" : lv >= 3 ? "🔬 분자 장비" : "⚛️ 원자 장비";
+        string tierName = lv >= 5 ? "DNA 장비" : lv >= 3 ? "분자 장비" : "원자 장비";
 
         resultTitleText.text = $"{tierName} 뽑기 결과 ({count}개)";
     }

@@ -29,6 +29,9 @@ public class Monster : MonoBehaviour, IHitable
     [SerializeField] private int goldDrop = 10;
     [SerializeField] private int expDrop = 5;
     [SerializeField] private int equipmentTickets = 1;
+    [Range(0f, 100f)]
+    [Tooltip("장비 티켓 드랍 확률 (%)")]
+    [SerializeField] private float equipmentTicketDropChance = 50f;
 
     [Header("아이템 드롭")]
     [Tooltip("드롭 가능한 아이템 목록")]
@@ -457,7 +460,10 @@ public class Monster : MonoBehaviour, IHitable
     {
         if (GameManager.Instance != null && goldDrop > 0) GameManager.Instance.AddGold(goldDrop);
         if (GameManager.Instance != null && expDrop > 0) GameManager.Instance.AddExp(expDrop);
-        if (ResourceBarManager.Instance != null && equipmentTickets > 0) ResourceBarManager.Instance.AddEquipmentTickets(equipmentTickets);
+        // ★ 장비 티켓 — 50% 확률로만 드랍 (Inspector에서 조정 가능)
+        if (ResourceBarManager.Instance != null && equipmentTickets > 0
+            && UnityEngine.Random.Range(0f, 100f) < equipmentTicketDropChance)
+            ResourceBarManager.Instance.AddEquipmentTickets(equipmentTickets);
 
         // ★ 경험치 북 자동 드롭 (100%, 모든 몬스터 공통)
         DropExpBooks();

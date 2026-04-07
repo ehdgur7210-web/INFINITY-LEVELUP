@@ -290,11 +290,21 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   itemData: {fileID: 0}
   itemPrice: 100
+  packageData:
+    packageName: 
+    icon: {fileID: 0}
+    description: 
+    gemCost: 0
+    rewardType: 0
+    rewardAmount: 0
   itemIconImage: {fileID: 7020527212455344063}
   backgroundImage: {fileID: 410839635168541438}
   itemNameText: {fileID: 5565252397643071743}
   priceText: {fileID: 8327242112497469236}
   buyButton: {fileID: 2455884568404940054}
+  priceIconImage: {fileID: 5615252269901931424}
+  goldIconSprite: {fileID: -1376868934, guid: 80b6da9e9d1c80d4d9dfeb53ac72b14b, type: 3}
+  gemIconSprite: {fileID: -727547050, guid: 80b6da9e9d1c80d4d9dfeb53ac72b14b, type: 3}
 --- !u!1 &4712554112043464434
 GameObject:
   m_ObjectHideFlags: 0
@@ -329,7 +339,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 3, y: -92.6}
+  m_AnchoredPosition: {x: 21.8, y: -93.6}
   m_SizeDelta: {x: 160, y: 50}
   m_Pivot: {x: 0.5, y: 0}
 --- !u!222 &6648674128166647608
@@ -363,7 +373,7 @@ MonoBehaviour:
   m_text: 1000
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 434e48a035e113840aa26b093431f1ac, type: 2}
-  m_sharedMaterial: {fileID: 3067487503424294233, guid: 434e48a035e113840aa26b093431f1ac, type: 2}
+  m_sharedMaterial: {fileID: -507605910571446344, guid: 434e48a035e113840aa26b093431f1ac, type: 2}
   m_fontSharedMaterials: []
   m_fontMaterial: {fileID: 0}
   m_fontMaterials: []
@@ -464,7 +474,7 @@ RectTransform:
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
   m_AnchoredPosition: {x: -40, y: -71.9}
-  m_SizeDelta: {x: 15, y: 15}
+  m_SizeDelta: {x: 50, y: 50}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!222 &5718715600400093400
 CanvasRenderer:
@@ -572,7 +582,7 @@ MonoBehaviour:
   m_text: Buy
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 434e48a035e113840aa26b093431f1ac, type: 2}
-  m_sharedMaterial: {fileID: 3067487503424294233, guid: 434e48a035e113840aa26b093431f1ac, type: 2}
+  m_sharedMaterial: {fileID: -507605910571446344, guid: 434e48a035e113840aa26b093431f1ac, type: 2}
   m_fontSharedMaterials: []
   m_fontMaterial: {fileID: 0}
   m_fontMaterials: []

@@ -401,7 +401,7 @@ public class GachaManager : MonoBehaviour
         if (!CheckGachaPool()) return;
         if (!SpendTickets(ticketCostPerGacha * bulkGachaCount)) return;
 
-        UIManager.Instance?.ShowMessage($"⏳ {bulkGachaCount}연차 뽑기 중...", Color.white);
+        UIManager.Instance?.ShowMessage($"{bulkGachaCount}연차 뽑기 중...", Color.white);
         StartCoroutine(BulkGachaCoroutine());
     }
 

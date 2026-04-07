@@ -12,6 +12,36 @@ MonoBehaviour:
   m_Script: {fileID: 0}
   m_Name: ShopData
   m_EditorClassIdentifier: Assembly-CSharp::ShopData
+  dailyItems:
+  - {fileID: 11400000, guid: 0aa93cfa9c554c34d9df8fad80f91084, type: 2}
+  - {fileID: 11400000, guid: 337ad2490f0146249b4b5f408e8395bb, type: 2}
+  - {fileID: 11400000, guid: 533ef4637d5fc2f47af91371be8237aa, type: 2}
+  - {fileID: 11400000, guid: 7f5fd0ed900a0944abdab1120dbccd11, type: 2}
+  - {fileID: 11400000, guid: b54f1f40150cca74f99240d603e5acb2, type: 2}
+  - {fileID: 11400000, guid: 756351d8e9d78bb4380258075746817a, type: 2}
+  - {fileID: 11400000, guid: 3884d708da33b3845b1f4f03a7985d4f, type: 2}
+  - {fileID: 11400000, guid: b7fc901caa64b0c4faf64343b5d8541b, type: 2}
+  weeklyItems:
+  - {fileID: 11400000, guid: 13c168199c836bb438d426f084ff6147, type: 2}
+  - {fileID: 11400000, guid: db9339c1b0f395e4fb56df5a544f0580, type: 2}
+  - {fileID: 11400000, guid: 22308974b25814742ba3822f6e168d95, type: 2}
+  - {fileID: 11400000, guid: 1e2fb5ecc3a0f1a449986dc6ad0eb37c, type: 2}
+  - {fileID: 11400000, guid: 6a085e45c3efb3140ad660ed5c8fefde, type: 2}
+  - {fileID: 11400000, guid: 6c3445e972c55d544a9f673f5639c32f, type: 2}
+  - {fileID: 11400000, guid: b681f08676d3d1a49830cbe584e3527d, type: 2}
+  - {fileID: 11400000, guid: 2cb3f15cdeee9d94d927cb388bb7a1f8, type: 2}
+  - {fileID: 11400000, guid: 27370ec0608257648b0c30e9f8b967c0, type: 2}
+  - {fileID: 11400000, guid: 8576bc0a4361ac24094118bba921f4ff, type: 2}
+  - {fileID: 11400000, guid: 6f86ac53fb2472d4bb959771665f626b, type: 2}
+  - {fileID: 11400000, guid: c476406c54139c740b2c60caa8924151, type: 2}
+  - {fileID: 11400000, guid: 023dfe372a2a365458379d020335915d, type: 2}
+  monthlyItems:
+  - {fileID: 11400000, guid: 9fbe0ab5165fc3f419675261f6c4e7c6, type: 2}
+  - {fileID: 11400000, guid: f8e12ecc4958550409e2b5879a397c41, type: 2}
+  - {fileID: 11400000, guid: 5935e171aa48a9140a395ec7d8dd830a, type: 2}
+  - {fileID: 11400000, guid: 0cf6509ad2a8ddf4e9168bd84e79b0cb, type: 2}
+  - {fileID: 11400000, guid: 82cdab5531f39b447997cc0153b4fbc3, type: 2}
+  - {fileID: 11400000, guid: c79ad12e3d1672a409b896fb90de18e0, type: 2}
   baseItems:
   - {fileID: 11400000, guid: 7f5fd0ed900a0944abdab1120dbccd11, type: 2}
   - {fileID: 11400000, guid: 756351d8e9d78bb4380258075746817a, type: 2}
@@ -26,6 +56,81 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 0cf6509ad2a8ddf4e9168bd84e79b0cb, type: 2}
   - {fileID: 11400000, guid: 82cdab5531f39b447997cc0153b4fbc3, type: 2}
   - {fileID: 11400000, guid: c79ad12e3d1672a409b896fb90de18e0, type: 2}
+  dailyPackages:
+  - packageName: "\uB3D9\uB8CC\uD2F0\uCF13 10\uC7A5"
+    icon: {fileID: -1680704421, guid: 1e7e5edb268fb5c4bb0fc35758c1fda3, type: 3}
+    description: 
+    gemCost: 3000
+    rewardType: 0
+    rewardAmount: 10
+  - packageName: "\uACE8\uB4DC 100,000"
+    icon: {fileID: 501910065, guid: d4a5d41a796228844bbff5d864f39cc5, type: 3}
+    description: 
+    gemCost: 100
+    rewardType: 2
+    rewardAmount: 100000
+  - packageName: "\uC7A5\uBE44\uD2F0\uCF13 100\uC7A5"
+    icon: {fileID: 2103313725, guid: 80b6da9e9d1c80d4d9dfeb53ac72b14b, type: 3}
+    description: 
+    gemCost: 200
+    rewardType: 1
+    rewardAmount: 100
+  - packageName: "\uAD11\uACE0\uC81C\uAC70"
+    icon: {fileID: -430970738, guid: d4a5d41a796228844bbff5d864f39cc5, type: 3}
+    description: 
+    gemCost: 10
+    rewardType: 3
+    rewardAmount: 1
+  weeklyPackages:
+  - packageName: "\uB3D9\uB8CC\uD2F0\uCF13 20\uC7A5"
+    icon: {fileID: -1680704421, guid: 1e7e5edb268fb5c4bb0fc35758c1fda3, type: 3}
+    description: 
+    gemCost: 5000
+    rewardType: 0
+    rewardAmount: 20
+  - packageName: "\uACE8\uB4DC 1,000,000"
+    icon: {fileID: 501910065, guid: d4a5d41a796228844bbff5d864f39cc5, type: 3}
+    description: 
+    gemCost: 800
+    rewardType: 2
+    rewardAmount: 1000000
+  - packageName: "\uC7A5\uBE44\uD2F0\uCF13 300\uC7A5"
+    icon: {fileID: 2103313725, guid: 80b6da9e9d1c80d4d9dfeb53ac72b14b, type: 3}
+    description: 
+    gemCost: 900
+    rewardType: 1
+    rewardAmount: 300
+  - packageName: "\uC791\uBB3C\uD3EC\uC778\uD2B8 1000"
+    icon: {fileID: -1770753945, guid: 80b6da9e9d1c80d4d9dfeb53ac72b14b, type: 3}
+    description: 
+    gemCost: 500
+    rewardType: 4
+    rewardAmount: 1000
+  monthlyPackages:
+  - packageName: "\uB3D9\uB8CC\uD2F0\uCF13 30\uC7A5"
+    icon: {fileID: -1680704421, guid: 1e7e5edb268fb5c4bb0fc35758c1fda3, type: 3}
+    description: 
+    gemCost: 7000
+    rewardType: 0
+    rewardAmount: 30
+  - packageName: "\uACE8\uB4DC 10,000,000"
+    icon: {fileID: 501910065, guid: d4a5d41a796228844bbff5d864f39cc5, type: 3}
+    description: 
+    gemCost: 7000
+    rewardType: 2
+    rewardAmount: 10000000
+  - packageName: "\uC7A5\uBE44\uD2F0\uCF13 500\uC7A5"
+    icon: {fileID: 2103313725, guid: 80b6da9e9d1c80d4d9dfeb53ac72b14b, type: 3}
+    description: 
+    gemCost: 5000
+    rewardType: 1
+    rewardAmount: 500
+  - packageName: "\uC791\uBB3C\uD3EC\uC778\uD2B8 10000"
+    icon: {fileID: -1770753945, guid: 80b6da9e9d1c80d4d9dfeb53ac72b14b, type: 3}
+    description: 
+    gemCost: 4000
+    rewardType: 4
+    rewardAmount: 50000
   discounts:
   - itemType: 0
     discountRate: 0.425

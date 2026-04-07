@@ -81,7 +81,7 @@ public class ShopSellPanel : MonoBehaviour, IDropHandler, IPointerEnterHandler, 
             panelHighlight.color = highlightColor;
 
         if (sellHintText != null)
-            sellHintText.text = "🪙 여기서 손 떼면 판매!";
+            sellHintText.text = "여기서 손 떼면 판매!";
     }
 
     public void OnPointerExit(PointerEventData eventData)
