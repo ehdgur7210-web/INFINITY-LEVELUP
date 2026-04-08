@@ -307,13 +307,17 @@ public class ItemDatabase : MonoBehaviour
     //  공개 검색 메서드들 (기존 코드와 동일)
     // ════════════════════════════════════════════════════════════════════════
 
-    /// <summary>ID로 일반 아이템 검색</summary>
+    /// <summary>ID로 일반 아이템 검색 (장비 dictionary에도 자동 폴백)</summary>
     public ItemData GetItemByID(int itemID)
     {
         if (itemDictionary.TryGetValue(itemID, out ItemData item))
             return item;
 
-        Debug.LogWarning($"[ItemDatabase] 아이템을 찾을 수 없습니다. ID: {itemID}");
+        // ★ 장비도 ItemData를 상속하므로 폴백 (호출측에서 장비/일반 구분 안 해도 동작)
+        //   기존 LogWarning은 노이즈만 양산하므로 제거 — 호출측에서 null 처리
+        if (equipmentDictionary.TryGetValue(itemID, out EquipmentData eq))
+            return eq;
+
         return null;
     }
 

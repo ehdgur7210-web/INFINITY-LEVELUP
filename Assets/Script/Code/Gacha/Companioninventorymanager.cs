@@ -47,6 +47,22 @@ public class CompanionInventoryManager : MonoBehaviour
         Debug.Log($"[CompanionInventory] ★ Awake — Instance 등록 완료 (GO: {gameObject.name})");
     }
 
+    void Start()
+    {
+        if (Instance != this) return;
+
+        // ★★ 재진입 race fix:
+        //    SaveLoadManager.AutoLoadOnStart는 2프레임 지연 후 LoadSaveData를 호출하지만,
+        //    그 사이에 SaveGame이 발화하면 IsCompanionLoaded=false로 폴백 처리됨.
+        //    GameDataBridge에 데이터가 이미 있으면 SaveLoadManager를 기다리지 말고 즉시 자체 로드.
+        if (!IsCompanionLoaded && GameDataBridge.CurrentData?.companions != null)
+        {
+            var allCompanions = new List<CompanionData>(Resources.FindObjectsOfTypeAll<CompanionData>());
+            Debug.Log($"[CompanionInventoryManager] ★ Start 자체 선로드: GameDataBridge에서 {GameDataBridge.CurrentData.companions.Length}명 즉시 로드");
+            LoadSaveData(GameDataBridge.CurrentData.companions, allCompanions);
+        }
+    }
+
     // ════════════════════════════════════════════════════════════════════════════════════════════════
     //  동료 추가 (가챠 매니저에서 호출)
     // ════════════════════════════════════════════════════════════════════════════════════════════════

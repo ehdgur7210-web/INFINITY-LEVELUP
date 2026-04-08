@@ -305,10 +305,27 @@ public class InventoryManager : MonoBehaviour
         }
 
         equipDataReady = true;
-        BuildEquipSlots();
-        SelectTab(InvenTabType.Equip);
 
-        Debug.Log($"[InventoryManager] ItemDatabase 준비 완료 (대기 {waited:F1}초) → 장비 슬롯: {equipSlots.Count}개");
+        // ★★ 재진입 race fix:
+        //    SaveLoadManager.AutoLoadOnStart는 2프레임 지연 후 LoadInventoryData를 호출하지만,
+        //    그 사이에 SaveGame/AddItem이 발화하면 빈 인벤토리로 동작 → 데이터 손실/UI 비어있음.
+        //    GameDataBridge에 데이터가 이미 있으면 SaveLoadManager를 기다리지 말고 즉시 자체 로드.
+        //    LoadInventoryData가 IsInventoryLoaded=true와 BuildEquipSlots를 모두 처리하므로
+        //    이 경로면 BuildEquipSlots/SelectTab을 별도로 호출할 필요 없음.
+        if (!IsInventoryLoaded && GameDataBridge.CurrentData?.inventoryItems != null
+            && GameDataBridge.CurrentData.inventoryItems.Length > 0)
+        {
+            Debug.Log($"[InventoryManager] ★ Start 자체 선로드: GameDataBridge에서 {GameDataBridge.CurrentData.inventoryItems.Length}개 즉시 로드 (SaveLoadManager 대기 안 함)");
+            LoadInventoryData(GameDataBridge.CurrentData.inventoryItems);
+            SelectTab(InvenTabType.Equip);
+        }
+        else
+        {
+            BuildEquipSlots();
+            SelectTab(InvenTabType.Equip);
+        }
+
+        Debug.Log($"[InventoryManager] ItemDatabase 준비 완료 (대기 {waited:F1}초) → 장비 슬롯: {equipSlots.Count}개, IsInventoryLoaded={IsInventoryLoaded}");
     }
 
     // ═══════════════════════════════════════════════════════════════
@@ -1714,10 +1731,6 @@ public class InventoryManager : MonoBehaviour
 
         // 다음 프레임에 한 번 더 — 컨테이너/탭 상태가 늦게 바인딩되는 케이스 대비
         StartCoroutine(PostLoadRebuildNextFrame());
-
-        // ★ 동료/기타 탭 UI도 함께 갱신 (재진입 시 빈 UI 방지)
-        if (CompanionInventoryManager.Instance != null)
-            CompanionInventoryManager.Instance.RefreshUI();
 
         // ★ 로드 완료 플래그 — 이후 SaveGame이 호출돼도 정상 데이터로 저장 가능
         IsInventoryLoaded = true;
