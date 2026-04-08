@@ -68,7 +68,7 @@ MonoBehaviour:
   m_text: 1
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 434e48a035e113840aa26b093431f1ac, type: 2}
-  m_sharedMaterial: {fileID: 3067487503424294233, guid: 434e48a035e113840aa26b093431f1ac, type: 2}
+  m_sharedMaterial: {fileID: -507605910571446344, guid: 434e48a035e113840aa26b093431f1ac, type: 2}
   m_fontSharedMaterials: []
   m_fontMaterial: {fileID: 0}
   m_fontMaterials: []
@@ -202,7 +202,7 @@ MonoBehaviour:
   m_text: lv.1000
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 434e48a035e113840aa26b093431f1ac, type: 2}
-  m_sharedMaterial: {fileID: 3067487503424294233, guid: 434e48a035e113840aa26b093431f1ac, type: 2}
+  m_sharedMaterial: {fileID: -507605910571446344, guid: 434e48a035e113840aa26b093431f1ac, type: 2}
   m_fontSharedMaterials: []
   m_fontMaterial: {fileID: 0}
   m_fontMaterials: []
@@ -336,7 +336,7 @@ MonoBehaviour:
   m_text: E
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 434e48a035e113840aa26b093431f1ac, type: 2}
-  m_sharedMaterial: {fileID: 3067487503424294233, guid: 434e48a035e113840aa26b093431f1ac, type: 2}
+  m_sharedMaterial: {fileID: -507605910571446344, guid: 434e48a035e113840aa26b093431f1ac, type: 2}
   m_fontSharedMaterials: []
   m_fontMaterial: {fileID: 0}
   m_fontMaterials: []
@@ -654,6 +654,7 @@ GameObject:
   - component: {fileID: 5772145451761270707}
   - component: {fileID: 1606693129902897651}
   - component: {fileID: 1210742612207533616}
+  - component: {fileID: -1668149323435286780}
   m_Layer: 5
   m_Name: invenSlot
   m_TagString: Untagged
@@ -757,6 +758,32 @@ MonoBehaviour:
   itemLevel: 0
   isUnlocked: 0
   slotIndex: -1
+--- !u!114 &-1668149323435286780
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6298881897700446525}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3e51193e767097249beb4c2ff1f42e0c, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  itemIconImage: {fileID: 7032208287021264324}
+  backgroundImage: {fileID: 1606693129902897651}
+  enhanceLevelText: {fileID: 5811545826170648393}
+  itemLevelText: {fileID: 6989514958948188190}
+  lockIcon: {fileID: 0}
+  lockedNameText: {fileID: 0}
+  rarityBorderImage: {fileID: 0}
+  equippedBadge: {fileID: 4533657075922477341}
+  countText: {fileID: 1757536571420961083}
+  itemData: {fileID: 0}
+  itemCount: 0
+  enhanceLevel: 0
+  itemLevel: 0
+  isUnlocked: 0
 --- !u!1 &7735352831040409329
 GameObject:
   m_ObjectHideFlags: 0
@@ -945,7 +972,7 @@ MonoBehaviour:
   m_text: 1
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 434e48a035e113840aa26b093431f1ac, type: 2}
-  m_sharedMaterial: {fileID: 3067487503424294233, guid: 434e48a035e113840aa26b093431f1ac, type: 2}
+  m_sharedMaterial: {fileID: -507605910571446344, guid: 434e48a035e113840aa26b093431f1ac, type: 2}
   m_fontSharedMaterials: []
   m_fontMaterial: {fileID: 0}
   m_fontMaterials: []
