@@ -69,7 +69,11 @@ public class FarmManager : MonoBehaviour
 
     void Awake()
     {
-        Debug.Log($"[FarmManager] ★ Awake 진입! this={gameObject.name} / activeInHierarchy:{gameObject.activeInHierarchy} / Instance현재:{(Instance != null ? Instance.gameObject?.name ?? "DESTROYED" : "null")}");
+        Debug.Log($"[FarmManager] ★ Awake 진입! this={gameObject.name} / activeInHierarchy:{gameObject.activeInHierarchy} / Instance현재:{(Instance != null ? Instance.gameObject?.name ?? "DESTROYED" : "null")} / serializedCropPoints={cropPoints}");
+
+        // ★ 직렬화된 cropPoints 값은 무시 — 항상 0에서 시작해서 Load로만 채워야 함
+        //   (Inspector에 잘못된 값이 저장되어도 매 Play 시작이 그 값으로 오염되는 것 방지)
+        cropPoints = 0;
 
         // ★ 파괴된 Instance 정리 (씬 전환 시 OnDestroy 누락 대비)
         if (Instance != null)
@@ -91,11 +95,29 @@ public class FarmManager : MonoBehaviour
         }
         else if (Instance != this)
         {
-            // ★ 씬 전환 시: 이전 Instance의 이벤트 정리 후 교체
-            //   FarmManager가 FarmCanvas 하위에 있으므로 Destroy(gameObject) 사용 금지
-            //   이전 Instance는 씬 언로드 시 자동 파괴됨
+            // ★★ 중복 FarmManager 차단: 기존 Instance의 allCrops가 더 많거나 같으면 새 인스턴스를 파괴
+            //    (allCrops:1짜리 더미가 allCrops:8짜리 정상 인스턴스를 밀어내는 사고 방지)
+            int newAllCrops = allCrops?.Count ?? 0;
+            int oldAllCrops = Instance.allCrops?.Count ?? 0;
+            if (oldAllCrops >= newAllCrops && oldAllCrops > 0)
+            {
+                Debug.LogWarning($"[FarmManager] ⚠ 중복 FarmManager 감지 → 새 인스턴스 파괴 " +
+                    $"(기존 allCrops:{oldAllCrops} >= 새 allCrops:{newAllCrops})");
+                // 중복 GameObject 파괴 (자식 컴포넌트면 enabled만 끔)
+                if (gameObject.scene.IsValid() && gameObject != Instance.gameObject)
+                {
+                    Destroy(gameObject);
+                }
+                else
+                {
+                    enabled = false;
+                }
+                return;
+            }
+
+            // 새 인스턴스가 더 정상적인 데이터를 가지면 교체 (드물게 정상 케이스)
             FarmManager oldInstance = Instance;
-            Debug.Log($"[FarmManager] Instance 교체: 이전={oldInstance.gameObject.name} → 새={gameObject.name} (allCrops:{allCrops?.Count ?? 0})");
+            Debug.LogWarning($"[FarmManager] Instance 교체 (새 allCrops:{newAllCrops} > 기존 allCrops:{oldAllCrops}): {oldInstance.gameObject.name} → {gameObject.name}");
             if (oldInstance != null) oldInstance.enabled = false;
             Instance = this;
         }
@@ -151,12 +173,59 @@ public class FarmManager : MonoBehaviour
 
     void OnDestroy()
     {
-        Debug.Log($"[FarmManager] ★ OnDestroy 호출: {gameObject.name} / isInstance:{Instance == this} / scene:{gameObject.scene.name}");
+        // ★ 진단: OnDestroy 진입 시점의 모든 cropPoints 값 출력
+        var cdEntry = GameDataBridge.CurrentData;
+        long entryField = cropPoints;
+        long entryBridgeTop = cdEntry?.cropPoints ?? -1;
+        long entryBridgeFarm = cdEntry?.farmData?.cropPoints ?? -1;
+        Debug.Log($"[FarmManager] ★ OnDestroy 진입: field={entryField}, bridgeTop={entryBridgeTop}, bridgeFarm={entryBridgeFarm} / isInstance:{Instance == this} / scene:{gameObject.scene.name}");
+
+        // ★ 씬 전환 시 cropPoints 유실 방지: GameDataBridge 동기화 + 즉시 저장
         if (Instance == this)
         {
+            SyncCropPointsToBridge();
+            try
+            {
+                SaveLoadManager.Instance?.SaveGame();
+                Debug.Log($"[FarmManager] ★ OnDestroy 저장 완료 (cropPoints={cropPoints})");
+            }
+            catch (Exception e)
+            {
+                Debug.LogWarning($"[FarmManager] OnDestroy 저장 실패: {e.Message}");
+            }
+
             Instance = null;
             Debug.Log("[FarmManager] ★ Instance = null 설정됨 (씬 전환)");
         }
+    }
+
+    /// <summary>
+    /// FarmManager.cropPoints와 GameDataBridge의 top-level / farmData 세 곳을
+    /// **Max 기반**으로 동기화. 어느 한쪽이 0(미초기화)이어도 다른 곳의 값으로 회복됨.
+    /// → 씬 전환 직전 FarmManager 필드가 일시적으로 0이 되는 케이스에서도 데이터 보존.
+    /// </summary>
+    private void SyncCropPointsToBridge()
+    {
+        var cd = GameDataBridge.CurrentData;
+        if (cd == null)
+        {
+            Debug.LogWarning($"[FarmManager:Sync] GameDataBridge.CurrentData == null! cropPoints={cropPoints}");
+            return;
+        }
+        long fieldCp   = cropPoints;
+        long bridgeTop = cd.cropPoints;
+        long bridgeFarm = cd.farmData?.cropPoints ?? 0;
+        long maxCp = System.Math.Max(fieldCp, System.Math.Max(bridgeTop, bridgeFarm));
+
+        // ★ 진단 로그: 값 불일치 또는 0 회복이 일어나면 출력
+        if (fieldCp != bridgeTop || fieldCp != bridgeFarm || maxCp != fieldCp)
+            Debug.LogWarning($"[FarmManager:Sync] field={fieldCp}, bridgeTop={bridgeTop}, bridgeFarm={bridgeFarm} → max={maxCp} (회복 적용)");
+
+        // FarmManager 필드도 같이 회복 (0 클로버링 방지)
+        cropPoints = maxCp;
+        cd.cropPoints = maxCp;
+        if (cd.farmData != null)
+            cd.farmData.cropPoints = maxCp;
     }
 
     void Update()
@@ -661,7 +730,10 @@ public class FarmManager : MonoBehaviour
     {
         if (amount <= 0) return;
         cropPoints += amount;
+        // ★ 양쪽 필드 동기화 + 즉시 저장 (씬 전환 직전 유실 방지)
+        SyncCropPointsToBridge();
         OnCropPointsChanged?.Invoke(cropPoints);
+        SaveLoadManager.Instance?.SaveGame();
         Debug.Log($"[FarmManager] 작물포인트 +{amount} (총 {cropPoints})");
     }
 
@@ -673,7 +745,10 @@ public class FarmManager : MonoBehaviour
             return false;
         }
         cropPoints = System.Math.Max(0L, cropPoints - amount);
+        // ★ 양쪽 필드 동기화 + 즉시 저장
+        SyncCropPointsToBridge();
         OnCropPointsChanged?.Invoke(cropPoints);
+        SaveLoadManager.Instance?.SaveGame();
         Debug.Log($"[FarmManager] CropPoint -{amount} → {cropPoints}");
         return true;
     }
@@ -889,6 +964,9 @@ public class FarmManager : MonoBehaviour
     {
         FarmSaveData data = new FarmSaveData();
         data.totalHarvestCount = totalHarvestCount;
+        // ★ top-level cropPoints가 더 높으면(메일/VIP/상점이 갱신) 그 값을 채택해 양쪽 동기화
+        long topLevelCp = GameDataBridge.CurrentData?.cropPoints ?? 0;
+        if (topLevelCp > cropPoints) cropPoints = topLevelCp;
         data.cropPoints = cropPoints;
         data.plots = new FarmPlotSaveData[plots.Count];
 
@@ -935,7 +1013,12 @@ public class FarmManager : MonoBehaviour
         if (data == null || data.plots == null) return;
 
         totalHarvestCount = data.totalHarvestCount;
-        cropPoints = data.cropPoints;
+        // ★ cropPoints는 top-level과 farmData 중 더 높은 값을 채택
+        //   (메일/VIP/상점 보상이 top-level만 갱신할 수 있고,
+        //    FarmScene에서 직접 갱신은 farmData에만 들어갈 수 있음 → 양쪽 보존)
+        long topLevelCp = GameDataBridge.CurrentData?.cropPoints ?? 0;
+        cropPoints = System.Math.Max(topLevelCp, data.cropPoints);
+        SyncCropPointsToBridge();
         OnCropPointsChanged?.Invoke(cropPoints);
 
         foreach (var savedPlot in data.plots)

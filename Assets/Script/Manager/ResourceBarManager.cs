@@ -68,7 +68,18 @@ public class ResourceBarManager : MonoBehaviour
     void Start()
     {
         // ★ FarmScene → MainScene 전환 시 저장된 cropPoints 복원
-        cropPoints = GameDataBridge.CurrentData?.farmData?.cropPoints ?? 0;
+        //   top-level과 farmData 중 더 큰 값을 채택해 두 필드 불일치로 인한 0-리셋 방지
+        long topCp = GameDataBridge.CurrentData?.cropPoints ?? 0;
+        long farmCp = GameDataBridge.CurrentData?.farmData?.cropPoints ?? 0;
+        cropPoints = System.Math.Max(topCp, farmCp);
+        Debug.Log($"[ResourceBar:Start] cropPoints 복원: bridgeTop={topCp}, bridgeFarm={farmCp} → {cropPoints}");
+        // 동기화: 양쪽이 다르면 큰 값으로 통일해 다음 저장 때 일관 유지
+        if (GameDataBridge.CurrentData != null)
+        {
+            GameDataBridge.CurrentData.cropPoints = cropPoints;
+            if (GameDataBridge.CurrentData.farmData != null)
+                GameDataBridge.CurrentData.farmData.cropPoints = cropPoints;
+        }
 
         UpdateAllResourceUI();
 

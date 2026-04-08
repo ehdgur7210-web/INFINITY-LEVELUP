@@ -180,13 +180,24 @@ public class SaveLoadManager : MonoBehaviour
             // ★ 항상 활성 캐릭터 슬롯에 저장 (인자 무시)
             int slot = GameDataBridge.ActiveSlot;
             SaveData data = CollectSaveData();
+
+            // ★★★ 데이터 손실 방지: CollectSaveData가 null을 반환하면 저장 중단 ★★★
+            //   (CollectSaveData에서 GameManager + GameDataBridge 둘 다 무효일 때 null 반환)
+            if (data == null)
+            {
+                Debug.LogError("[SaveLoadManager] ⚠⚠ SaveGame 중단 — CollectSaveData가 null 반환 (덮어쓰기 방지)");
+                return;
+            }
+
             string scene = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name;
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
             Debug.Log($"[SAVE-DEBUG] ★ SaveGame 호출 씬={scene}" +
                 $" | 장비={data.equipmentData?.slots?.Count ?? -1}개" +
                 $" | 인벤={data.inventoryItems?.Length ?? -1}개" +
                 $" | 동료={data.companions?.Length ?? -1}개" +
                 $" | 골드={data.playerGold} | 젬={data.playerGem} | Lv={data.playerLevel}" +
                 $" | 웨이브={data.offlineCurrentWave}");
+#endif
             GameDataBridge.SetData(data);       // 인메모리 갱신
             GameDataBridge.WriteToFile(slot);    // JSON 파일 기록
 
@@ -246,19 +257,28 @@ public class SaveLoadManager : MonoBehaviour
         data.playTime = savedPlayTime + (Time.realtimeSinceStartup - sessionStartTime);
 
         // ── GameManager ──
-        if (GameManager.Instance != null)
+        // ★ MainScene이 아니거나 GameManager가 null이면 GameDataBridge 폴백 (기존값 보존)
+        //   GameDataBridge.CurrentData도 null이면 SaveGame 자체를 스킵해야 함 (덮어쓰기 위험)
+        if (isMainScene && GameManager.Instance != null)
         {
             data.playerGold = GameManager.Instance.PlayerGold;
             data.playerGem = GameManager.Instance.PlayerGem;
             data.playerExp = GameManager.Instance.PlayerExp;
             data.playerLevel = GameManager.Instance.PlayerLevel;
         }
-        else if (GameDataBridge.CurrentData != null)
+        else if (GameDataBridge.CurrentData != null && GameDataBridge.CurrentData.playerLevel > 0)
         {
+            // ★ 기존 값이 있을 때만 폴백 (level=0은 아직 미초기화 상태로 간주)
             data.playerGold = GameDataBridge.CurrentData.playerGold;
             data.playerGem = GameDataBridge.CurrentData.playerGem;
             data.playerExp = GameDataBridge.CurrentData.playerExp;
             data.playerLevel = GameDataBridge.CurrentData.playerLevel;
+            Debug.Log($"[SAVE-PROTECT] GameManager 폴백 사용: Lv{data.playerLevel}, Gold={data.playerGold} (씬:{currentScene})");
+        }
+        else
+        {
+            Debug.LogError($"[SAVE-PROTECT] ⚠⚠ GameManager + GameDataBridge 둘 다 무효 → 저장 중단! 씬:{currentScene}");
+            return null; // ★ 저장 중단 신호
         }
 
         // ── PlayerStats ──
@@ -281,10 +301,32 @@ public class SaveLoadManager : MonoBehaviour
         }
 
         // ── 인벤토리 (MainScene 전용) ──
-        if (isMainScene && InventoryManager.Instance != null)
-            data.inventoryItems = InventoryManager.Instance.GetInventoryData();
+        // ★★ 데이터 손실 방지 (3단 가드):
+        //    1. IsInventoryLoaded == false: 아직 로드 안 됐으므로 GameDataBridge 폴백 사용
+        //    2. 메모리가 비어있는데 Bridge에 값이 있으면 Bridge 사용 (race 보호)
+        //    3. 그 외엔 메모리 값 사용 (정상 케이스)
+        if (isMainScene && InventoryManager.Instance != null && InventoryManager.Instance.IsInventoryLoaded)
+        {
+            var invFromMgr = InventoryManager.Instance.GetInventoryData();
+            int memCount = invFromMgr?.Length ?? 0;
+            int bridgeCount = GameDataBridge.CurrentData?.inventoryItems?.Length ?? 0;
+            if (memCount == 0 && bridgeCount > 0)
+            {
+                data.inventoryItems = GameDataBridge.CurrentData.inventoryItems;
+                Debug.LogWarning($"[SAVE-PROTECT] InventoryManager 빈 배열 → GameDataBridge 폴백 사용 ({bridgeCount}개)");
+            }
+            else
+            {
+                data.inventoryItems = invFromMgr;
+            }
+        }
         else if (GameDataBridge.CurrentData?.inventoryItems != null)
+        {
+            // ★ InventoryManager 미준비 또는 다른 씬 → GameDataBridge 폴백 (덮어쓰기 방지)
             data.inventoryItems = GameDataBridge.CurrentData.inventoryItems;
+            if (isMainScene && InventoryManager.Instance != null && !InventoryManager.Instance.IsInventoryLoaded)
+                Debug.LogWarning($"[SAVE-PROTECT] InventoryManager.IsInventoryLoaded=false → GameDataBridge 폴백 사용 ({GameDataBridge.CurrentData.inventoryItems.Length}개)");
+        }
 
         // ── 퀘스트 ──
         if (QuestManager.Instance != null)
@@ -314,19 +356,38 @@ public class SaveLoadManager : MonoBehaviour
         else if (GameDataBridge.CurrentData?.achievementSaveData != null)
             data.achievementSaveData = GameDataBridge.CurrentData.achievementSaveData;
 
-        // ── 리소스 (티켓/광물) ──
-        if (ResourceBarManager.Instance != null)
+        // ── 리소스 (티켓/광물/cropPoints) ──
+        // ★ ResourceBarManager는 MainScene 전용 — FarmScene에서는 null이므로 GameDataBridge 폴백
+        //   다만 GameDataBridge 값이 0이면 진짜 0인지 미초기화인지 알 수 없어 위험.
+        //   FarmScene에서는 FarmManager의 GetCropPoints()를 우선 사용해서 가장 정확한 값을 가져옴.
+        // ★★ 데이터 손실 방지: ResourceBarManager의 각 필드가 0이고 GameDataBridge 값이 더 크면
+        //    그 값을 보존(아직 Start로 로드되지 않은 상태에서 0으로 덮어쓰기 차단)
+        if (isMainScene && ResourceBarManager.Instance != null)
         {
-            data.equipmentTickets = ResourceBarManager.Instance.equipmentTickets;
-            data.companionTickets = ResourceBarManager.Instance.companionTickets;
-            data.relicTickets = ResourceBarManager.Instance.relicTickets;
-            data.crystals = ResourceBarManager.Instance.crystals;
-            data.essences = ResourceBarManager.Instance.essences;
-            data.fragments = ResourceBarManager.Instance.fragments;
-            data.cropPoints = ResourceBarManager.Instance.cropPoints; // ★ 작물 포인트 저장
+            var rbm = ResourceBarManager.Instance;
+            var bridge = GameDataBridge.CurrentData;
+            data.equipmentTickets = (rbm.equipmentTickets == 0 && (bridge?.equipmentTickets ?? 0) > 0) ? bridge.equipmentTickets : rbm.equipmentTickets;
+            data.companionTickets = (rbm.companionTickets == 0 && (bridge?.companionTickets ?? 0) > 0) ? bridge.companionTickets : rbm.companionTickets;
+            data.relicTickets     = (rbm.relicTickets    == 0 && (bridge?.relicTickets    ?? 0) > 0) ? bridge.relicTickets    : rbm.relicTickets;
+            data.crystals         = (rbm.crystals        == 0 && (bridge?.crystals        ?? 0) > 0) ? bridge.crystals        : rbm.crystals;
+            data.essences         = (rbm.essences        == 0 && (bridge?.essences        ?? 0) > 0) ? bridge.essences        : rbm.essences;
+            data.fragments        = (rbm.fragments       == 0 && (bridge?.fragments       ?? 0) > 0) ? bridge.fragments       : rbm.fragments;
+            // ★ cropPoints: ResourceBar / Bridge top-level / Bridge farmData 중 가장 큰 값 채택
+            long _rbCp     = rbm.cropPoints;
+            long _brCp     = bridge?.cropPoints ?? 0;
+            long _brFarmCp = bridge?.farmData?.cropPoints ?? 0;
+            data.cropPoints = System.Math.Max(_rbCp, System.Math.Max(_brCp, _brFarmCp));
+            if (data.cropPoints != _rbCp)
+            {
+                Debug.LogWarning($"[SAVE-PROTECT] cropPoints ResourceBar({_rbCp}) < Bridge(top:{_brCp}, farm:{_brFarmCp}) → 큰 값 채택({data.cropPoints})");
+                // ★ ResourceBar 필드도 갱신해서 UI가 다음 프레임부터 정확한 값 표시
+                rbm.cropPoints = data.cropPoints;
+                rbm.UpdateAllResourceUI();
+            }
         }
         else if (GameDataBridge.CurrentData != null)
         {
+            // ★ 폴백: 기존 GameDataBridge 값 보존 (덮어쓰기 방지)
             data.equipmentTickets = GameDataBridge.CurrentData.equipmentTickets;
             data.companionTickets = GameDataBridge.CurrentData.companionTickets;
             data.relicTickets = GameDataBridge.CurrentData.relicTickets;
@@ -334,6 +395,19 @@ public class SaveLoadManager : MonoBehaviour
             data.essences = GameDataBridge.CurrentData.essences;
             data.fragments = GameDataBridge.CurrentData.fragments;
             data.cropPoints = GameDataBridge.CurrentData.cropPoints;
+
+            // ★ FarmScene이면 FarmManager에서 직접 cropPoints 가져와 갱신 (가장 정확)
+            if (!isMainScene && FarmManager.Instance != null)
+            {
+                long farmCp = FarmManager.Instance.GetCropPoints();
+                if (farmCp > 0 || data.cropPoints == 0)
+                {
+                    data.cropPoints = farmCp;
+                    Debug.Log($"[SAVE-PROTECT] cropPoints FarmManager에서 직접 수집: {farmCp} (씬:{currentScene})");
+                }
+            }
+
+            Debug.Log($"[SAVE-PROTECT] 리소스 GameDataBridge 폴백: Crop={data.cropPoints}, Tickets={data.equipmentTickets} (씬:{currentScene})");
         }
 
         // ── 가챠 (MainScene 전용) ──
@@ -349,10 +423,28 @@ public class SaveLoadManager : MonoBehaviour
         }
 
         // ── 동료 (MainScene 전용) ──
-        if (isMainScene && CompanionInventoryManager.Instance != null)
-            data.companions = CompanionInventoryManager.Instance.GetSaveData();
+        // ★★ 데이터 손실 방지: IsCompanionLoaded == false면 GameDataBridge 폴백
+        if (isMainScene && CompanionInventoryManager.Instance != null && CompanionInventoryManager.Instance.IsCompanionLoaded)
+        {
+            var compFromMgr = CompanionInventoryManager.Instance.GetSaveData();
+            int memCount = compFromMgr?.Length ?? 0;
+            int bridgeCount = GameDataBridge.CurrentData?.companions?.Length ?? 0;
+            if (memCount == 0 && bridgeCount > 0)
+            {
+                data.companions = GameDataBridge.CurrentData.companions;
+                Debug.LogWarning($"[SAVE-PROTECT] CompanionInventoryManager 빈 배열 → GameDataBridge 폴백 사용 ({bridgeCount}명)");
+            }
+            else
+            {
+                data.companions = compFromMgr;
+            }
+        }
         else if (GameDataBridge.CurrentData?.companions != null)
+        {
             data.companions = GameDataBridge.CurrentData.companions;
+            if (isMainScene && CompanionInventoryManager.Instance != null && !CompanionInventoryManager.Instance.IsCompanionLoaded)
+                Debug.LogWarning($"[SAVE-PROTECT] CompanionInventoryManager.IsCompanionLoaded=false → GameDataBridge 폴백 사용 ({GameDataBridge.CurrentData.companions.Length}명)");
+        }
 
         // ── 동료 핫바 (MainScene 전용) ──
         if (isMainScene && CompanionHotbarManager.Instance != null)
@@ -615,7 +707,11 @@ public class SaveLoadManager : MonoBehaviour
             ResourceBarManager.Instance.crystals = data.crystals;
             ResourceBarManager.Instance.essences = data.essences;
             ResourceBarManager.Instance.fragments = data.fragments;
-            ResourceBarManager.Instance.cropPoints = data.cropPoints; // ★ 작물 포인트 복원
+            // ★ cropPoints: top-level과 farmData 중 더 큰 값으로 복원
+            //   (FarmScene 저장 후 메일/VIP 보상이 top-level만 갱신한 경우에도 보존)
+            long _topCp = data.cropPoints;
+            long _farmCp = data.farmData?.cropPoints ?? 0;
+            ResourceBarManager.Instance.cropPoints = System.Math.Max(_topCp, _farmCp);
             ResourceBarManager.Instance.UpdateAllResourceUI();
 
             // ★ 가챠 UI 티켓 연동 (로드 완료 후)
@@ -1091,7 +1187,13 @@ public class SaveLoadManager : MonoBehaviour
 
     void OnApplicationQuit()
     {
-        if (autoSave) SaveGame();
+        if (autoSave)
+        {
+            SaveGame();
+            // ★ 비동기 서버 저장이 완료될 때까지 동기 대기 (앱 프로세스 종료 전)
+            //   OnApplicationQuit 자체는 코루틴 대기 불가능하므로 busy-wait + timeout 사용
+            WaitForBackendSaveSync(5f);
+        }
     }
 
     void OnApplicationPause(bool pauseStatus)
@@ -1099,8 +1201,33 @@ public class SaveLoadManager : MonoBehaviour
         if (pauseStatus && autoSave)
         {
             SaveGame();
+            // ★ 백그라운드 진입 시도 비동기 완료 대기 (안드로이드는 백그라운드에서도 잠깐 살아있음)
+            WaitForBackendSaveSync(3f);
             Debug.Log("[SaveLoadManager] 백그라운드 전환 → 자동 저장 완료");
         }
+    }
+
+    /// <summary>
+    /// BackendGameDataManager.SaveToServer() 비동기 콜백이 완료될 때까지 동기 대기.
+    /// OnApplicationQuit 같이 코루틴 사용 불가능한 컨텍스트에서 사용.
+    /// timeout 초과 시 강제 진행 (로컬 저장은 이미 완료된 상태이므로 안전).
+    /// </summary>
+    private void WaitForBackendSaveSync(float timeoutSeconds)
+    {
+        if (BackendGameDataManager.Instance == null) return;
+
+        var sw = System.Diagnostics.Stopwatch.StartNew();
+        while (BackendGameDataManager.Instance.IsBusy && sw.Elapsed.TotalSeconds < timeoutSeconds)
+        {
+            // 메인 스레드 busy-wait — Quit 시점이라 yield 불가
+            System.Threading.Thread.Sleep(50);
+        }
+        sw.Stop();
+
+        if (BackendGameDataManager.Instance.IsBusy)
+            Debug.LogWarning($"[SaveLoadManager] ⚠ 서버 저장 타임아웃 ({timeoutSeconds}초) — 로컬 저장만 완료");
+        else
+            Debug.Log($"[SaveLoadManager] ✅ 서버 저장 완료 확인 ({sw.Elapsed.TotalSeconds:F2}s)");
     }
 
     void OnDestroy()
