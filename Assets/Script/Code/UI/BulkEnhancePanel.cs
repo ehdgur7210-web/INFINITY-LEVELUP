@@ -400,6 +400,10 @@ public class BulkEnhancePanel : MonoBehaviour
         UpdateInfo();
     }
 
+    /// <summary>
+    /// ★ 슬롯 풀링 방식 — 기존 슬롯 재사용, 부족하면 추가 생성, 남으면 비활성화.
+    /// Destroy/Instantiate 폭주 제거.
+    /// </summary>
     private void BuildSlots()
     {
         if (slotContainer == null)
@@ -413,18 +417,31 @@ public class BulkEnhancePanel : MonoBehaviour
             return;
         }
 
-        // 기존 슬롯 정리
-        foreach (var s in _slots)
-            if (s != null) Destroy(s.gameObject);
-        _slots.Clear();
+        int needed = _currentDisplayList.Count;
 
-        foreach (var entry in _currentDisplayList)
+        // 부족한 만큼만 새로 생성 (기존 슬롯은 그대로 재사용)
+        while (_slots.Count < needed)
         {
             GameObject go = Instantiate(slotPrefab, slotContainer);
             BulkEnhanceSlot slot = go.GetComponent<BulkEnhanceSlot>();
             if (slot == null) slot = go.AddComponent<BulkEnhanceSlot>();
-            slot.Setup(entry.equipment, entry.instance);
             _slots.Add(slot);
+        }
+
+        // 필요한 슬롯은 데이터 갱신 + 활성화
+        for (int i = 0; i < needed; i++)
+        {
+            var slot = _slots[i];
+            if (slot == null) continue;
+            if (!slot.gameObject.activeSelf) slot.gameObject.SetActive(true);
+            slot.Setup(_currentDisplayList[i].equipment, _currentDisplayList[i].instance);
+        }
+
+        // 남는 슬롯은 비활성화 (다음 호출에서 재사용 가능)
+        for (int i = needed; i < _slots.Count; i++)
+        {
+            if (_slots[i] != null && _slots[i].gameObject.activeSelf)
+                _slots[i].gameObject.SetActive(false);
         }
     }
 
@@ -725,13 +742,10 @@ public class BulkEnhancePanel : MonoBehaviour
             totalFail += passFail;
             passes++;
 
-            // UI 갱신
-            RefreshFilterButtons();
-            SelectFilter(_currentFilter);
-            CombatPowerManager.Instance?.Recalculate();
-
-            // ★ 인벤토리 장비 슬롯 강화수치 표시 즉시 갱신
-            InventoryManager.Instance?.RefreshEquipDisplay();
+            // ★ 매 패스마다 SelectFilter()/RefreshEquipDisplay() 호출하지 않음.
+            //   슬롯/필터버튼 재생성은 종료 시점에 한 번만 수행 (Instantiate 폭주 방지).
+            //   대신 _currentDisplayList의 내부 상태(enhanceLevel)는 DoBulkEnhancePass에서
+            //   이미 갱신됐으므로 다음 패스 계산에는 영향 없음.
 
             // 무한 루프 방지: 진전이 없는 경우(전부 실패하고 +0이라 강화수치 변화 없음) 종료
             if (passSuccess == 0 && _currentFilter == 0)
@@ -745,6 +759,12 @@ public class BulkEnhancePanel : MonoBehaviour
 
         if (passes >= autoEnhanceMaxPasses)
             stopReason = "안전 상한 도달";
+
+        // ★ 자동강화 종료 시 1회만 UI 전체 갱신
+        RefreshFilterButtons();
+        SelectFilter(_currentFilter);
+        CombatPowerManager.Instance?.Recalculate();
+        InventoryManager.Instance?.RefreshEquipDisplay();
 
         // 결과 + 저장
         SaveLoadManager.Instance?.SaveGame();

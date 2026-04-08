@@ -43,6 +43,11 @@ public class Monster : MonoBehaviour, IHitable
     [Tooltip("파티클 지속 시간")]
     [SerializeField] private float deathParticleDuration = 1f;
 
+    // ★ 동시 사망 이펙트/사운드 throttle (전역 쿨다운)
+    [Tooltip("이 시간(초) 안에 사망한 다른 몬스터의 사운드/파티클 스킵")]
+    [SerializeField] private float deathEffectCooldown = 0.08f;
+    private static float _lastDeathEffectTime = -10f;
+
     // ─── Getter/Setter ───
     public int GoldDrop { get { return goldDrop; } set { goldDrop = value; } }
     public int ExpDrop { get { return expDrop; } set { expDrop = value; } }
@@ -367,7 +372,13 @@ public class Monster : MonoBehaviour, IHitable
         if (isDead) return;
         isDead = true;
 
-        SoundManager.Instance?.PlayMonsterDeathSound();
+        // ★ 동시 사망 throttle: 짧은 시간 내 다른 몬스터가 이미 이펙트 재생했으면 스킵
+        bool playEffect = (Time.unscaledTime - _lastDeathEffectTime) >= deathEffectCooldown;
+        if (playEffect)
+        {
+            _lastDeathEffectTime = Time.unscaledTime;
+            SoundManager.Instance?.PlayMonsterDeathSound();
+        }
 
         // 반짝이 중단
         if (flashCoroutine != null)
@@ -383,8 +394,9 @@ public class Monster : MonoBehaviour, IHitable
 
         TutorialManager.Instance?.OnActionCompleted("KillMonster");
 
-        // ★ 사망 애니메이션 없음 — 파티클 이펙트로 사라짐
-        SpawnDeathParticle();
+        // ★ 사망 애니메이션 없음 — 파티클 이펙트로 사라짐 (throttle 적용)
+        if (playEffect)
+            SpawnDeathParticle();
 
         DropReward();
 
