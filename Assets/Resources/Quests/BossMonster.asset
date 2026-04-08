@@ -13,16 +13,16 @@ MonoBehaviour:
   m_Name: BossMonster
   m_EditorClassIdentifier: 
   questID: 1
-  questName: "\uBCF4\uC2A4\uBAAC\uC2A4\uD130\uC7A1\uAE30"
-  questDescription: "\uD1A0\uB07C\uC655\uC744\uC7A1\uC73C\uC138\uC694"
-  questObjectiveText: 
+  questName: "\uBCF4\uC2A4 \uBAAC\uC2A4\uD130 \uCC98\uCE58"
+  questDescription: "\uC544\uBB34 \uBCF4\uC2A4\uB098 1\uB9C8\uB9AC\uB97C \uCC98\uCE58\uD558\uC138\uC694"
+  questObjectiveText: "\uBCF4\uC2A4 1\uB9C8\uB9AC \uCC98\uCE58 (0/1)"
   requiredLevel: 1
   prerequisiteQuests:
   - {fileID: 11400000, guid: a7d69964a75083f4cb2a429ccc698e6b, type: 2}
   objectives:
-  - objectiveName: "\uBCF4\uC2A4\uC7A1\uAE30"
+  - objectiveName: "\uBCF4\uC2A4 \uCC98\uCE58"
     objectiveType: 1
-    targetID: 
+    targetID:
     requiredAmount: 1
     currentAmount: 0
   reward:
