@@ -1695,8 +1695,29 @@ public class InventoryManager : MonoBehaviour
             }
         }
 
+        // ★★ Main → Farm → Main 재진입 race fix:
+        //    재진입 시 ItemDatabase가 이미 DDOL ready → WaitForItemDatabase가 즉시 break →
+        //    BuildEquipSlots가 빈 equipUnlockMap으로 호출됨 → 모든 슬롯이 잠금으로 표시.
+        //    이제 LoadInventoryData가 끝난 시점에서:
+        //    1) ItemDB가 ready면 equipDataReady를 강제로 true로 보장
+        //    2) ActivateContainer 게이트를 우회해 BuildEquipSlots를 직접 호출
+        //    3) 다음 프레임에 한 번 더 BuildEquipSlots → SelectTab(Equip)으로 currentTab/UI 동기화
         equipSlotsBuilt = false;
-        ActivateContainer(currentTab);
+        if (ItemDatabase.Instance != null && ItemDatabase.Instance.IsReady)
+            equipDataReady = true;
+
+        if (equipDataReady && equipmentContainer != null)
+        {
+            BuildEquipSlots(); // ★ 새 데이터로 즉시 재빌드
+            Debug.Log($"[InventoryManager] LoadInventoryData 완료 후 BuildEquipSlots 강제 실행 (재진입 race fix)");
+        }
+
+        // 다음 프레임에 한 번 더 — 컨테이너/탭 상태가 늦게 바인딩되는 케이스 대비
+        StartCoroutine(PostLoadRebuildNextFrame());
+
+        // ★ 동료/기타 탭 UI도 함께 갱신 (재진입 시 빈 UI 방지)
+        if (CompanionInventoryManager.Instance != null)
+            CompanionInventoryManager.Instance.RefreshUI();
 
         // ★ 로드 완료 플래그 — 이후 SaveGame이 호출돼도 정상 데이터로 저장 가능
         IsInventoryLoaded = true;
@@ -1704,6 +1725,28 @@ public class InventoryManager : MonoBehaviour
             Debug.LogWarning($"[InventoryManager] 인벤토리 로드 완료: 정상 {items.Length - staleSkipped}개 / stale ID {staleSkipped}개 스킵 (다음 저장 시 자동 정리)");
         else
             Debug.Log($"[InventoryManager] 인벤토리 로드 완료: {items.Length}개 (IsInventoryLoaded=true)");
+    }
+
+    /// <summary>
+    /// ★ LoadInventoryData 직후 다음 프레임에 한 번 더 BuildEquipSlots 보장.
+    /// 이유: equipmentContainer가 Awake/Start 늦게 바인딩되거나, 다른 스크립트가
+    /// currentTab을 바꿀 수 있는 race를 방어. 동일 프레임 1차 빌드 + 다음 프레임 재빌드.
+    /// </summary>
+    private IEnumerator PostLoadRebuildNextFrame()
+    {
+        yield return null;
+        if (this == null) yield break;
+        if (ItemDatabase.Instance != null && ItemDatabase.Instance.IsReady)
+            equipDataReady = true;
+        if (equipDataReady && equipmentContainer != null)
+        {
+            equipSlotsBuilt = false;
+            BuildEquipSlots();
+            // 현재 탭이 장비라면 컨테이너 활성화도 재확인
+            if (currentTab == InvenTabType.Equip)
+                ActivateContainer(InvenTabType.Equip);
+            Debug.Log($"[InventoryManager] PostLoadRebuildNextFrame: BuildEquipSlots 재실행 (해금:{equipUnlockMap.Count}개)");
+        }
     }
 
     /// <summary>ItemDatabase 준비될 때까지 대기 후 LoadInventoryData 재호출</summary>
