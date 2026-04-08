@@ -325,15 +325,15 @@ public class PlayerStats : MonoBehaviour, IHitable
     // ═══════════════════════════════════════════════════════════════
     //
     //  등급별 기본 전달 비율:
-    //    Epic      = 50%
-    //    Legendary = 100%
+    //    Epic      = 300%
+    //    Legendary = 500%
     //    그 외     = 0% (Common, Rare는 전달 없음)
     //
-    //  성급(stars) 효과:
-    //    동료 자체 스탯: 성급당 +100% (1성=x1, 2성=x2, 3성=x3 ...)
-    //    캐릭터 전달 비율: 성급당 +10% 추가
-    //      예) Epic 3성: 기본50% + (3-1)*10% = 70%, 동료 스탯 x3
-    //      예) Legendary 2성: 기본100% + (2-1)*10% = 110%, 동료 스탯 x2
+    //  성급(승급) 효과:
+    //    동료 자체 스탯: 성급당 +100% (1성=x1, 2성=x2, 3성=x3 ...) — 동료 본체에 큰 영향
+    //    캐릭터 전달 비율: 성급당 +10% 추가 — 플레이어 영향은 작게
+    //      예) Epic 3성: 기본300% + (3-1)*10% = 320%, 동료 본체 스탯 x3
+    //      예) Legendary 2성: 기본500% + (2-1)*10% = 510%, 동료 본체 스탯 x2
     // ═══════════════════════════════════════════════════════════════
 
     /// <summary>핫바에 장착된 모든 동료의 공격력 보너스 합산</summary>
@@ -372,11 +372,11 @@ public class PlayerStats : MonoBehaviour, IHitable
 
             CompanionData data = entry.data;
 
-            // 등급별 기본 전달 비율 (%)
+            // 등급별 기본 전달 비율 (%) — Epic 300%, Legendary 500%
             float baseTransferRate = data.rarity switch
             {
-                CompanionRarity.Epic      => 50f,
-                CompanionRarity.Legendary => 100f,
+                CompanionRarity.Epic      => 300f,
+                CompanionRarity.Legendary => 500f,
                 _                         => 0f
             };
 

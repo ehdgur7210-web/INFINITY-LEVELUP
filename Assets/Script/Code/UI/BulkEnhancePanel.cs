@@ -37,6 +37,10 @@ public class BulkEnhancePanel : MonoBehaviour
     [Tooltip("등급 선택용 드롭다운 (전체/Common/Uncommon/Rare/Epic/Legendary). 비어두면 항상 '전체' 사용")]
     [SerializeField] private TMP_Dropdown rarityDropdown;
 
+    [Header("부위 필터 (선택)")]
+    [Tooltip("부위 선택용 드롭다운 (전체/왼손/오른손/투구/갑옷/장갑/신발). 비어두면 항상 '전체' 사용")]
+    [SerializeField] private TMP_Dropdown equipTypeDropdown;
+
     [Header("하단 정보")]
     [SerializeField] private TextMeshProUGUI infoText;       // "강화수치 +5 / 50개 / 비용 5,000G"
     [SerializeField] private Button bulkEnhanceButton;       // 일괄 강화 버튼
@@ -55,6 +59,7 @@ public class BulkEnhancePanel : MonoBehaviour
     private List<BulkEnhanceSlot> _slots = new List<BulkEnhanceSlot>();
     private int _currentFilter = 0;                  // 현재 선택된 강화수치
     private ItemRarity? _currentRarity = null;       // null = 전체
+    private EquipmentType? _currentEquipType = null; // null = 전체
     private List<DisplayEntry> _currentDisplayList = new List<DisplayEntry>();
 
     // 자동 강화 상태
@@ -118,6 +123,20 @@ public class BulkEnhancePanel : MonoBehaviour
             rarityDropdown.RefreshShownValue();
         }
 
+        // 부위 드롭다운 초기화
+        if (equipTypeDropdown != null)
+        {
+            equipTypeDropdown.ClearOptions();
+            equipTypeDropdown.AddOptions(new List<string>
+            {
+                "전체 부위", "왼손무기", "오른손무기", "투구", "갑옷", "장갑", "신발"
+            });
+            equipTypeDropdown.onValueChanged.RemoveAllListeners();
+            equipTypeDropdown.onValueChanged.AddListener(OnEquipTypeDropdownChanged);
+            equipTypeDropdown.value = 0;
+            equipTypeDropdown.RefreshShownValue();
+        }
+
         BuildFilterButtons();
     }
 
@@ -129,12 +148,30 @@ public class BulkEnhancePanel : MonoBehaviour
         SelectFilter(_currentFilter);
     }
 
+    private void OnEquipTypeDropdownChanged(int idx)
+    {
+        // 0 = 전체, 1~6 = EquipmentType 0~5 (WeaponLeft~Boots)
+        _currentEquipType = idx == 0 ? (EquipmentType?)null : (EquipmentType)(idx - 1);
+        RefreshFilterButtons();
+        SelectFilter(_currentFilter);
+    }
+
     /// <summary>장비가 현재 등급 필터 조건을 만족하는지</summary>
     private bool MatchesRarity(EquipmentData eq)
     {
         if (_currentRarity == null) return true;
         return eq != null && eq.rarity == _currentRarity.Value;
     }
+
+    /// <summary>장비가 현재 부위 필터 조건을 만족하는지</summary>
+    private bool MatchesEquipType(EquipmentData eq)
+    {
+        if (_currentEquipType == null) return true;
+        return eq != null && eq.equipmentType == _currentEquipType.Value;
+    }
+
+    /// <summary>등급 + 부위 통합 필터</summary>
+    private bool MatchesAllFilters(EquipmentData eq) => MatchesRarity(eq) && MatchesEquipType(eq);
 
     // ═══════════════════════════════════════════════
     // 패널 열기/닫기
@@ -185,6 +222,7 @@ public class BulkEnhancePanel : MonoBehaviour
         foreach (var eq in ItemDatabase.Instance.allEquipments)
         {
             if (eq == null) continue;
+            if (!MatchesAllFilters(eq)) continue;
             var instances = GetInstancesForEquipment(eq);
             if (instances == null) continue;
             foreach (var ins in instances)
@@ -271,7 +309,7 @@ public class BulkEnhancePanel : MonoBehaviour
         foreach (var eq in ItemDatabase.Instance.allEquipments)
         {
             if (eq == null) continue;
-            if (!MatchesRarity(eq)) continue;
+            if (!MatchesAllFilters(eq)) continue;
             var instances = GetInstancesForEquipment(eq);
             if (instances == null) continue;
             foreach (var ins in instances)
@@ -337,7 +375,7 @@ public class BulkEnhancePanel : MonoBehaviour
             foreach (var eq in ItemDatabase.Instance.allEquipments)
             {
                 if (eq == null) continue;
-                if (!MatchesRarity(eq)) continue;
+                if (!MatchesAllFilters(eq)) continue;
                 var instances = GetInstancesForEquipment(eq);
                 if (instances == null) continue;
                 foreach (var ins in instances)
@@ -480,6 +518,9 @@ public class BulkEnhancePanel : MonoBehaviour
         RefreshFilterButtons();
         SelectFilter(_currentFilter);
         CombatPowerManager.Instance?.Recalculate();
+
+        // ★ 인벤토리 장비 슬롯 강화수치 표시 즉시 갱신
+        InventoryManager.Instance?.RefreshEquipDisplay();
     }
 
     /// <summary>
@@ -688,6 +729,9 @@ public class BulkEnhancePanel : MonoBehaviour
             RefreshFilterButtons();
             SelectFilter(_currentFilter);
             CombatPowerManager.Instance?.Recalculate();
+
+            // ★ 인벤토리 장비 슬롯 강화수치 표시 즉시 갱신
+            InventoryManager.Instance?.RefreshEquipDisplay();
 
             // 무한 루프 방지: 진전이 없는 경우(전부 실패하고 +0이라 강화수치 변화 없음) 종료
             if (passSuccess == 0 && _currentFilter == 0)

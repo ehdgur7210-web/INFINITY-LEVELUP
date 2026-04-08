@@ -42,6 +42,8 @@ public class UIManager : MonoBehaviour
     [SerializeField] private Sprite bannerAuction;     // 경매
     [SerializeField] private Sprite bannerEnhance;     // 강화
     [SerializeField] private Sprite bannerAchieve;     // 업적
+    [SerializeField] private Sprite bannerFriend;      // 친구
+    [SerializeField] private Sprite bannerGuild;       // 길드
 
     [Header("상단 리소스 UI (항상 고정)")]
     [SerializeField] public TextMeshProUGUI GameId;
@@ -61,8 +63,13 @@ public class UIManager : MonoBehaviour
     [SerializeField] private TextMeshProUGUI attackText;
     [SerializeField] private TextMeshProUGUI defenseText;
     [SerializeField] private TextMeshProUGUI maxHpText;
+    [Tooltip("★ 이동속도 → 공격속도로 재활용 (필드명 유지로 Inspector 호환)")]
     [SerializeField] private TextMeshProUGUI speedText;
     [SerializeField] private TextMeshProUGUI criticalText;
+    [Tooltip("크리티컬 데미지 (%)")]
+    [SerializeField] private TextMeshProUGUI criticalDamageText;
+    [Tooltip("전투력 (CombatPowerManager.TotalCombatPower)")]
+    [SerializeField] private TextMeshProUGUI combatPowerText;
 
     [Header("경험치 바 애니메이션 설정")]
     [SerializeField] private float expFillSpeed = 3f;
@@ -526,12 +533,12 @@ public class UIManager : MonoBehaviour
             maxHpText.color = stats.bonusMaxHp > 0 ? Color.green : Color.white;
         }
 
+        // ★ speedText 슬롯을 공격속도 표시로 재활용 (이동속도 제거)
         if (speedText != null)
         {
-            float baseSpeed = 5f;
-            float totalSpeed = baseSpeed + stats.bonusSpeed;
-            speedText.text = $"이동속도:{totalSpeed:F1}";
-            speedText.color = stats.bonusSpeed > 0 ? Color.green : Color.white;
+            float atkSpeedBonus = stats.bonusAttackSpeed;
+            speedText.text = $"공격속도:+{atkSpeedBonus:F0}%";
+            speedText.color = atkSpeedBonus > 0 ? Color.green : Color.white;
         }
 
         if (criticalText != null)
@@ -539,6 +546,22 @@ public class UIManager : MonoBehaviour
             float totalCritical = stats.criticalRate + stats.bonusCritical;
             criticalText.text = $"크리티컬:{totalCritical:F1}%";
             criticalText.color = stats.bonusCritical > 0 ? Color.green : Color.white;
+        }
+
+        // ★ 크리티컬 데미지 (크리티컬 텍스트 바로 아래 슬롯)
+        if (criticalDamageText != null)
+        {
+            criticalDamageText.text = $"크리뎀:{stats.criticalDamage:F0}%";
+            criticalDamageText.color = Color.white;
+        }
+
+        // ★ 전투력
+        if (combatPowerText != null)
+        {
+            int power = CombatPowerManager.Instance != null
+                ? CombatPowerManager.Instance.TotalCombatPower : 0;
+            combatPowerText.text = $"전투력:{FormatKoreanUnit(power)}";
+            combatPowerText.color = new Color(1f, 0.84f, 0f); // 골드
         }
     }
 
@@ -612,6 +635,8 @@ public class UIManager : MonoBehaviour
             case "경매":   return bannerAuction;
             case "강화":   return bannerEnhance;
             case "업적":   return bannerAchieve;
+            case "친구":   return bannerFriend;
+            case "길드":   return bannerGuild;
             default:       return null;
         }
     }

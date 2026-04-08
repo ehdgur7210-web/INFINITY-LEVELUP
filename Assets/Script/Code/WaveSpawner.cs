@@ -16,11 +16,19 @@ public class WaveSpawner : MonoBehaviour
 
     [Header("★ 스테이지 데이터")]
     [SerializeField] private StageDataSO[] stages;
-    [SerializeField] private int wavesPerStage = 10;
+    [SerializeField] private int wavesPerStage = 20;
     [SerializeField] private float timeBetweenWaves = 5f;
 
     [Header("마지막 챕터 무한 반복?")]
     [SerializeField] private bool loopLastChapter = false;
+
+    [Header("★ 무한 루프 (전체 스테이지 반복 + 난이도 증가)")]
+    [Tooltip("true: 마지막 스테이지 클리어 후 1번 스테이지부터 다시 반복 (챕터 번호는 계속 증가). 1~5→6~10→11~15...")]
+    [SerializeField] private bool infiniteLoopStages = true;
+    [Tooltip("루프 1회차당 몬스터 HP/공격력 배율. 2.5면 2회차 ×2.5, 3회차 ×6.25, 4회차 ×15.6...")]
+    [SerializeField] private float loopStatMultiplier = 2.5f;
+    [Tooltip("루프 1회차당 골드/경험치 보상 배율")]
+    [SerializeField] private float loopRewardMultiplier = 2.0f;
 
     [Header("환경 연동")]
     [Tooltip("씬의 Background 오브젝트 (SpriteRenderer). 미설정 시 자동 탐색")]
@@ -40,6 +48,16 @@ public class WaveSpawner : MonoBehaviour
     public int CurrentChapter => (CurrentWaveIndex / wavesPerStage) + 1;
     public int CurrentStageWave => (CurrentWaveIndex % wavesPerStage) + 1;
     public string StageLabel => $"{CurrentChapter}-{CurrentStageWave}";
+
+    /// <summary>현재 루프 회차 (0=첫 바퀴, 1=두 번째 바퀴...)</summary>
+    public int LoopIndex
+    {
+        get
+        {
+            if (stages == null || stages.Length == 0) return 0;
+            return (CurrentChapter - 1) / stages.Length;
+        }
+    }
     public int RemainingMonsters { get; private set; } = 0;
     public bool IsSpawning { get; private set; } = false;
 
@@ -164,6 +182,9 @@ public class WaveSpawner : MonoBehaviour
         }
 
         currentWave = stageData.GenerateWave(CurrentStageWave, wavesPerStage);
+
+        // ★ 무한 루프 회차별 난이도/보상 배율 적용 (1회차는 패스)
+        ApplyLoopDifficulty(currentWave, LoopIndex);
 
         if (UIManager.Instance != null)
         {
@@ -307,9 +328,30 @@ public class WaveSpawner : MonoBehaviour
     {
         if (stages == null || stages.Length == 0) return null;
         int idx = CurrentChapter - 1;
+
+        // ★ 무한 루프: 인덱스를 stages 길이로 모듈로 → 1~5 → 6~10 → 11~15... 영원히
+        if (infiniteLoopStages)
+            return stages[idx % stages.Length];
+
         if (idx < stages.Length) return stages[idx];
         if (loopLastChapter) return stages[stages.Length - 1];
         return null;
+    }
+
+    /// <summary>루프 회차에 따른 난이도/보상 배율 적용</summary>
+    private void ApplyLoopDifficulty(Wave wave, int loopIndex)
+    {
+        if (wave == null || loopIndex <= 0) return;
+
+        float statMul = Mathf.Pow(Mathf.Max(1f, loopStatMultiplier), loopIndex);
+        float rewardMul = Mathf.Pow(Mathf.Max(1f, loopRewardMultiplier), loopIndex);
+
+        wave.monsterHp = Mathf.RoundToInt(wave.monsterHp * statMul);
+        wave.monsterDamage = Mathf.RoundToInt(wave.monsterDamage * statMul);
+        wave.goldReward = Mathf.RoundToInt(wave.goldReward * rewardMul);
+        wave.expReward = Mathf.RoundToInt(wave.expReward * rewardMul);
+
+        Debug.Log($"[WaveSpawner] 루프 {loopIndex + 1}회차 난이도 적용: stat×{statMul:F1}, reward×{rewardMul:F1} → HP={wave.monsterHp}, DMG={wave.monsterDamage}, GOLD={wave.goldReward}");
     }
 
     private void OnAllWavesCompleted()
