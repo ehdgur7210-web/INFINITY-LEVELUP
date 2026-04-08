@@ -67,6 +67,10 @@ public class SceneTransitionManager : MonoBehaviour
     // ─── 씬을 넘나드는 플레이어 오브젝트 ───────────────────
     private static GameObject persistentPlayer = null;
 
+    // ─── ★ 중복 전환 가드 (더블클릭으로 인한 데이터 유실 방지) ──
+    private bool _isTransitioning = false;
+    public bool IsTransitioning => _isTransitioning;
+
     // ══════════════════════════════════════════════════════
     //  Unity 생명주기
     // ══════════════════════════════════════════════════════
@@ -104,6 +108,9 @@ public class SceneTransitionManager : MonoBehaviour
 
     private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
     {
+        // ★ 전환 가드 해제 (다음 전환 허용)
+        _isTransitioning = false;
+
         // ★ 씬 오브젝트 UI 참조 재바인딩 (DDOL이라 씬 전환 시 Missing 방지)
         RebindSceneUI();
 
@@ -264,6 +271,8 @@ public class SceneTransitionManager : MonoBehaviour
     /// </summary>
     public void LoadFarmScene(Vector3 spawnPosition = default)
     {
+        if (_isTransitioning) { Debug.LogWarning("[SceneTransitionManager] 이미 전환 중 → LoadFarmScene 무시"); return; }
+        _isTransitioning = true;
         Debug.Log($"[EQUIP-TRACE] ═══ LoadFarmScene 시작 ═══ EquipMgr={EquipmentManager.Instance != null}, IsLoaded={EquipmentManager.Instance?.IsEquipmentLoaded}, Bridge장비={GameDataBridge.CurrentData?.equipmentData?.slots?.Count ?? -1}개");
         // ★ 씬 이동 전 현재 씬 데이터 저장
         SaveLoadManager.Instance?.SaveGame();
@@ -276,6 +285,8 @@ public class SceneTransitionManager : MonoBehaviour
     /// <summary>메인 게임씬으로 복귀 (저장 후 이동)</summary>
     public void LoadMainScene(Vector3 returnPosition = default)
     {
+        if (_isTransitioning) { Debug.LogWarning("[SceneTransitionManager] 이미 전환 중 → LoadMainScene 무시"); return; }
+        _isTransitioning = true;
         Debug.Log($"[EQUIP-TRACE] ═══ LoadMainScene 시작 ═══ EquipMgr={EquipmentManager.Instance != null}, IsLoaded={EquipmentManager.Instance?.IsEquipmentLoaded}, Bridge장비={GameDataBridge.CurrentData?.equipmentData?.slots?.Count ?? -1}개");
         // 저장 먼저
         SaveLoadManager.Instance?.SaveGame();
@@ -288,6 +299,8 @@ public class SceneTransitionManager : MonoBehaviour
     /// <summary>씬 이름으로 이동 (저장 후)</summary>
     public void LoadScene(string sceneName)
     {
+        if (_isTransitioning) { Debug.LogWarning($"[SceneTransitionManager] 이미 전환 중 → LoadScene({sceneName}) 무시"); return; }
+        _isTransitioning = true;
         SaveLoadManager.Instance?.SaveGame();
         StartCoroutine(LoadSceneCoroutine(sceneName));
     }
@@ -295,6 +308,8 @@ public class SceneTransitionManager : MonoBehaviour
     /// <summary>씬 이름 + 스폰 위치 지정 이동 (저장 후)</summary>
     public void LoadSceneWithPosition(string sceneName, Vector3 playerPosition)
     {
+        if (_isTransitioning) { Debug.LogWarning($"[SceneTransitionManager] 이미 전환 중 → LoadSceneWithPosition({sceneName}) 무시"); return; }
+        _isTransitioning = true;
         // ★ 씬 이동 전 저장
         SaveLoadManager.Instance?.SaveGame();
 
@@ -305,6 +320,8 @@ public class SceneTransitionManager : MonoBehaviour
     /// <summary>메인 메뉴로 이동 (저장 후)</summary>
     public void LoadMainMenu()
     {
+        if (_isTransitioning) { Debug.LogWarning("[SceneTransitionManager] 이미 전환 중 → LoadMainMenu 무시"); return; }
+        _isTransitioning = true;
         SaveLoadManager.Instance?.SaveGame();
         StartCoroutine(LoadSceneCoroutine(SCENE_MENU));
     }
@@ -312,6 +329,8 @@ public class SceneTransitionManager : MonoBehaviour
     /// <summary>현재 씬 재시작 (저장 후)</summary>
     public void RestartScene()
     {
+        if (_isTransitioning) { Debug.LogWarning("[SceneTransitionManager] 이미 전환 중 → RestartScene 무시"); return; }
+        _isTransitioning = true;
         SaveLoadManager.Instance?.SaveGame();
         StartCoroutine(LoadSceneCoroutine(SceneManager.GetActiveScene().name));
     }

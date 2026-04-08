@@ -203,6 +203,15 @@ public class ItemDatabase : MonoBehaviour
         questDictionary = new Dictionary<int, QuestData>();
 
         // ✅ allItems에 EquipmentData가 섞여 있어도 자동으로 분류
+        // ★★ 핵심 수정: allItems 안의 EquipmentData를 allEquipments 리스트에도 동기화
+        //    BuildEquipSlots() 등 일부 코드가 allEquipments 리스트를 직접 순회하기 때문에
+        //    allItems에만 있고 allEquipments에 없으면 UI 슬롯이 빌드되지 않음.
+        HashSet<int> allEquipmentsIDs = new HashSet<int>();
+        if (allEquipments != null)
+            foreach (var eq in allEquipments)
+                if (eq != null) allEquipmentsIDs.Add(eq.itemID);
+
+        int promotedToEquipList = 0;
         foreach (ItemData item in allItems)
         {
             if (item == null) continue;
@@ -212,6 +221,13 @@ public class ItemDatabase : MonoBehaviour
                 // EquipmentData → equipmentDictionary에 등록
                 if (!equipmentDictionary.ContainsKey(eq.itemID))
                     equipmentDictionary.Add(eq.itemID, eq);
+                // ★ allEquipments 리스트에도 추가 (중복 방지)
+                if (!allEquipmentsIDs.Contains(eq.itemID))
+                {
+                    allEquipments.Add(eq);
+                    allEquipmentsIDs.Add(eq.itemID);
+                    promotedToEquipList++;
+                }
             }
             else
             {
@@ -220,6 +236,8 @@ public class ItemDatabase : MonoBehaviour
                     itemDictionary.Add(item.itemID, item);
             }
         }
+        if (promotedToEquipList > 0)
+            Debug.Log($"[ItemDatabase] ★ allItems의 장비 {promotedToEquipList}개를 allEquipments에 자동 동기화");
 
         // allEquipments에 직접 연결된 것도 추가 (중복 방지)
         foreach (EquipmentData equipment in allEquipments)

@@ -59,6 +59,16 @@ public class BackendGameDataManager : MonoBehaviour
     /// <summary>서버 행의 inDate (BackendRankingManager 등 외부에서 참조)</summary>
     public string RowInDate => _rowInDate;
 
+    /// <summary>★ 첫 LoadFromServer 완료 여부 — 이후 늦은 응답이 진행 중인 데이터 덮어쓰지 못하게 차단</summary>
+    private bool _initialServerLoadDone = false;
+
+    /// <summary>로그아웃 시 호출 — 다음 로그인의 첫 로드를 다시 허용</summary>
+    public void ResetInitialLoadFlag()
+    {
+        _initialServerLoadDone = false;
+        Debug.Log("[BackendGameData] _initialServerLoadDone 리셋 — 다음 LoadFromServer가 메모리 갱신 가능");
+    }
+
     void Awake()
     {
         if (Instance != null && Instance != this) { Destroy(gameObject); return; }
@@ -221,8 +231,25 @@ public class BackendGameDataManager : MonoBehaviour
                 try
                 {
                     SaveData serverData = JsonUtility.FromJson<SaveData>(saveJson);
-                    GameDataBridge.SetData(serverData);
-                    Debug.Log($"[BackendGameData] ✅ 서버 로드 완료 (슬롯:{slot}, Lv:{serverData.playerLevel})");
+
+                    // ★★★ 데이터 손실 방지 — 진행 중인 데이터 덮어쓰기 차단 ★★★
+                    //   첫 LoadFromServer에서만 GameDataBridge.SetData 허용.
+                    //   이후 호출은 게임 도중일 가능성이 높으므로 늦은 응답이 진행 데이터를 덮어쓰지 않게 차단.
+                    //   특히 사용자가 플레이 중인데 서버 응답이 늦게 도착하면 레벨/골드 롤백 발생 가능.
+                    if (_initialServerLoadDone)
+                    {
+                        var cur = GameDataBridge.CurrentData;
+                        Debug.LogWarning($"[BackendGameData] ⚠ LoadFromServer 늦은 응답 → 덮어쓰기 차단\n" +
+                            $"  서버 데이터: Lv={serverData.playerLevel}, Gold={serverData.playerGold}, Wave={serverData.offlineCurrentWave}\n" +
+                            $"  현재 메모리: Lv={cur?.playerLevel ?? -1}, Gold={cur?.playerGold ?? -1}, Wave={cur?.offlineCurrentWave ?? -1}");
+                        // RowInDate만 갱신 (서버 저장 시 필요)
+                    }
+                    else
+                    {
+                        GameDataBridge.SetData(serverData);
+                        _initialServerLoadDone = true;
+                        Debug.Log($"[BackendGameData] ✅ 서버 로드 완료 (슬롯:{slot}, Lv:{serverData.playerLevel}) — 첫 로드, GameDataBridge 갱신");
+                    }
                 }
                 catch (Exception e)
                 {

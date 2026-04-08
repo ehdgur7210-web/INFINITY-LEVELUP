@@ -31,6 +31,27 @@ public class InventoryManager : MonoBehaviour
 {
     public static InventoryManager Instance;
 
+    // ★★ 데이터 손실 방지: 로드 완료 플래그
+    //    EquipmentManager.IsEquipmentLoaded와 동일한 패턴.
+    //    LoadInventoryData가 한 번이라도 정상 호출되어 완료되면 true.
+    //    SaveLoadManager.CollectSaveData에서 이 값이 false면 GameDataBridge 폴백 사용
+    //    → MainScene 진입 직후, ApplySaveData가 아직 안 돈 시점에 SaveGame이 발화해도
+    //       빈 InventoryManager로 JSON을 덮어쓰지 않음.
+    public bool IsInventoryLoaded { get; private set; } = false;
+
+    // ★★ 추가 방어: dirty 플래그 — 로드 후 실제로 변경(추가/제거/판매/장착 등)이 일어났는지 추적
+    //    false: 변경 없음 → CollectSaveData가 GameDataBridge 폴백을 우선 사용 (메모리 신뢰 안 함)
+    //    true:  변경 있음 → 메모리 상태가 진짜 최신이므로 메모리를 사용
+    //    LoadInventoryData 직후에는 false로 리셋되고, AddItem/RemoveItem 등이 호출되면 true로 변경됨
+    public bool DirtyAfterLoad { get; private set; } = false;
+    public void MarkDirty() { DirtyAfterLoad = true; }
+
+    // ★★ 추가 방어: ItemDatabase에 없는 stale ID도 데이터 보존
+    //    (몬스터 드롭 아이템이 ItemDatabase에 등록되지 않은 채 저장된 경우 등)
+    //    LoadInventoryData에서 찾을 수 없는 itemID는 이 리스트에 보관 → GetInventoryData에서 다시 포함
+    //    → 로드/저장 사이클에서 손실되지 않음
+    private List<InventoryItemData> pendingUnknownItems = new List<InventoryItemData>();
+
     // ═══ 탭 타입 ════════════════════════════════════════════════
     public enum InvenTabType { Equip, Companion, Etc }
 
@@ -336,20 +357,54 @@ public class InventoryManager : MonoBehaviour
         ReturnAllEquipSlotsToPool();
         equipSlots.Clear();
 
-        // 전체 장비 수집 (allEquipments + allItems 중 EquipmentData)
-        List<EquipmentData> allEquips = new List<EquipmentData>(ItemDatabase.Instance.allEquipments);
+        // 전체 장비 수집 (allEquipments + allItems 중 EquipmentData + equipmentDictionary)
+        List<EquipmentData> allEquips = new List<EquipmentData>();
         HashSet<int> ids = new HashSet<int>();
-        foreach (var eq in allEquips)
-            if (eq != null) ids.Add(eq.itemID);
 
-        foreach (var item in ItemDatabase.Instance.allItems)
+        // ★ 1순위: allEquipments 리스트
+        if (ItemDatabase.Instance.allEquipments != null)
         {
-            if (item is EquipmentData eqd && !ids.Contains(eqd.itemID))
+            foreach (var eq in ItemDatabase.Instance.allEquipments)
             {
-                allEquips.Add(eqd);
-                ids.Add(eqd.itemID);
+                if (eq != null && !ids.Contains(eq.itemID))
+                {
+                    allEquips.Add(eq);
+                    ids.Add(eq.itemID);
+                }
             }
         }
+
+        // ★ 2순위: allItems 안의 EquipmentData (Resources/Items에 섞여 있는 경우)
+        if (ItemDatabase.Instance.allItems != null)
+        {
+            foreach (var item in ItemDatabase.Instance.allItems)
+            {
+                if (item is EquipmentData eqd && !ids.Contains(eqd.itemID))
+                {
+                    allEquips.Add(eqd);
+                    ids.Add(eqd.itemID);
+                }
+            }
+        }
+
+        // ★ 3순위: equipmentDictionary (런타임 RegisterItem으로 등록된 것 포함)
+        var eqDict = ItemDatabase.Instance.GetType().GetField("equipmentDictionary",
+            System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)?
+            .GetValue(ItemDatabase.Instance) as System.Collections.IDictionary;
+        if (eqDict != null)
+        {
+            foreach (System.Collections.DictionaryEntry kv in eqDict)
+            {
+                var eqd = kv.Value as EquipmentData;
+                if (eqd != null && !ids.Contains(eqd.itemID))
+                {
+                    allEquips.Add(eqd);
+                    ids.Add(eqd.itemID);
+                }
+            }
+        }
+
+        Debug.Log($"[InventoryManager] BuildEquipSlots: 수집된 장비 {allEquips.Count}개 (allEquipments:{ItemDatabase.Instance.allEquipments?.Count ?? 0}, allItems:{ItemDatabase.Instance.allItems?.Count ?? 0})");
 
 
         // 정렬: 레어도(높→낮) → 타입 → ID
@@ -374,27 +429,33 @@ public class InventoryManager : MonoBehaviour
             slotObj.transform.localScale = Vector3.one;
             slotObj.transform.SetAsLastSibling();
 
-            // 새 EquipmentSlot 컴포넌트 우선
+            // ★★ 두 컴포넌트가 같은 prefab에 공존할 수 있음 (EquipmentSlot 신규 + InventorySlot legacy)
+            //    각각 개별 UI 요소와 클릭 핸들러를 가지므로 둘 다 동일한 데이터로 동기화해야 함.
+            //    한 쪽만 갱신하면:
+            //    - 다른 쪽 stale 상태 → 시각적 충돌 (잠금 표시 덧씌움 등)
+            //    - 클릭 핸들러가 stale 데이터로 동작 → 장착/사용 버튼 오작동
+            bool isUnlockedAndOwned = equipUnlockMap.TryGetValue(eq.itemID, out EquipUnlockData unlockData)
+                                      && unlockData.isUnlocked && unlockData.count > 0;
+
+            // ── 신규 EquipmentSlot 컴포넌트 ──
             EquipmentSlot newSlot = slotObj.GetComponent<EquipmentSlot>();
             if (newSlot != null)
             {
-                if (equipUnlockMap.TryGetValue(eq.itemID, out EquipUnlockData data)
-                    && data.isUnlocked && data.count > 0)
-                    newSlot.SetupUnlocked(eq, data.count, data.enhanceLevel, data.itemLevel);
+                if (isUnlockedAndOwned)
+                    newSlot.SetupUnlocked(eq, unlockData.count, unlockData.enhanceLevel, unlockData.itemLevel);
                 else
                     newSlot.SetupLocked(eq);
-
                 equipSlots.Add(newSlot);
-                continue;
             }
 
-            // 폴백: 기존 InventorySlot
+            // ── 기존 InventorySlot 컴포넌트 (있으면 같이 갱신) ──
+            //    ★ continue 제거: 둘 다 있는 prefab에서 양쪽 모두 동기화해야
+            //       클릭 이벤트(InventorySlot에 연결됨)가 정상 동작
             InventorySlot legacySlot = slotObj.GetComponent<InventorySlot>();
             if (legacySlot != null)
             {
-                if (equipUnlockMap.TryGetValue(eq.itemID, out EquipUnlockData data)
-                    && data.isUnlocked && data.count > 0)
-                    legacySlot.SetupUnlocked(eq, data.count, data.enhanceLevel, data.itemLevel);
+                if (isUnlockedAndOwned)
+                    legacySlot.SetupUnlocked(eq, unlockData.count, unlockData.enhanceLevel, unlockData.itemLevel);
                 else
                     legacySlot.SetupLocked(eq);
             }
@@ -1002,6 +1063,14 @@ public class InventoryManager : MonoBehaviour
         if (refreshUI)
             Debug.Log($"[InventoryManager] 아이템 추가: {item.itemName} x{count}");
 
+        // ★★ ItemDatabase에 자동 등록 (장비/일반 모두) — 안 하면 다음 LoadInventoryData에서
+        //    "ID 찾을 수 없음" 으로 드롭되어 영구 손실 발생
+        if (ItemDatabase.Instance != null)
+            ItemDatabase.Instance.RegisterItem(item);
+
+        // ★ dirty 플래그 설정 (CollectSaveData가 메모리를 신뢰하도록)
+        DirtyAfterLoad = true;
+
         if (item is EquipmentData)
             return AddEquipItem(item, count, 0, 0, refreshUI);
 
@@ -1459,20 +1528,28 @@ public class InventoryManager : MonoBehaviour
         {
             if (!kv.Value.isUnlocked) continue;
 
+            // ★★ 빈 entry 자동 복구: instances가 비어있으면 즉시 1개 채워서 저장
+            //    (이전 버그로 instances 손실된 케이스를 SAVE 시점에 복구)
+            //    이렇게 안 하면 SAVE에 count=0/instances=[]가 들어가서 LOAD에서 SetupLocked → 어두운 슬롯
+            if (kv.Value.instances == null || kv.Value.instances.Count == 0)
+            {
+                if (kv.Value.instances == null)
+                    kv.Value.instances = new List<EquipInstance>();
+                kv.Value.instances.Add(EquipInstance.Create(0, 1));
+                Debug.LogWarning($"[Inv-SAVE] ID:{kv.Key} 빈 instances 감지 → 기본 1개 자동 복구 후 저장");
+            }
+
             // ★ 인스턴스 리스트를 SaveData 형식으로 변환
             var saveInstances = new List<EquipInstanceData>();
-            if (kv.Value.instances != null)
+            foreach (var ins in kv.Value.instances)
             {
-                foreach (var ins in kv.Value.instances)
+                saveInstances.Add(new EquipInstanceData
                 {
-                    saveInstances.Add(new EquipInstanceData
-                    {
-                        instanceId = ins.instanceId,
-                        enhanceLevel = ins.enhanceLevel,
-                        itemLevel = ins.itemLevel,
-                        isEquipped = ins.isEquipped
-                    });
-                }
+                    instanceId = ins.instanceId,
+                    enhanceLevel = ins.enhanceLevel,
+                    itemLevel = ins.itemLevel,
+                    isEquipped = ins.isEquipped
+                });
             }
 
             dataList.Add(new InventoryItemData
@@ -1503,7 +1580,17 @@ public class InventoryManager : MonoBehaviour
             });
         }
 
-        Debug.Log($"[InventoryManager] 저장 데이터 수집: {dataList.Count}개 (장비 해금: {equipUnlockMap.Count})");
+        // ★★ pending unknown 아이템도 포함 — ItemDatabase에 없어서 로드 실패한 아이템 보존
+        //    다음 세션에서 해당 SO가 등록되면 자연스럽게 복원됨
+        if (pendingUnknownItems != null && pendingUnknownItems.Count > 0)
+        {
+            dataList.AddRange(pendingUnknownItems);
+            Debug.Log($"[InventoryManager] 저장 데이터 수집: {dataList.Count}개 (장비 해금: {equipUnlockMap.Count}, 보존된 unknown: {pendingUnknownItems.Count})");
+        }
+        else
+        {
+            Debug.Log($"[InventoryManager] 저장 데이터 수집: {dataList.Count}개 (장비 해금: {equipUnlockMap.Count})");
+        }
         return dataList.ToArray();
     }
 
@@ -1511,12 +1598,26 @@ public class InventoryManager : MonoBehaviour
     {
         if (items == null || items.Length == 0)
         {
-            Debug.Log("[InventoryManager] 로드할 인벤토리 데이터 없음");
+            // ★ 빈 데이터로 호출돼도 "처음 로드된 적 있음" 신호로만 사용 — ClearAllItems 하지 않음
+            //   (빈 배열로 ClearAllItems하면 진짜 데이터 손실!)
+            Debug.Log("[InventoryManager] 로드할 인벤토리 데이터 없음 → 기존 상태 유지");
+            IsInventoryLoaded = true;
+            return;
+        }
+
+        // ★★ ItemDatabase 미준비 시 즉시 로드 금지 → 코루틴으로 대기 후 재시도
+        //    그렇지 않으면 모든 아이템이 "ID 찾을 수 없음"으로 드롭되어 인벤이 비워짐
+        if (ItemDatabase.Instance == null || !ItemDatabase.Instance.IsReady)
+        {
+            Debug.LogWarning($"[InventoryManager] ItemDatabase 미준비 → LoadInventoryData {items.Length}개 대기 후 재시도");
+            StartCoroutine(WaitForItemDBAndLoad(items));
             return;
         }
 
         ClearAllItems();
+        pendingUnknownItems.Clear();
 
+        int staleSkipped = 0;
         foreach (InventoryItemData data in items)
         {
             ItemData itemData = ItemDatabase.Instance?.GetItemByID(data.itemID);
@@ -1528,7 +1629,11 @@ public class InventoryManager : MonoBehaviour
 
             if (itemData == null)
             {
-                Debug.LogWarning($"[InventoryManager] 아이템 ID {data.itemID} 를 찾을 수 없음!");
+                // ★★ 데이터 손실 방지: ItemDatabase에 없는 ID도 보존
+                //    pendingUnknownItems에 보관 → GetInventoryData에서 다시 포함됨
+                //    → 다음 세션에서 ItemDatabase가 해당 아이템을 알게 되면 정상 복원됨
+                pendingUnknownItems.Add(data);
+                staleSkipped++;
                 continue;
             }
 
@@ -1562,6 +1667,19 @@ public class InventoryManager : MonoBehaviour
                     Debug.Log($"[InventoryManager] 마이그레이션: ID {data.itemID} → {data.count}개 인스턴스 (+{data.enhanceLevel})");
                 }
 
+                // ★★ 진단: 로드된 unlock 상태 출력 (왜 0개가 되는지 추적)
+                Debug.Log($"[Inv-LOAD] ID:{data.itemID} ({itemData.itemName}) " +
+                    $"isUnlocked={data.isUnlocked}, savedCount={data.count}, savedInstances={(data.instances?.Count ?? 0)}, " +
+                    $"→ runtime instances={unlock.instances.Count}");
+
+                // ★★ 데이터 손실 방지: 잠금해제 됐는데 instances가 비어있으면 최소 1개 자동 생성
+                //    (이전 버그로 instances 손실되어 빈 unlock 상태로 저장된 케이스 복구)
+                if (unlock.isUnlocked && unlock.instances.Count == 0)
+                {
+                    unlock.instances.Add(EquipInstance.Create(0, 1));
+                    Debug.LogWarning($"[Inv-LOAD] ID:{data.itemID} ({itemData.itemName}) — 빈 unlock 감지 → 기본 인스턴스 1개 자동 복구");
+                }
+
                 equipUnlockMap[data.itemID] = unlock;
             }
             else
@@ -1580,7 +1698,36 @@ public class InventoryManager : MonoBehaviour
         equipSlotsBuilt = false;
         ActivateContainer(currentTab);
 
-        Debug.Log($"[InventoryManager] 인벤토리 로드 완료: {items.Length}개");
+        // ★ 로드 완료 플래그 — 이후 SaveGame이 호출돼도 정상 데이터로 저장 가능
+        IsInventoryLoaded = true;
+        if (staleSkipped > 0)
+            Debug.LogWarning($"[InventoryManager] 인벤토리 로드 완료: 정상 {items.Length - staleSkipped}개 / stale ID {staleSkipped}개 스킵 (다음 저장 시 자동 정리)");
+        else
+            Debug.Log($"[InventoryManager] 인벤토리 로드 완료: {items.Length}개 (IsInventoryLoaded=true)");
+    }
+
+    /// <summary>ItemDatabase 준비될 때까지 대기 후 LoadInventoryData 재호출</summary>
+    private IEnumerator WaitForItemDBAndLoad(InventoryItemData[] items)
+    {
+        float waited = 0f;
+        while (waited < 10f)
+        {
+            if (ItemDatabase.Instance != null && ItemDatabase.Instance.IsReady)
+                break;
+            waited += Time.deltaTime;
+            yield return null;
+        }
+
+        if (ItemDatabase.Instance == null || !ItemDatabase.Instance.IsReady)
+        {
+            Debug.LogError($"[InventoryManager] ItemDatabase 10초 대기 타임아웃 — 인벤 로드 실패. 데이터 보호를 위해 IsInventoryLoaded=false 유지");
+            // ★ IsInventoryLoaded를 false로 유지 → SaveLoadManager가 GameDataBridge 폴백 사용
+            //   → 현재 메모리(빈 상태)로 JSON 덮어쓰기 차단
+            yield break;
+        }
+
+        Debug.Log($"[InventoryManager] ItemDatabase 준비 완료 ({waited:F1}초 대기) → LoadInventoryData 재호출 ({items.Length}개)");
+        LoadInventoryData(items);
     }
 
     // ═══════════════════════════════════════════════════════════════

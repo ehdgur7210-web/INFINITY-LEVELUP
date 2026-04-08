@@ -20,6 +20,9 @@ public class CompanionInventoryManager : MonoBehaviour
 {
     public static CompanionInventoryManager Instance;
 
+    // ★★ 데이터 손실 방지: 로드 완료 플래그 (InventoryManager.IsInventoryLoaded와 동일 패턴)
+    public bool IsCompanionLoaded { get; private set; } = false;
+
     [Header("슬롯 설정")]
     public int maxCompanionSlots = 30;
 
@@ -159,9 +162,15 @@ public class CompanionInventoryManager : MonoBehaviour
 
     public void LoadSaveData(CompanionSaveData[] saved, List<CompanionData> allCompanions)
     {
-        companionList.Clear();
+        // ★ 빈 데이터로 호출돼도 로드된 것으로 표시 — 기존 상태는 유지
+        if (saved == null || allCompanions == null)
+        {
+            Debug.Log("[CompanionInventoryManager] LoadSaveData: 빈 데이터 → 기존 상태 유지 (IsCompanionLoaded=true)");
+            IsCompanionLoaded = true;
+            return;
+        }
 
-        if (saved == null || allCompanions == null) return;
+        companionList.Clear();
 
         foreach (var s in saved)
         {
@@ -184,7 +193,8 @@ public class CompanionInventoryManager : MonoBehaviour
         }
 
         RefreshUI();
-        Debug.Log($"[CompanionInventoryManager] 동료 로드 완료 ({companionList.Count}명)");
+        IsCompanionLoaded = true;
+        Debug.Log($"[CompanionInventoryManager] 동료 로드 완료 ({companionList.Count}명) (IsCompanionLoaded=true)");
     }
 
     /// <summary>companionID로 CompanionData SO를 검색합니다.</summary>
