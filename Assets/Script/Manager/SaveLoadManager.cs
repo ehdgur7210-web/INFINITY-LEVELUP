@@ -196,7 +196,9 @@ public class SaveLoadManager : MonoBehaviour
                 $" | 인벤={data.inventoryItems?.Length ?? -1}개" +
                 $" | 동료={data.companions?.Length ?? -1}개" +
                 $" | 골드={data.playerGold} | 젬={data.playerGem} | Lv={data.playerLevel}" +
-                $" | 웨이브={data.offlineCurrentWave}");
+                $" | 웨이브={data.offlineCurrentWave}" +
+                $" | 작물={data.cropPoints}(top) / {data.farmData?.cropPoints ?? -1}(farm)" +
+                $" | rbm={(ResourceBarManager.Instance != null ? ResourceBarManager.Instance.cropPoints.ToString() : "null")}");
 #endif
             GameDataBridge.SetData(data);       // 인메모리 갱신
             GameDataBridge.WriteToFile(slot);    // JSON 파일 기록
