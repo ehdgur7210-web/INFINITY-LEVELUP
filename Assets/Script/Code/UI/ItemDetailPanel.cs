@@ -414,13 +414,12 @@ public class ItemDetailPanel : MonoBehaviour
         }
         else
         {
-            // FarmManager 없을 때 폴백: GameDataBridge 직접 반영
-            if (GameDataBridge.CurrentData != null && GameDataBridge.CurrentData.farmData != null)
-                GameDataBridge.CurrentData.farmData.cropPoints += totalPoints;
-
-            // ResourceBarManager 직접 갱신
+            // ★ FarmManager 없을 때 폴백: ResourceBarManager.AddCropPoints가
+            //   내부에서 SyncCropPointsToBridge로 top-level/farmData 양쪽 동기화 + 필요 시 farmData 자동 생성
             ResourceBarManager.Instance?.AddCropPoints(totalPoints);
         }
+        // ★ 즉시 저장 — 씬 전환 없이 사용해도 데이터 보존
+        SaveLoadManager.Instance?.SaveGame();
 
         // ── 인벤토리에서 차감 ──
         InventoryManager.Instance?.RemoveItem(currentItem, qty);

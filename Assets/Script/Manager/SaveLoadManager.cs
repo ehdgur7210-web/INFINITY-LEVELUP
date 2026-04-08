@@ -486,6 +486,20 @@ public class SaveLoadManager : MonoBehaviour
             data.farmData = FarmManager.Instance.GetFarmSaveData();
         else if (GameDataBridge.CurrentData?.farmData != null)
             data.farmData = GameDataBridge.CurrentData.farmData;
+        else
+        {
+            // ★ farmData가 한 번도 만들어진 적 없는 상태(첫 진입 등)에서도 cropPoints 보존
+            //   data.cropPoints는 위 리소스 블록에서 max-기반으로 이미 채워졌으므로
+            //   stub farmData를 만들어 그 값을 같이 저장
+            data.farmData = new FarmSaveData { cropPoints = data.cropPoints };
+        }
+        // ★ farmData.cropPoints가 top-level과 어긋나면 큰 값으로 통일 (저장 일관성)
+        if (data.farmData != null && data.farmData.cropPoints != data.cropPoints)
+        {
+            long maxCp = System.Math.Max(data.farmData.cropPoints, data.cropPoints);
+            data.farmData.cropPoints = maxCp;
+            data.cropPoints = maxCp;
+        }
 
         // ── 메일 ──
         if (MailManager.Instance != null)

@@ -73,13 +73,8 @@ public class ResourceBarManager : MonoBehaviour
         long farmCp = GameDataBridge.CurrentData?.farmData?.cropPoints ?? 0;
         cropPoints = System.Math.Max(topCp, farmCp);
         Debug.Log($"[ResourceBar:Start] cropPoints 복원: bridgeTop={topCp}, bridgeFarm={farmCp} → {cropPoints}");
-        // 동기화: 양쪽이 다르면 큰 값으로 통일해 다음 저장 때 일관 유지
-        if (GameDataBridge.CurrentData != null)
-        {
-            GameDataBridge.CurrentData.cropPoints = cropPoints;
-            if (GameDataBridge.CurrentData.farmData != null)
-                GameDataBridge.CurrentData.farmData.cropPoints = cropPoints;
-        }
+        // 양쪽 sync (farmData가 null이면 자동 생성)
+        SyncCropPointsToBridge();
 
         UpdateAllResourceUI();
 
@@ -395,6 +390,7 @@ public class ResourceBarManager : MonoBehaviour
     private void OnCropPointsChanged(long amount)
     {
         cropPoints = amount;
+        SyncCropPointsToBridge();
         UpdateCropPointUI();
         if (enablePunchAnimation && cropPointText != null)
             AnimateText(cropPointText.transform);
@@ -404,6 +400,7 @@ public class ResourceBarManager : MonoBehaviour
     public void AddCropPoints(long amount)
     {
         cropPoints += amount;
+        SyncCropPointsToBridge();
         UpdateCropPointUI();
         if (enablePunchAnimation && cropPointText != null)
             AnimateText(cropPointText.transform);
@@ -412,7 +409,26 @@ public class ResourceBarManager : MonoBehaviour
     public void SetCropPoints(long amount)
     {
         cropPoints = amount;
+        SyncCropPointsToBridge();
         UpdateCropPointUI();
+    }
+
+    /// <summary>
+    /// ★ cropPoints를 GameDataBridge의 top-level과 farmData에 양방향 sync.
+    /// FarmManager가 없는 MainScene에서도 next save가 정확히 기록되도록 보장.
+    /// farmData가 null이면 자동 생성 (첫 진입 시 farmData 미존재 케이스 방어).
+    /// </summary>
+    private void SyncCropPointsToBridge()
+    {
+        var cd = GameDataBridge.CurrentData;
+        if (cd == null) return;
+
+        cd.cropPoints = cropPoints;
+
+        // farmData가 null이어도 cropPoints는 보존되어야 함 → 자동 생성
+        if (cd.farmData == null)
+            cd.farmData = new FarmSaveData();
+        cd.farmData.cropPoints = cropPoints;
     }
 
     private void OnDestroy()
