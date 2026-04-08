@@ -72,9 +72,11 @@ public class ResourceBarManager : MonoBehaviour
         long topCp = GameDataBridge.CurrentData?.cropPoints ?? 0;
         long farmCp = GameDataBridge.CurrentData?.farmData?.cropPoints ?? 0;
         cropPoints = System.Math.Max(topCp, farmCp);
-        Debug.Log($"[ResourceBar:Start] cropPoints 복원: bridgeTop={topCp}, bridgeFarm={farmCp} → {cropPoints}");
-        // 양쪽 sync (farmData가 null이면 자동 생성)
-        SyncCropPointsToBridge();
+        Debug.Log($"[ResourceBar:Start] cropPoints 복원: bridgeTop={topCp}, bridgeFarm={farmCp} → {cropPoints} (CurrentData={(GameDataBridge.CurrentData != null ? "OK" : "NULL")}, farmData={(GameDataBridge.CurrentData?.farmData != null ? "OK" : "NULL")})");
+
+        // ★★ 늦은 로드(서버/AutoLoadOnStart 2프레임 지연) 대비 — 여러 프레임에 걸쳐 재시도
+        //    bridge 값이 더 커지면 채택. cropPoints를 0으로 클로버하지 않음 (max-only 갱신).
+        StartCoroutine(WatchBridgeForLateUpdates());
 
         UpdateAllResourceUI();
 
@@ -414,21 +416,59 @@ public class ResourceBarManager : MonoBehaviour
     }
 
     /// <summary>
-    /// ★ cropPoints를 GameDataBridge의 top-level과 farmData에 양방향 sync.
+    /// ★ cropPoints를 GameDataBridge의 top-level과 farmData에 max 기반으로 sync.
     /// FarmManager가 없는 MainScene에서도 next save가 정확히 기록되도록 보장.
     /// farmData가 null이면 자동 생성 (첫 진입 시 farmData 미존재 케이스 방어).
+    /// ★★ MAX-ONLY: 절대 bridge 값을 0/더 작은 값으로 클로버하지 않음
+    ///    (이전 버그: 로컬 cropPoints=0 상태에서 호출되어 bridge 100을 0으로 덮어씀)
     /// </summary>
     private void SyncCropPointsToBridge()
     {
         var cd = GameDataBridge.CurrentData;
         if (cd == null) return;
 
-        cd.cropPoints = cropPoints;
+        long bridgeTop = cd.cropPoints;
+        long bridgeFarm = cd.farmData?.cropPoints ?? 0;
+        long maxCp = System.Math.Max(cropPoints, System.Math.Max(bridgeTop, bridgeFarm));
 
-        // farmData가 null이어도 cropPoints는 보존되어야 함 → 자동 생성
+        // 로컬도 max로 회복 (혹시 0이었다면 bridge 값으로 복원)
+        cropPoints = maxCp;
+        cd.cropPoints = maxCp;
+
         if (cd.farmData == null)
             cd.farmData = new FarmSaveData();
-        cd.farmData.cropPoints = cropPoints;
+        cd.farmData.cropPoints = maxCp;
+    }
+
+    /// <summary>
+    /// ★ 늦게 도착하는 데이터(서버 비동기 로드, AutoLoadOnStart 2프레임 지연 등) 감시.
+    /// 처음 ~30프레임 동안 bridge에서 cropPoints가 더 커지면 채택.
+    /// 로컬 값이 0인 채로 시작했더라도 늦게 들어온 진짜 값을 놓치지 않음.
+    /// </summary>
+    private System.Collections.IEnumerator WatchBridgeForLateUpdates()
+    {
+        for (int i = 0; i < 30; i++)
+        {
+            yield return null;
+            var cd = GameDataBridge.CurrentData;
+            if (cd == null) continue;
+
+            long bridgeTop = cd.cropPoints;
+            long bridgeFarm = cd.farmData?.cropPoints ?? 0;
+            long maxCp = System.Math.Max(bridgeTop, bridgeFarm);
+
+            if (maxCp > cropPoints)
+            {
+                Debug.Log($"[ResourceBar:Watch] frame+{i}: 늦은 데이터 도착 cropPoints {cropPoints} → {maxCp} (top={bridgeTop}, farm={bridgeFarm})");
+                cropPoints = maxCp;
+                // 양쪽 동기화 — bridge 두 필드도 max로 통일
+                cd.cropPoints = maxCp;
+                if (cd.farmData == null) cd.farmData = new FarmSaveData();
+                cd.farmData.cropPoints = maxCp;
+                UpdateCropPointUI();
+            }
+        }
+        Debug.Log($"[ResourceBar:Watch] 종료 — 최종 cropPoints={cropPoints}");
     }
 
     private void OnDestroy()

@@ -430,6 +430,11 @@ public class OfflineRewardManager : MonoBehaviour
         {
             if (FarmManager.Instance != null)
                 FarmManager.Instance.AddCropPoints(finalCropPoint);
+            else if (ResourceBarManager.Instance != null)
+                // ★ FarmManager 없는 MainScene 폴백: ResourceBarManager.AddCropPoints가
+                //   내부적으로 SyncCropPointsToBridge를 호출해 bridge top-level/farmData
+                //   양쪽을 갱신하고 UI도 즉시 새로고침함.
+                ResourceBarManager.Instance.AddCropPoints(finalCropPoint);
             else if (GameDataBridge.CurrentData != null)
                 GameDataBridge.CurrentData.cropPoints += finalCropPoint;
         }
