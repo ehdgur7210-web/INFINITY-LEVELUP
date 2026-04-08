@@ -337,29 +337,13 @@ public class GachaManager : MonoBehaviour
     // ════════════════════════════════════════════════════════
 
     /// <summary>1회 가챠 (ResourceBarManager 연동)</summary>
+    /// <summary>
+    /// ★ 단일 가챠 비활성화 — 다연차만 사용.
+    /// 기존 버튼이 호출해도 안전하게 다연차로 폴백.
+    /// </summary>
     public void PerformSingleGacha()
     {
-        Debug.Log("[GachaManager] ========== 1회 가챠 시작 ==========");
-
-        if (!CheckGachaPool()) return;
-        if (!SpendTickets(ticketCostPerGacha)) return;
-
-        EquipmentData result = PerformGacha();
-        if (result != null)
-        {
-            Debug.Log($"[GachaManager] 가챠 결과: {result.itemName} ({result.rarity})");
-            InventoryManager.Instance?.AddItem(result, 1, false);
-            IncrementGachaCount();
-
-            ShowGachaResults(new List<EquipmentData> { result });
-            RefreshGachaUI();
-
-            // 즉시 저장 + 인벤토리 갱신 (AddItem에서 refreshUI=false → 여기서 1회만 빌드)
-            SaveLoadManager.Instance?.SaveGame();
-            InventoryManager.Instance?.RefreshEquipDisplay();
-        }
-
-        Debug.Log("[GachaManager] ========== 1회 가챠 완료 ==========");
+        // 단일 가챠 비활성화 — 조용히 무시 (공지 메시지 출력 안 함)
     }
 
     /// <summary>다연차 1 (multiGachaCount 횟수만큼)</summary>
