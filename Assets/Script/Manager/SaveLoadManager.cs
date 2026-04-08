@@ -143,6 +143,7 @@ public class SaveLoadManager : MonoBehaviour
         // → 여기서는 CurrentData를 각 매니저 Instance에 주입(Apply)만 수행
         if (GameDataBridge.HasData)
         {
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
             var cd = GameDataBridge.CurrentData;
             string sc = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name;
             Debug.Log($"[LOAD-DEBUG] ★ ApplySaveData 시작 씬={sc}" +
@@ -151,8 +152,11 @@ public class SaveLoadManager : MonoBehaviour
                 $" | 동료={cd.companions?.Length ?? -1}개" +
                 $" | 골드={cd.playerGold} | 젬={cd.playerGem} | Lv={cd.playerLevel}" +
                 $" | 웨이브={cd.offlineCurrentWave}");
+#endif
             ApplySaveData(GameDataBridge.CurrentData);
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
             Debug.Log("[SaveLoadManager] ★ 모든 매니저에 저장 데이터 적용 완료");
+#endif
         }
         else
         {
@@ -657,12 +661,16 @@ public class SaveLoadManager : MonoBehaviour
             TransferFarmHarvestToInventory(data);
 
         // ── 장비 (ItemDatabase 준비 후 로드) ──
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
         Debug.Log($"[EQUIP-TRACE] ApplySaveData: EquipMgr={EquipmentManager.Instance != null}, equipData={data.equipmentData?.slots?.Count ?? -1}개, ItemDB={ItemDatabase.Instance != null}, IsReady={ItemDatabase.Instance?.IsReady}");
+#endif
         if (EquipmentManager.Instance != null && data.equipmentData != null)
         {
             if (ItemDatabase.Instance != null && ItemDatabase.Instance.IsReady)
             {
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
                 Debug.Log($"[EQUIP-TRACE] ApplySaveData: LoadEquipmentSaveData 호출 ({data.equipmentData.slots.Count}개)");
+#endif
                 EquipmentManager.Instance.LoadEquipmentSaveData(data.equipmentData);
                 // ★ 장비 스킬 동기화 — 빈 슬롯의 잔류 스킬 클리어 포함
                 EquipmentSkillSystem.Instance?.RefreshAllEquippedSkills();
@@ -670,7 +678,9 @@ public class SaveLoadManager : MonoBehaviour
             }
             else
             {
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
                 Debug.LogWarning($"[EQUIP-TRACE] ApplySaveData: ItemDatabase 미준비 → WaitAndLoadEquipment 코루틴 ({data.equipmentData.slots.Count}개)");
+#endif
                 StartCoroutine(WaitAndLoadEquipment(data.equipmentData));
             }
         }
@@ -680,12 +690,16 @@ public class SaveLoadManager : MonoBehaviour
             string curScene = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name;
             if (curScene == "MainScene")
             {
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
                 Debug.LogWarning($"[EQUIP-TRACE] ApplySaveData: EquipMgr 미준비 → WaitAndLoadEquipment 코루틴 ({data.equipmentData.slots.Count}개)");
+#endif
                 StartCoroutine(WaitAndLoadEquipment(data.equipmentData));
             }
             else
             {
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
                 Debug.Log($"[EQUIP-TRACE] ApplySaveData: {curScene}에서는 장비 로드 스킵 (EquipmentManager 없는 씬), Bridge 보존={data.equipmentData.slots.Count}개");
+#endif
             }
         }
 

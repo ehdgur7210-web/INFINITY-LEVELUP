@@ -40,6 +40,13 @@ public class LoginSystem : MonoBehaviour
         if (messageText != null) messageText.gameObject.SetActive(false);
         if (usernameInput != null) usernameInput.text = "";
         if (passwordInput != null) passwordInput.text = "";
+
+        // ★ 기억하기 토글: 처음엔 비활성 + 꺼짐 (아이디/비번 둘 다 입력 후에만 활성)
+        if (rememberToggle != null)
+        {
+            rememberToggle.isOn = false;
+            rememberToggle.interactable = false;
+        }
     }
 
     private void SetupButtons()
@@ -48,6 +55,30 @@ public class LoginSystem : MonoBehaviour
         if (registerButton != null) registerButton.onClick.AddListener(OnRegisterClicked);
         if (usernameInput != null) usernameInput.onSubmit.AddListener((t) => FocusPassword());
         if (passwordInput != null) passwordInput.onSubmit.AddListener((t) => OnLoginClicked());
+
+        // ★ 입력 변경 시 기억하기 토글 활성/비활성 갱신
+        if (usernameInput != null) usernameInput.onValueChanged.AddListener(_ => RefreshRememberToggleState());
+        if (passwordInput != null) passwordInput.onValueChanged.AddListener(_ => RefreshRememberToggleState());
+    }
+
+    /// <summary>
+    /// 기억하기 토글의 활성 여부 갱신.
+    /// 아이디/비번 둘 다 minLength 이상 입력되어야 토글 클릭 가능.
+    /// </summary>
+    private void RefreshRememberToggleState()
+    {
+        if (rememberToggle == null) return;
+
+        string u = usernameInput != null ? usernameInput.text : "";
+        string p = passwordInput != null ? passwordInput.text : "";
+        bool ready = !string.IsNullOrEmpty(u) && !string.IsNullOrEmpty(p)
+                     && u.Length >= minUsernameLength && p.Length >= minPasswordLength;
+
+        rememberToggle.interactable = ready;
+
+        // 입력이 다시 비워지면 토글도 강제 OFF (의도하지 않은 저장 방지)
+        if (!ready && rememberToggle.isOn)
+            rememberToggle.isOn = false;
     }
 
     private void FocusPassword()
@@ -183,7 +214,13 @@ public class LoginSystem : MonoBehaviour
         {
             if (usernameInput != null)  usernameInput.text  = data.rememberedUsername;
             if (passwordInput != null)  passwordInput.text  = DeobfuscatePassword(data.rememberedPassword);
-            if (rememberToggle != null) rememberToggle.isOn = true;
+
+            // ★ 자동 채운 입력값에 맞춰 토글 활성화 + ON
+            RefreshRememberToggleState();
+            if (rememberToggle != null && rememberToggle.interactable)
+                rememberToggle.isOn = true;
+
+            // ★ 자동 로그인은 하지 않음 — 사용자가 로그인 버튼을 직접 눌러야 함
         }
     }
 

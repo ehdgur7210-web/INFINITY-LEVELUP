@@ -73,8 +73,8 @@ public class GachaResultUI : MonoBehaviour
 
     // ── 슬롯 풀링 ────────────────────────────────────────────────
     [Header("슬롯 풀링")]
-    [Tooltip("미리 생성할 슬롯 개수 (100~200 권장)")]
-    public int slotPoolSize = 150;
+    [Tooltip("미리 생성할 슬롯 개수 (낮을수록 게임 시작 빠름, 부족 시 자동 확장)")]
+    public int slotPoolSize = 30;
 
     private List<GameObject> slotPool = new List<GameObject>();
     private int slotPoolUsedCount = 0;

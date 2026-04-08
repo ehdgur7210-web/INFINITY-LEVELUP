@@ -337,29 +337,16 @@ public class GachaManager : MonoBehaviour
     // ════════════════════════════════════════════════════════
 
     /// <summary>1회 가챠 (ResourceBarManager 연동)</summary>
+    /// <summary>
+    /// ★ 단일 가챠 비활성화 — 다연차만 사용.
+    /// 기존 버튼이 호출해도 안전하게 다연차로 폴백.
+    /// </summary>
     public void PerformSingleGacha()
     {
-        Debug.Log("[GachaManager] ========== 1회 가챠 시작 ==========");
-
-        if (!CheckGachaPool()) return;
-        if (!SpendTickets(ticketCostPerGacha)) return;
-
-        EquipmentData result = PerformGacha();
-        if (result != null)
-        {
-            Debug.Log($"[GachaManager] 가챠 결과: {result.itemName} ({result.rarity})");
-            InventoryManager.Instance?.AddItem(result, 1, false);
-            IncrementGachaCount();
-
-            ShowGachaResults(new List<EquipmentData> { result });
-            RefreshGachaUI();
-
-            // 즉시 저장 + 인벤토리 갱신 (AddItem에서 refreshUI=false → 여기서 1회만 빌드)
-            SaveLoadManager.Instance?.SaveGame();
-            InventoryManager.Instance?.RefreshEquipDisplay();
-        }
-
-        Debug.Log("[GachaManager] ========== 1회 가챠 완료 ==========");
+        Debug.Log("[GachaManager] 단일 가챠는 비활성화됨 → 다연차로 폴백");
+        UIManager.Instance?.ShowMessage("단일 뽑기는 사용할 수 없습니다. 다연차를 이용해주세요.", Color.yellow);
+        // 사용자가 실수로 단일 버튼을 눌러도 가챠 자체가 막히도록 — 다연차 폴백 원하면 아래 줄 주석 해제
+        // PerformTenGacha();
     }
 
     /// <summary>다연차 1 (multiGachaCount 횟수만큼)</summary>
