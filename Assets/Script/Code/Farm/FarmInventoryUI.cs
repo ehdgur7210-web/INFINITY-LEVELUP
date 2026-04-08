@@ -335,7 +335,7 @@ public class FarmInventoryUI : MonoBehaviour
 
     private void RefreshAll()
     {
-        RefreshCropPoints(FarmManager.Instance?.GetCropPoints() ?? 0);
+        RefreshCropPoints(CropPointService.Value);
 
         // ★ 탭에 맞게 컨테이너 활성/비활성 보장 (파괴된 참조 체크)
         if (seedContainer != null) seedContainer.gameObject.SetActive(currentTab == InvTab.Seeds);

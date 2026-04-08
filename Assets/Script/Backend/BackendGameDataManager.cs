@@ -307,7 +307,7 @@ public class BackendGameDataManager : MonoBehaviour
         IsBusy = true;
 
         int cp = CombatPowerManager.Instance?.TotalCombatPower ?? 0;
-        long farmScore = FarmManager.Instance?.GetCropPoints() ?? 0;
+        long farmScore = CropPointService.Value;
 
         Debug.Log($"[BackendGameData] ▶ SaveToServer 시작 — 테이블:\"{tableName}\", slot:{data.activeCharacterSlot}, Lv:{data.playerLevel}, CP:{cp}, Farm:{farmScore}, RowInDate:{(_rowInDate ?? "null")}");
 

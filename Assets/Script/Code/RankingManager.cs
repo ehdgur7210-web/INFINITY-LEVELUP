@@ -630,7 +630,7 @@ public class RankingManager : MonoBehaviour
         int currentScore = GetScore(
             currentCp,
             GameManager.Instance?.PlayerLevel ?? 1,
-            FarmManager.Instance?.GetCropPoints() ?? 0);
+            CropPointService.Value);
 
         for (int i = 0; i < entries.Count; i++)
         {
@@ -655,7 +655,7 @@ public class RankingManager : MonoBehaviour
             playerName  = GetMyName(),
             score       = GetScore(myCp,
                                    GameManager.Instance?.PlayerLevel ?? 1,
-                                   FarmManager.Instance?.GetCropPoints() ?? 0),
+                                   CropPointService.Value),
             combatPower = myCp,
             classIndex  = MyClassIndex,
             isMe        = true

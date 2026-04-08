@@ -562,7 +562,7 @@ public class GachaManager : MonoBehaviour
             return true;
 
         long currentGold = GameManager.Instance != null ? GameManager.Instance.PlayerGold : 0;
-        long currentCP = FarmManager.Instance != null ? FarmManager.Instance.GetCropPoints() : 0;
+        long currentCP = CropPointService.Value;
 
         // 골드 확인
         if (cost.goldCost > 0)
@@ -576,10 +576,10 @@ public class GachaManager : MonoBehaviour
             }
         }
 
-        // CropPoint 확인
+        // CropPoint 확인 (FarmManager 없는 MainScene에서도 동작)
         if (cost.cropPointCost > 0)
         {
-            if (FarmManager.Instance == null || currentCP < cost.cropPointCost)
+            if (currentCP < cost.cropPointCost)
             {
                 UIManager.Instance?.ShowConfirmDialog(
                     $"가챠레벨업을하기위해선\n작물포인트가필요합니다.\n필요:{cost.cropPointCost}CP\n보유:{currentCP}CP",
@@ -590,7 +590,7 @@ public class GachaManager : MonoBehaviour
 
         // 차감
         if (cost.goldCost > 0) GameManager.Instance.SpendGold(cost.goldCost);
-        if (cost.cropPointCost > 0) FarmManager.Instance.SpendCropPoints(cost.cropPointCost);
+        if (cost.cropPointCost > 0) CropPointService.Spend(cost.cropPointCost);
 
         UIManager.Instance?.ShowMessage(
             $"레벨 {fromLevel}→{fromLevel + 1} 업그레이드!\n-{cost.goldCost:N0}G / -{cost.cropPointCost}CP",

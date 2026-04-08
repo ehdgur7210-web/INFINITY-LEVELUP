@@ -509,8 +509,8 @@ public class BulkEnhancePanel : MonoBehaviour
             return;
         }
 
-        // 비용 확인 (CropPoint)
-        long currentCp = FarmManager.Instance != null ? FarmManager.Instance.GetCropPoints() : 0;
+        // 비용 확인 (CropPoint) — FarmManager 없는 MainScene에서도 동작
+        long currentCp = CropPointService.Value;
         if (totalCpCost > 0 && currentCp < totalCpCost)
         {
             UIManager.Instance?.ShowConfirmDialog(
@@ -550,9 +550,9 @@ public class BulkEnhancePanel : MonoBehaviour
         success = 0;
         fail = 0;
 
-        // CropPoint 검증
-        long curCp = FarmManager.Instance != null ? FarmManager.Instance.GetCropPoints() : 0;
-        if (totalCpCost > 0 && (FarmManager.Instance == null || curCp < totalCpCost))
+        // CropPoint 검증 (FarmManager 없는 MainScene에서도 동작)
+        long curCp = CropPointService.Value;
+        if (totalCpCost > 0 && curCp < totalCpCost)
         {
             UIManager.Instance?.ShowMessage("작물 포인트 부족", Color.red);
             return false;
@@ -568,7 +568,7 @@ public class BulkEnhancePanel : MonoBehaviour
         // CropPoint 차감
         if (totalCpCost > 0)
         {
-            FarmManager.Instance.SpendCropPoints(totalCpCost);
+            CropPointService.Spend(totalCpCost);
         }
 
         // 강화 시도
@@ -715,9 +715,9 @@ public class BulkEnhancePanel : MonoBehaviour
             int totalGoldCost = CalculateBulkCost(_currentFilter, targetCount);
             int totalCpCost = CalculateBulkCropCost(_currentFilter, targetCount);
 
-            // 자원 사전 확인
+            // 자원 사전 확인 (FarmManager 없는 MainScene에서도 동작)
             long currentGold = GameManager.Instance?.PlayerGold ?? 0;
-            long currentCp = FarmManager.Instance != null ? FarmManager.Instance.GetCropPoints() : 0;
+            long currentCp = CropPointService.Value;
 
             if (currentGold < totalGoldCost)
             {

@@ -375,8 +375,8 @@ public class UIManager : MonoBehaviour
         UpdateGemUI(GameManager.Instance.PlayerGem);
         UpdateExpUI(GameManager.Instance.PlayerExp, GameManager.Instance.PlayerLevel);
 
-        // 크롭포인트 초기값 표시
-        long cp = FarmManager.Instance != null ? FarmManager.Instance.GetCropPoints() : 0;
+        // 크롭포인트 초기값 표시 (FarmManager 없는 MainScene에서도 동작)
+        long cp = CropPointService.Value;
         UpdateCropPointUI(cp);
 
         if (PlayerStats.Instance != null)

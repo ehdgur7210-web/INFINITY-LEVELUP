@@ -518,7 +518,7 @@ public class EnhancementSystem : MonoBehaviour
             if (EnhancementCropCostPatch.Instance != null)
             {
                 int cpCost = EnhancementCropCostPatch.Instance.GetCropPointCost(currentEnhanceLevel);
-                long curCp = FarmManager.Instance != null ? FarmManager.Instance.GetCropPoints() : 0;
+                long curCp = CropPointService.Value;
 
                 cropCostText.text = $"CP: {cpCost} (보유 {curCp})";
                 cropCostText.color = curCp >= cpCost ? Color.white : Color.red;

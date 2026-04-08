@@ -60,9 +60,13 @@ public class CropPointShop : MonoBehaviour
 
         int totalCost = shopItem.cropPointCost * quantity;
 
-        // 작물 포인트 차감
-        if (FarmManager.Instance == null || !FarmManager.Instance.SpendCropPoints(totalCost))
+        // 작물 포인트 차감 (FarmManager 없는 MainScene에서도 동작)
+        if (!CropPointService.Spend(totalCost))
+        {
+            UIManager.Instance?.ShowMessage(
+                $"작물 포인트가 부족합니다! (필요:{totalCost} / 보유:{CropPointService.Value})", Color.red);
             return false;
+        }
 
         // 인벤토리에 아이템 추가
         if (InventoryManager.Instance != null)
@@ -85,7 +89,6 @@ public class CropPointShop : MonoBehaviour
     public bool CanPurchase(int shopItemIndex, int quantity = 1)
     {
         if (shopItemIndex < 0 || shopItemIndex >= shopItems.Count) return false;
-        if (FarmManager.Instance == null) return false;
 
         CropPointShopItem shopItem = shopItems[shopItemIndex];
         int totalCost = shopItem.cropPointCost * quantity;
@@ -93,7 +96,7 @@ public class CropPointShop : MonoBehaviour
         int playerLevel = PlayerStats.Instance != null ? PlayerStats.Instance.level : 1;
         if (playerLevel < shopItem.requiredPlayerLevel) return false;
 
-        return FarmManager.Instance.GetCropPoints() >= totalCost;
+        return CropPointService.HasEnough(totalCost);
     }
 
     public List<CropPointShopItem> GetShopItems() => shopItems;

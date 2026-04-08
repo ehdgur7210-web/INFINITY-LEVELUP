@@ -204,10 +204,10 @@ public class GachaEquipmentTierManager : MonoBehaviour
             }
         }
 
-        // CropPoint 확인
+        // CropPoint 확인 (FarmManager 없는 MainScene에서도 동작)
         if (cost.cropPointCost > 0)
         {
-            long curCp = FarmManager.Instance != null ? FarmManager.Instance.GetCropPoints() : 0;
+            long curCp = CropPointService.Value;
             if (curCp < cost.cropPointCost)
             {
                 UIManager.Instance?.ShowConfirmDialog(
@@ -221,7 +221,7 @@ public class GachaEquipmentTierManager : MonoBehaviour
         if (cost.goldCost > 0)
             GameManager.Instance.SpendGold(cost.goldCost);
         if (cost.cropPointCost > 0)
-            FarmManager.Instance.SpendCropPoints(cost.cropPointCost);
+            CropPointService.Spend(cost.cropPointCost);
 
         UIManager.Instance?.ShowMessage(
             $"레벨 {fromLevel}→{fromLevel + 1} 달성!\n-{cost.goldCost:N0}G / -{cost.cropPointCost}CP", Color.cyan);

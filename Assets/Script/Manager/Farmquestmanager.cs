@@ -232,7 +232,7 @@ public class FarmQuestManager : MonoBehaviour
         quest.isSubmitted = true;
 
         if (quest.cropPointReward > 0)
-            FarmManager.Instance?.AddCropPoints(quest.cropPointReward);
+            CropPointService.Add(quest.cropPointReward);
 
         if (quest.goldReward > 0)
             GameManager.Instance?.AddGold(quest.goldReward);

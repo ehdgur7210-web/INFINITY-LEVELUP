@@ -353,7 +353,7 @@ public class FarmSceneController : MonoBehaviour
             if (goldText) goldText.text = UIManager.FormatKoreanUnit(GameManager.Instance.PlayerGold);
             if (gemText) gemText.text = UIManager.FormatKoreanUnit(GameManager.Instance.PlayerGem);
         }
-        long pts = FarmManager.Instance?.GetCropPoints() ?? 0;
+        long pts = CropPointService.Value;
         if (cropPointText) cropPointText.text = UIManager.FormatKoreanUnit(pts);
     }
 

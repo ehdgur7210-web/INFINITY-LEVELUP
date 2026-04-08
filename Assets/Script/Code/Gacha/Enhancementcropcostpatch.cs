@@ -66,7 +66,7 @@ public class EnhancementCropCostPatch : MonoBehaviour
             return false;
         }
 
-        long curCp = FarmManager.Instance != null ? FarmManager.Instance.GetCropPoints() : 0;
+        long curCp = CropPointService.Value;
         if (curCp < cpCost)
         {
             UIManager.Instance?.ShowMessage(
@@ -96,14 +96,10 @@ public class EnhancementCropCostPatch : MonoBehaviour
             Debug.LogError("[EnhancementCropCostPatch] GameManager.Instance가 null입니다.");
             return false;
         }
-        if (FarmManager.Instance == null)
-        {
-            Debug.LogError("[EnhancementCropCostPatch] FarmManager.Instance가 null입니다.");
-            return false;
-        }
 
         GameManager.Instance.SpendGold(goldCost);
-        FarmManager.Instance.SpendCropPoints(cpCost);
+        // ★ FarmManager 없는 MainScene에서도 동작 — CropPointService 사용
+        CropPointService.Spend(cpCost);
 
         Debug.Log($"[EnhancementCropCostPatch] 강화 비용: -{goldCost:N0}G / -{cpCost}CP " +
                   $"(+{currentEnhanceLevel}→+{currentEnhanceLevel + 1})");

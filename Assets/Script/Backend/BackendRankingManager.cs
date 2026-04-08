@@ -174,7 +174,7 @@ public class BackendRankingManager : MonoBehaviour
         // 점수 변경 감지: 동일하면 더티 표시조차 안 함
         int curCombat = CombatPowerManager.Instance?.TotalCombatPower ?? 0;
         int curLevel = GameManager.Instance?.PlayerLevel ?? 1;
-        long curFarm = FarmManager.Instance?.GetCropPoints() ?? 0;
+        long curFarm = CropPointService.Value;
         if (curCombat == _lastCombat && curLevel == _lastLevel && curFarm == _lastFarm)
             return;
 
@@ -194,7 +194,7 @@ public class BackendRankingManager : MonoBehaviour
         // 전송 시점의 최신 점수로 갱신
         _lastCombat = CombatPowerManager.Instance?.TotalCombatPower ?? 0;
         _lastLevel = GameManager.Instance?.PlayerLevel ?? 1;
-        _lastFarm = FarmManager.Instance?.GetCropPoints() ?? 0;
+        _lastFarm = CropPointService.Value;
         _isDirty = false; // 전송 시작 → 더티 해제 (실패 시 콜백에서 복원)
 
         // ✅ Bug5 수정: RowInDate 없으면 SaveToServer로 행 먼저 생성 후 갱신
@@ -229,7 +229,7 @@ public class BackendRankingManager : MonoBehaviour
     {
         int combatPower = CombatPowerManager.Instance?.TotalCombatPower ?? 0;
         int level = GameManager.Instance?.PlayerLevel ?? 1;
-        long farm = FarmManager.Instance?.GetCropPoints() ?? 0;
+        long farm = CropPointService.Value;
 
         Debug.Log($"[BackendRanking] ▶ DoUpdateAllScores — 전투력:{combatPower}, 레벨:{level}, 농장:{farm}");
 
@@ -421,7 +421,7 @@ public class BackendRankingManager : MonoBehaviour
                 // 서버 값은 마지막 SaveGame() 시점이므로 레벨업 등이 미반영될 수 있음
                 int localCp   = CombatPowerManager.Instance?.TotalCombatPower ?? 0;
                 int localLv   = GameManager.Instance?.PlayerLevel ?? 1;
-                long localFarm = FarmManager.Instance?.GetCropPoints() ?? 0;
+                long localFarm = CropPointService.Value;
                 score = currentRankType switch
                 {
                     RankingManager.RankType.CombatPower => localCp,

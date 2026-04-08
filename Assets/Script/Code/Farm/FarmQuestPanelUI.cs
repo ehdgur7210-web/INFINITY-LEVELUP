@@ -70,7 +70,7 @@ public class FarmQuestPanelUI : MonoBehaviour
             else go.SetActive(false);
         }
 
-        long pts = FarmManager.Instance?.GetCropPoints() ?? 0;
+        long pts = CropPointService.Value;
         if (cropPointsText) cropPointsText.text = $"작물 포인트: {UIManager.FormatKoreanUnit(pts)}";
         LayoutRebuilder.ForceRebuildLayoutImmediate(questListContent as RectTransform);
     }
