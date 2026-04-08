@@ -731,10 +731,7 @@ public class ShopManager : MonoBehaviour
                 break;
 
             case PackageRewardType.CropPoint:
-                if (FarmManager.Instance != null)
-                    FarmManager.Instance.AddCropPoints(pkg.rewardAmount);
-                else if (GameDataBridge.CurrentData != null)
-                    GameDataBridge.CurrentData.cropPoints += pkg.rewardAmount;
+                CropPointService.Add(pkg.rewardAmount);
                 break;
         }
 

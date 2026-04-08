@@ -605,8 +605,7 @@ public class VipManager : MonoBehaviour
                     break;
 
                 case VipRewardType.CropPoint:
-                    if (GameDataBridge.CurrentData != null)
-                        GameDataBridge.CurrentData.cropPoints += r.amount;
+                    CropPointService.Add(r.amount);
                     UIManager.Instance?.ShowMessage($"+{r.amount} 작물 포인트", Color.green);
                     break;
 

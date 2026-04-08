@@ -45,7 +45,14 @@ public class ResourceBarManager : MonoBehaviour
     public int crystals = 0;                // 크리스탈
     public int essences = 0;                // 에센스
     public int fragments = 0;               // 파편
-    public long cropPoints = 0;              // ★ 작물 포인트
+
+    // ★★ cropPoints는 더 이상 ResourceBarManager 필드가 아님 — CropPointService에 위임.
+    //    호환성 유지: 기존 코드 (rbm.cropPoints, rbm.AddCropPoints 등)는 그대로 동작.
+    public long cropPoints
+    {
+        get => CropPointService.Value;
+        set => CropPointService.Set(value);
+    }
 
     [Header("애니메이션 설정")]
     [SerializeField] private bool enablePunchAnimation = false;
@@ -67,57 +74,14 @@ public class ResourceBarManager : MonoBehaviour
 
     void Start()
     {
-        // ★ FarmScene → MainScene 전환 시 저장된 cropPoints 복원
-        //   top-level과 farmData 중 더 큰 값을 채택해 두 필드 불일치로 인한 0-리셋 방지
-        long topCp = GameDataBridge.CurrentData?.cropPoints ?? 0;
-        long farmCp = GameDataBridge.CurrentData?.farmData?.cropPoints ?? 0;
-        cropPoints = System.Math.Max(topCp, farmCp);
-        Debug.Log($"[ResourceBar:Start] cropPoints 복원: bridgeTop={topCp}, bridgeFarm={farmCp} → {cropPoints} (CurrentData={(GameDataBridge.CurrentData != null ? "OK" : "NULL")}, farmData={(GameDataBridge.CurrentData?.farmData != null ? "OK" : "NULL")})");
-
-        // ★★ 강화된 폴백: bridge가 0이면 JSON 파일을 직접 다시 읽어서 farmData.cropPoints 시도
-        //    (bridge가 race로 늦게 로드되거나 reset된 경우 방어)
-        if (cropPoints == 0)
-        {
-            try
-            {
-                int slot = GameDataBridge.ActiveSlot;
-                if (GameDataBridge.FileExists(slot))
-                {
-                    string path = GameDataBridge.GetFilePath(slot);
-                    string json = System.IO.File.ReadAllText(path);
-                    SaveData fileData = JsonUtility.FromJson<SaveData>(json);
-                    long fileTop = fileData?.cropPoints ?? 0;
-                    long fileFarm = fileData?.farmData?.cropPoints ?? 0;
-                    long fileMax = System.Math.Max(fileTop, fileFarm);
-                    Debug.Log($"[ResourceBar:Start] JSON 파일 폴백 — fileTop={fileTop}, fileFarm={fileFarm}, max={fileMax}");
-                    if (fileMax > 0)
-                    {
-                        cropPoints = fileMax;
-                        // bridge에도 sync
-                        if (GameDataBridge.CurrentData != null)
-                        {
-                            GameDataBridge.CurrentData.cropPoints = cropPoints;
-                            if (GameDataBridge.CurrentData.farmData == null)
-                                GameDataBridge.CurrentData.farmData = new FarmSaveData();
-                            GameDataBridge.CurrentData.farmData.cropPoints = cropPoints;
-                        }
-                    }
-                }
-            }
-            catch (System.Exception e)
-            {
-                Debug.LogWarning($"[ResourceBar:Start] JSON 폴백 읽기 실패: {e.Message}");
-            }
-        }
-
-        // ★★ 늦은 로드(서버/AutoLoadOnStart 2프레임 지연) 대비 — 여러 프레임에 걸쳐 재시도
-        //    bridge 값이 더 커지면 채택. cropPoints를 0으로 클로버하지 않음 (max-only 갱신).
-        StartCoroutine(WatchBridgeForLateUpdates());
+        // ★ cropPoints는 CropPointService(GameDataBridge)가 단일 source of truth.
+        //   초기 UI 표시는 그대로 호출하면 됨 (서비스가 bridge에서 즉시 읽음).
+        Debug.Log($"[ResourceBar:Start] cropPoints={CropPointService.Value} (CropPointService에서 직접 읽음)");
 
         UpdateAllResourceUI();
 
-        // ★ FarmScene에서 실시간 변경 시 즉시 반영
-        FarmManagerExtension.OnCropPointsChanged += OnCropPointsChanged;
+        // ★ cropPoints 변경 이벤트 구독 — 어디에서 Add/Spend가 일어나도 UI 자동 갱신
+        CropPointService.OnChanged += HandleCropPointsChanged;
 
         // 토글 버튼 이벤트 연결 추가
         if (Togl != null)
@@ -424,92 +388,29 @@ public class ResourceBarManager : MonoBehaviour
             cropPointText.text = UIManager.FormatKoreanUnit(cropPoints);
     }
 
-    // ★ FarmManagerExtension 이벤트 수신
-    private void OnCropPointsChanged(long amount)
+    // ★ CropPointService.OnChanged 핸들러 — 어디에서든 cropPoints가 변경되면 UI 갱신
+    private void HandleCropPointsChanged(long newValue)
     {
-        cropPoints = amount;
-        SyncCropPointsToBridge();
         UpdateCropPointUI();
         if (enablePunchAnimation && cropPointText != null)
             AnimateText(cropPointText.transform);
     }
 
-    // ★ 외부에서 직접 추가할 때 (퀘스트 보상 등)
+    // ★ 외부에서 직접 추가할 때 (퀘스트 보상 등) — CropPointService에 위임
     public void AddCropPoints(long amount)
     {
-        cropPoints += amount;
-        SyncCropPointsToBridge();
-        UpdateCropPointUI();
-        if (enablePunchAnimation && cropPointText != null)
-            AnimateText(cropPointText.transform);
+        CropPointService.Add(amount);
+        // OnChanged 핸들러가 UI 갱신을 처리하므로 별도 호출 불필요
     }
 
     public void SetCropPoints(long amount)
     {
-        cropPoints = amount;
-        SyncCropPointsToBridge();
-        UpdateCropPointUI();
-    }
-
-    /// <summary>
-    /// ★ cropPoints를 GameDataBridge의 top-level과 farmData에 max 기반으로 sync.
-    /// FarmManager가 없는 MainScene에서도 next save가 정확히 기록되도록 보장.
-    /// farmData가 null이면 자동 생성 (첫 진입 시 farmData 미존재 케이스 방어).
-    /// ★★ MAX-ONLY: 절대 bridge 값을 0/더 작은 값으로 클로버하지 않음
-    ///    (이전 버그: 로컬 cropPoints=0 상태에서 호출되어 bridge 100을 0으로 덮어씀)
-    /// </summary>
-    private void SyncCropPointsToBridge()
-    {
-        var cd = GameDataBridge.CurrentData;
-        if (cd == null) return;
-
-        long bridgeTop = cd.cropPoints;
-        long bridgeFarm = cd.farmData?.cropPoints ?? 0;
-        long maxCp = System.Math.Max(cropPoints, System.Math.Max(bridgeTop, bridgeFarm));
-
-        // 로컬도 max로 회복 (혹시 0이었다면 bridge 값으로 복원)
-        cropPoints = maxCp;
-        cd.cropPoints = maxCp;
-
-        if (cd.farmData == null)
-            cd.farmData = new FarmSaveData();
-        cd.farmData.cropPoints = maxCp;
-    }
-
-    /// <summary>
-    /// ★ 늦게 도착하는 데이터(서버 비동기 로드, AutoLoadOnStart 2프레임 지연 등) 감시.
-    /// 처음 ~30프레임 동안 bridge에서 cropPoints가 더 커지면 채택.
-    /// 로컬 값이 0인 채로 시작했더라도 늦게 들어온 진짜 값을 놓치지 않음.
-    /// </summary>
-    private System.Collections.IEnumerator WatchBridgeForLateUpdates()
-    {
-        for (int i = 0; i < 30; i++)
-        {
-            yield return null;
-            var cd = GameDataBridge.CurrentData;
-            if (cd == null) continue;
-
-            long bridgeTop = cd.cropPoints;
-            long bridgeFarm = cd.farmData?.cropPoints ?? 0;
-            long maxCp = System.Math.Max(bridgeTop, bridgeFarm);
-
-            if (maxCp > cropPoints)
-            {
-                Debug.Log($"[ResourceBar:Watch] frame+{i}: 늦은 데이터 도착 cropPoints {cropPoints} → {maxCp} (top={bridgeTop}, farm={bridgeFarm})");
-                cropPoints = maxCp;
-                // 양쪽 동기화 — bridge 두 필드도 max로 통일
-                cd.cropPoints = maxCp;
-                if (cd.farmData == null) cd.farmData = new FarmSaveData();
-                cd.farmData.cropPoints = maxCp;
-                UpdateCropPointUI();
-            }
-        }
-        Debug.Log($"[ResourceBar:Watch] 종료 — 최종 cropPoints={cropPoints}");
+        CropPointService.Set(amount);
     }
 
     private void OnDestroy()
     {
-        FarmManagerExtension.OnCropPointsChanged -= OnCropPointsChanged;
+        CropPointService.OnChanged -= HandleCropPointsChanged;
     }
 
     public int GetEquipmentTickets()

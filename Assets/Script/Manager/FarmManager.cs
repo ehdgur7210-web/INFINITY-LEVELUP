@@ -45,9 +45,21 @@ public class FarmManager : MonoBehaviour
     [Header("물주기 기본 비용")]
     public int defaultWaterCostGem = 1;
 
-    [Header("작물 포인트")]
-    public long cropPoints = 0;
-    public static event Action<long> OnCropPointsChanged;
+    // ★★ cropPoints는 더 이상 FarmManager 인스턴스 필드가 아님.
+    //    GameDataBridge.CurrentData.cropPoints가 유일한 source of truth (CropPointService 통해 접근).
+    //    호환성을 위해 cropPoints 프로퍼티와 OnCropPointsChanged 이벤트는 유지 — 모두 서비스에 위임.
+    public long cropPoints
+    {
+        get => CropPointService.Value;
+        set => CropPointService.Set(value);
+    }
+
+    /// <summary>(레거시) FarmManager.OnCropPointsChanged — 내부적으로 CropPointService.OnChanged를 구독해 재발화.</summary>
+    public static event Action<long> OnCropPointsChanged
+    {
+        add { CropPointService.OnChanged += value; }
+        remove { CropPointService.OnChanged -= value; }
+    }
 
     [Header("UI 이벤트")]
     public UnityEvent<int> OnPlotStateChanged;
@@ -69,11 +81,10 @@ public class FarmManager : MonoBehaviour
 
     void Awake()
     {
-        Debug.Log($"[FarmManager] ★ Awake 진입! this={gameObject.name} / activeInHierarchy:{gameObject.activeInHierarchy} / Instance현재:{(Instance != null ? Instance.gameObject?.name ?? "DESTROYED" : "null")} / serializedCropPoints={cropPoints}");
+        Debug.Log($"[FarmManager] ★ Awake 진입! this={gameObject.name} / activeInHierarchy:{gameObject.activeInHierarchy} / Instance현재:{(Instance != null ? Instance.gameObject?.name ?? "DESTROYED" : "null")}");
 
-        // ★ 직렬화된 cropPoints 값은 무시 — 항상 0에서 시작해서 Load로만 채워야 함
-        //   (Inspector에 잘못된 값이 저장되어도 매 Play 시작이 그 값으로 오염되는 것 방지)
-        cropPoints = 0;
+        // ★ cropPoints는 이제 CropPointService(GameDataBridge)가 소유하므로 Awake에서 0으로 리셋할 필요 없음.
+        //   FarmManager는 단지 작물 농사 로직만 담당.
 
         // ★ 파괴된 Instance 정리 (씬 전환 시 OnDestroy 누락 대비)
         if (Instance != null)
@@ -173,59 +184,13 @@ public class FarmManager : MonoBehaviour
 
     void OnDestroy()
     {
-        // ★ 진단: OnDestroy 진입 시점의 모든 cropPoints 값 출력
-        var cdEntry = GameDataBridge.CurrentData;
-        long entryField = cropPoints;
-        long entryBridgeTop = cdEntry?.cropPoints ?? -1;
-        long entryBridgeFarm = cdEntry?.farmData?.cropPoints ?? -1;
-        Debug.Log($"[FarmManager] ★ OnDestroy 진입: field={entryField}, bridgeTop={entryBridgeTop}, bridgeFarm={entryBridgeFarm} / isInstance:{Instance == this} / scene:{gameObject.scene.name}");
-
-        // ★ 씬 전환 시 cropPoints 유실 방지: GameDataBridge 동기화 + 즉시 저장
+        // ★ cropPoints는 이제 CropPointService가 소유하므로 sync/저장 필요 없음.
+        //   (어차피 GameDataBridge에 항상 최신 값 — 씬 전환 시 매니저 필드 sync race 자체가 사라짐)
+        Debug.Log($"[FarmManager] ★ OnDestroy: cp={CropPointService.Value} / isInstance:{Instance == this} / scene:{gameObject.scene.name}");
         if (Instance == this)
         {
-            SyncCropPointsToBridge();
-            try
-            {
-                SaveLoadManager.Instance?.SaveGame();
-                Debug.Log($"[FarmManager] ★ OnDestroy 저장 완료 (cropPoints={cropPoints})");
-            }
-            catch (Exception e)
-            {
-                Debug.LogWarning($"[FarmManager] OnDestroy 저장 실패: {e.Message}");
-            }
-
             Instance = null;
-            Debug.Log("[FarmManager] ★ Instance = null 설정됨 (씬 전환)");
         }
-    }
-
-    /// <summary>
-    /// FarmManager.cropPoints와 GameDataBridge의 top-level / farmData 세 곳을
-    /// **Max 기반**으로 동기화. 어느 한쪽이 0(미초기화)이어도 다른 곳의 값으로 회복됨.
-    /// → 씬 전환 직전 FarmManager 필드가 일시적으로 0이 되는 케이스에서도 데이터 보존.
-    /// </summary>
-    private void SyncCropPointsToBridge()
-    {
-        var cd = GameDataBridge.CurrentData;
-        if (cd == null)
-        {
-            Debug.LogWarning($"[FarmManager:Sync] GameDataBridge.CurrentData == null! cropPoints={cropPoints}");
-            return;
-        }
-        long fieldCp   = cropPoints;
-        long bridgeTop = cd.cropPoints;
-        long bridgeFarm = cd.farmData?.cropPoints ?? 0;
-        long maxCp = System.Math.Max(fieldCp, System.Math.Max(bridgeTop, bridgeFarm));
-
-        // ★ 진단 로그: 값 불일치 또는 0 회복이 일어나면 출력
-        if (fieldCp != bridgeTop || fieldCp != bridgeFarm || maxCp != fieldCp)
-            Debug.LogWarning($"[FarmManager:Sync] field={fieldCp}, bridgeTop={bridgeTop}, bridgeFarm={bridgeFarm} → max={maxCp} (회복 적용)");
-
-        // FarmManager 필드도 같이 회복 (0 클로버링 방지)
-        cropPoints = maxCp;
-        cd.cropPoints = maxCp;
-        if (cd.farmData != null)
-            cd.farmData.cropPoints = maxCp;
     }
 
     void Update()
@@ -726,34 +691,31 @@ public class FarmManager : MonoBehaviour
     //  작물 포인트 (Crop Points) ★ 신규
     // ════════════════════════════════════════════════
 
+    /// <summary>(레거시) FarmManager.AddCropPoints — CropPointService에 위임. 즉시 저장.</summary>
     public void AddCropPoints(long amount)
     {
         if (amount <= 0) return;
-        cropPoints += amount;
-        // ★ 양쪽 필드 동기화 + 즉시 저장 (씬 전환 직전 유실 방지)
-        SyncCropPointsToBridge();
-        OnCropPointsChanged?.Invoke(cropPoints);
+        CropPointService.Add(amount);
         SaveLoadManager.Instance?.SaveGame();
-        Debug.Log($"[FarmManager] 작물포인트 +{amount} (총 {cropPoints})");
+        Debug.Log($"[FarmManager] 작물포인트 +{amount} (총 {CropPointService.Value})");
     }
 
+    /// <summary>(레거시) FarmManager.SpendCropPoints — CropPointService에 위임. 즉시 저장.</summary>
     public bool SpendCropPoints(long amount)
     {
-        if (amount <= 0 || cropPoints < amount)
+        if (amount <= 0) return true;
+        if (!CropPointService.Spend(amount))
         {
-            UIManager.Instance?.ShowMessage($"작물 포인트가 부족합니다! (필요:{amount} / 보유:{cropPoints})", Color.red);
+            UIManager.Instance?.ShowMessage($"작물 포인트가 부족합니다! (필요:{amount} / 보유:{CropPointService.Value})", Color.red);
             return false;
         }
-        cropPoints = System.Math.Max(0L, cropPoints - amount);
-        // ★ 양쪽 필드 동기화 + 즉시 저장
-        SyncCropPointsToBridge();
-        OnCropPointsChanged?.Invoke(cropPoints);
         SaveLoadManager.Instance?.SaveGame();
-        Debug.Log($"[FarmManager] CropPoint -{amount} → {cropPoints}");
+        Debug.Log($"[FarmManager] CropPoint -{amount} → {CropPointService.Value}");
         return true;
     }
 
-    public long GetCropPoints() => cropPoints;
+    /// <summary>(레거시) FarmManager.GetCropPoints — CropPointService.Value에 위임.</summary>
+    public long GetCropPoints() => CropPointService.Value;
 
     // ════════════════════════════════════════════════
     //  안전한 재화 차감 (FarmScene에서 GameManager 없을 때 대비)
@@ -964,10 +926,9 @@ public class FarmManager : MonoBehaviour
     {
         FarmSaveData data = new FarmSaveData();
         data.totalHarvestCount = totalHarvestCount;
-        // ★ top-level cropPoints가 더 높으면(메일/VIP/상점이 갱신) 그 값을 채택해 양쪽 동기화
-        long topLevelCp = GameDataBridge.CurrentData?.cropPoints ?? 0;
-        if (topLevelCp > cropPoints) cropPoints = topLevelCp;
-        data.cropPoints = cropPoints;
+        // ★ cropPoints는 GameDataBridge.CurrentData.cropPoints가 source of truth.
+        //   FarmSaveData.cropPoints 필드는 구버전 호환을 위해 같은 값을 같이 기록만 함 (load 시 무시).
+        data.cropPoints = CropPointService.Value;
         data.plots = new FarmPlotSaveData[plots.Count];
 
         for (int i = 0; i < plots.Count; i++)
@@ -1013,13 +974,14 @@ public class FarmManager : MonoBehaviour
         if (data == null || data.plots == null) return;
 
         totalHarvestCount = data.totalHarvestCount;
-        // ★ cropPoints는 top-level과 farmData 중 더 높은 값을 채택
-        //   (메일/VIP/상점 보상이 top-level만 갱신할 수 있고,
-        //    FarmScene에서 직접 갱신은 farmData에만 들어갈 수 있음 → 양쪽 보존)
-        long topLevelCp = GameDataBridge.CurrentData?.cropPoints ?? 0;
-        cropPoints = System.Math.Max(topLevelCp, data.cropPoints);
-        SyncCropPointsToBridge();
-        OnCropPointsChanged?.Invoke(cropPoints);
+        // ★★ 마이그레이션: 예전 save에서는 cropPoints가 farmData.cropPoints에만 있었을 수 있음.
+        //    GameDataBridge.CurrentData.cropPoints가 0이고 data.cropPoints > 0이면 채택.
+        //    (CropPointService가 Set 시 OnChanged 발화 → ResourceBar UI 자동 갱신)
+        if (CropPointService.Value == 0 && data.cropPoints > 0)
+        {
+            CropPointService.Set(data.cropPoints);
+            Debug.Log($"[FarmManager:LoadMigration] farmData.cropPoints({data.cropPoints}) → top-level로 마이그레이션");
+        }
 
         foreach (var savedPlot in data.plots)
         {
@@ -1083,7 +1045,7 @@ public class FarmManager : MonoBehaviour
             Debug.LogWarning("[Farm] inventoryData가 null — 씨앗/수확물 데이터 없음");
         }
 
-        Debug.Log($"[FarmManager] 농장 로드: {data.plots.Length}칸, 포인트:{cropPoints}");
+        Debug.Log($"[FarmManager] 농장 로드: {data.plots.Length}칸, 포인트:{CropPointService.Value}");
     }
 
     // ── 지연 로드 (FarmInventoryUI 초기화 대기) ──

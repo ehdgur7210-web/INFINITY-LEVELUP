@@ -449,36 +449,13 @@ public class OfflineRewardManager : MonoBehaviour
         if (ResourceBarManager.Instance != null && finalCompTicket > 0)
             ResourceBarManager.Instance.AddCompanionTickets(finalCompTicket);
 
-        // ★ 진단: cropPoint 지급 분기 명시 로그
-        long cpBefore = ResourceBarManager.Instance != null ? ResourceBarManager.Instance.cropPoints : -1;
+        // ★ cropPoint 지급 — 단일 source of truth (CropPointService)에 위임.
+        //   FarmManager / ResourceBarManager / GameDataBridge 분기 폴백이 더 이상 필요 없음.
         if (finalCropPoint > 0)
         {
-            if (FarmManager.Instance != null)
-            {
-                FarmManager.Instance.AddCropPoints(finalCropPoint);
-                Debug.Log($"[RewardManager:CP] +{finalCropPoint} via FarmManager (이전:{cpBefore})");
-            }
-            else if (ResourceBarManager.Instance != null)
-            {
-                // ★ FarmManager 없는 MainScene 폴백: ResourceBarManager.AddCropPoints가
-                //   내부적으로 SyncCropPointsToBridge를 호출해 bridge top-level/farmData
-                //   양쪽을 갱신하고 UI도 즉시 새로고침함.
-                ResourceBarManager.Instance.AddCropPoints(finalCropPoint);
-                Debug.Log($"[RewardManager:CP] +{finalCropPoint} via ResourceBarManager (이전:{cpBefore} → 지금:{ResourceBarManager.Instance.cropPoints})");
-            }
-            else if (GameDataBridge.CurrentData != null)
-            {
-                GameDataBridge.CurrentData.cropPoints += finalCropPoint;
-                Debug.LogWarning($"[RewardManager:CP] +{finalCropPoint} via GameDataBridge ONLY (UI 갱신 안 됨 — ResourceBarManager null)");
-            }
-            else
-            {
-                Debug.LogError($"[RewardManager:CP] +{finalCropPoint} 지급 실패! FarmManager/ResourceBarManager/GameDataBridge 모두 null");
-            }
-        }
-        else
-        {
-            Debug.Log($"[RewardManager:CP] 계산 결과 0 — cropPointsPerMinute={cropPointsPerMinute}, 누적시간 너무 짧음 가능성");
+            long cpBefore = CropPointService.Value;
+            CropPointService.Add(finalCropPoint);
+            Debug.Log($"[RewardManager:CP] +{finalCropPoint} (이전:{cpBefore} → 지금:{CropPointService.Value})");
         }
 
         // ★ 클레임된 보상 데이터 (이벤트로 UI에 전달)

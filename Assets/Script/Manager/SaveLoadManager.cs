@@ -197,8 +197,7 @@ public class SaveLoadManager : MonoBehaviour
                 $" | 동료={data.companions?.Length ?? -1}개" +
                 $" | 골드={data.playerGold} | 젬={data.playerGem} | Lv={data.playerLevel}" +
                 $" | 웨이브={data.offlineCurrentWave}" +
-                $" | 작물={data.cropPoints}(top) / {data.farmData?.cropPoints ?? -1}(farm)" +
-                $" | rbm={(ResourceBarManager.Instance != null ? ResourceBarManager.Instance.cropPoints.ToString() : "null")}");
+                $" | 작물={data.cropPoints}");
 #endif
             GameDataBridge.SetData(data);       // 인메모리 갱신
             GameDataBridge.WriteToFile(slot);    // JSON 파일 기록
@@ -360,12 +359,9 @@ public class SaveLoadManager : MonoBehaviour
         else if (GameDataBridge.CurrentData?.achievementSaveData != null)
             data.achievementSaveData = GameDataBridge.CurrentData.achievementSaveData;
 
-        // ── 리소스 (티켓/광물/cropPoints) ──
+        // ── 리소스 (티켓/광물) ──
         // ★ ResourceBarManager는 MainScene 전용 — FarmScene에서는 null이므로 GameDataBridge 폴백
-        //   다만 GameDataBridge 값이 0이면 진짜 0인지 미초기화인지 알 수 없어 위험.
-        //   FarmScene에서는 FarmManager의 GetCropPoints()를 우선 사용해서 가장 정확한 값을 가져옴.
-        // ★★ 데이터 손실 방지: ResourceBarManager의 각 필드가 0이고 GameDataBridge 값이 더 크면
-        //    그 값을 보존(아직 Start로 로드되지 않은 상태에서 0으로 덮어쓰기 차단)
+        //   각 필드가 0이고 GameDataBridge 값이 더 크면 그 값을 보존 (덮어쓰기 차단)
         if (isMainScene && ResourceBarManager.Instance != null)
         {
             var rbm = ResourceBarManager.Instance;
@@ -376,43 +372,22 @@ public class SaveLoadManager : MonoBehaviour
             data.crystals         = (rbm.crystals        == 0 && (bridge?.crystals        ?? 0) > 0) ? bridge.crystals        : rbm.crystals;
             data.essences         = (rbm.essences        == 0 && (bridge?.essences        ?? 0) > 0) ? bridge.essences        : rbm.essences;
             data.fragments        = (rbm.fragments       == 0 && (bridge?.fragments       ?? 0) > 0) ? bridge.fragments       : rbm.fragments;
-            // ★ cropPoints: ResourceBar / Bridge top-level / Bridge farmData 중 가장 큰 값 채택
-            long _rbCp     = rbm.cropPoints;
-            long _brCp     = bridge?.cropPoints ?? 0;
-            long _brFarmCp = bridge?.farmData?.cropPoints ?? 0;
-            data.cropPoints = System.Math.Max(_rbCp, System.Math.Max(_brCp, _brFarmCp));
-            if (data.cropPoints != _rbCp)
-            {
-                Debug.LogWarning($"[SAVE-PROTECT] cropPoints ResourceBar({_rbCp}) < Bridge(top:{_brCp}, farm:{_brFarmCp}) → 큰 값 채택({data.cropPoints})");
-                // ★ ResourceBar 필드도 갱신해서 UI가 다음 프레임부터 정확한 값 표시
-                rbm.cropPoints = data.cropPoints;
-                rbm.UpdateAllResourceUI();
-            }
         }
         else if (GameDataBridge.CurrentData != null)
         {
-            // ★ 폴백: 기존 GameDataBridge 값 보존 (덮어쓰기 방지)
             data.equipmentTickets = GameDataBridge.CurrentData.equipmentTickets;
             data.companionTickets = GameDataBridge.CurrentData.companionTickets;
             data.relicTickets = GameDataBridge.CurrentData.relicTickets;
             data.crystals = GameDataBridge.CurrentData.crystals;
             data.essences = GameDataBridge.CurrentData.essences;
             data.fragments = GameDataBridge.CurrentData.fragments;
-            data.cropPoints = GameDataBridge.CurrentData.cropPoints;
-
-            // ★ FarmScene이면 FarmManager에서 직접 cropPoints 가져와 갱신 (가장 정확)
-            if (!isMainScene && FarmManager.Instance != null)
-            {
-                long farmCp = FarmManager.Instance.GetCropPoints();
-                if (farmCp > 0 || data.cropPoints == 0)
-                {
-                    data.cropPoints = farmCp;
-                    Debug.Log($"[SAVE-PROTECT] cropPoints FarmManager에서 직접 수집: {farmCp} (씬:{currentScene})");
-                }
-            }
-
-            Debug.Log($"[SAVE-PROTECT] 리소스 GameDataBridge 폴백: Crop={data.cropPoints}, Tickets={data.equipmentTickets} (씬:{currentScene})");
         }
+
+        // ── 작물 포인트 (단일 source of truth: GameDataBridge.CurrentData.cropPoints) ──
+        // ★★ 더 이상 ResourceBarManager/FarmManager의 로컬 필드를 비교하지 않음.
+        //    CropPointService.Value가 곧 GameDataBridge.CurrentData.cropPoints이고
+        //    모든 add/spend가 거기를 직접 갱신하므로 race가 발생하지 않음.
+        data.cropPoints = CropPointService.Value;
 
         // ── 가챠 (MainScene 전용) ──
         if (isMainScene && GachaManager.Instance != null)
@@ -490,20 +465,10 @@ public class SaveLoadManager : MonoBehaviour
             data.farmData = FarmManager.Instance.GetFarmSaveData();
         else if (GameDataBridge.CurrentData?.farmData != null)
             data.farmData = GameDataBridge.CurrentData.farmData;
-        else
-        {
-            // ★ farmData가 한 번도 만들어진 적 없는 상태(첫 진입 등)에서도 cropPoints 보존
-            //   data.cropPoints는 위 리소스 블록에서 max-기반으로 이미 채워졌으므로
-            //   stub farmData를 만들어 그 값을 같이 저장
-            data.farmData = new FarmSaveData { cropPoints = data.cropPoints };
-        }
-        // ★ farmData.cropPoints가 top-level과 어긋나면 큰 값으로 통일 (저장 일관성)
-        if (data.farmData != null && data.farmData.cropPoints != data.cropPoints)
-        {
-            long maxCp = System.Math.Max(data.farmData.cropPoints, data.cropPoints);
-            data.farmData.cropPoints = maxCp;
-            data.cropPoints = maxCp;
-        }
+        // ★ farmData가 null이어도 cropPoints는 data.cropPoints (top-level)에 저장되므로 유실 없음.
+        //   FarmSaveData.cropPoints는 구버전 호환 필드 — top-level과 동일 값으로 sync (load는 무시)
+        if (data.farmData != null)
+            data.farmData.cropPoints = data.cropPoints;
 
         // ── 메일 ──
         if (MailManager.Instance != null)
@@ -717,6 +682,17 @@ public class SaveLoadManager : MonoBehaviour
             AchievementSystem.Instance.LoadAchievementSaveData(data.achievementSaveData);
 
         // ── 리소스 ──
+        // ★★ 마이그레이션: 구버전 save에서 cropPoints가 farmData.cropPoints에만 있던 경우
+        //    GameDataBridge.CurrentData.cropPoints가 0인데 farmData.cropPoints > 0이면 채택.
+        //    (이후엔 top-level이 source of truth)
+        if (data.cropPoints == 0 && data.farmData != null && data.farmData.cropPoints > 0)
+        {
+            data.cropPoints = data.farmData.cropPoints;
+            if (GameDataBridge.CurrentData != null)
+                GameDataBridge.CurrentData.cropPoints = data.cropPoints;
+            Debug.Log($"[SaveLoadManager] cropPoints 마이그레이션: farmData({data.farmData.cropPoints}) → top-level");
+        }
+
         if (ResourceBarManager.Instance != null)
         {
             ResourceBarManager.Instance.equipmentTickets = data.equipmentTickets;
@@ -725,11 +701,9 @@ public class SaveLoadManager : MonoBehaviour
             ResourceBarManager.Instance.crystals = data.crystals;
             ResourceBarManager.Instance.essences = data.essences;
             ResourceBarManager.Instance.fragments = data.fragments;
-            // ★ cropPoints: top-level과 farmData 중 더 큰 값으로 복원
-            //   (FarmScene 저장 후 메일/VIP 보상이 top-level만 갱신한 경우에도 보존)
-            long _topCp = data.cropPoints;
-            long _farmCp = data.farmData?.cropPoints ?? 0;
-            ResourceBarManager.Instance.cropPoints = System.Math.Max(_topCp, _farmCp);
+            // cropPoints는 더 이상 ResourceBarManager 필드에 직접 쓰지 않음 — CropPointService 통해 자동 sync.
+            // UI 갱신만 트리거 (CropPointService가 OnChanged를 발화하면 RBM이 자동으로 갱신하지만, 명시적 갱신도 안전)
+            CropPointService.RefreshUI();
             ResourceBarManager.Instance.UpdateAllResourceUI();
 
             // ★ 가챠 UI 티켓 연동 (로드 완료 후)

@@ -404,10 +404,7 @@ public class MailManager : MonoBehaviour
                 break;
 
             case MailReward.RewardType.CropPoint:
-                if (FarmManager.Instance != null)
-                    FarmManager.Instance.AddCropPoints(reward.amount);
-                else if (GameDataBridge.CurrentData != null)
-                    GameDataBridge.CurrentData.cropPoints += reward.amount;
+                CropPointService.Add(reward.amount);
                 break;
         }
     }

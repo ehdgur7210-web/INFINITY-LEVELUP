@@ -405,19 +405,8 @@ public class ItemDetailPanel : MonoBehaviour
         int unitPrice = GetCropSellPrice(currentItem.rarity);
         int totalPoints = unitPrice * qty;
 
-        // ── CropPoint 지급 ──
-        if (FarmManager.Instance != null)
-        {
-            // FarmManager.AddCropPoints → OnCropPointsChanged 이벤트 →
-            // FarmManagerExtension → ResourceBarManager 자동 갱신
-            FarmManager.Instance.AddCropPoints(totalPoints);
-        }
-        else
-        {
-            // ★ FarmManager 없을 때 폴백: ResourceBarManager.AddCropPoints가
-            //   내부에서 SyncCropPointsToBridge로 top-level/farmData 양쪽 동기화 + 필요 시 farmData 자동 생성
-            ResourceBarManager.Instance?.AddCropPoints(totalPoints);
-        }
+        // ── CropPoint 지급 (단일 source of truth) ──
+        CropPointService.Add(totalPoints);
         // ★ 즉시 저장 — 씬 전환 없이 사용해도 데이터 보존
         SaveLoadManager.Instance?.SaveGame();
 
