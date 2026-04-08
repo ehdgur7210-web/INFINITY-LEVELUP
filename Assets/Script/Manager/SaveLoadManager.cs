@@ -260,7 +260,9 @@ public class SaveLoadManager : MonoBehaviour
 
         // ── GameManager ──
         // ★ MainScene이 아니거나 GameManager가 null이면 GameDataBridge 폴백 (기존값 보존)
-        //   GameDataBridge.CurrentData도 null이면 SaveGame 자체를 스킵해야 함 (덮어쓰기 위험)
+        //   GameDataBridge.CurrentData마저 null이어야만 SaveGame 스킵 (덮어쓰기 방지)
+        //   ★★ 이전 버전의 playerLevel>0 체크는 너무 엄격해서 FarmScene quit 시 저장이 막혔음 →
+        //       bridge에 데이터가 있으면 무조건 폴백 사용 (level=0이어도 다른 값들은 보존해야 함)
         if (isMainScene && GameManager.Instance != null)
         {
             data.playerGold = GameManager.Instance.PlayerGold;
@@ -268,9 +270,8 @@ public class SaveLoadManager : MonoBehaviour
             data.playerExp = GameManager.Instance.PlayerExp;
             data.playerLevel = GameManager.Instance.PlayerLevel;
         }
-        else if (GameDataBridge.CurrentData != null && GameDataBridge.CurrentData.playerLevel > 0)
+        else if (GameDataBridge.CurrentData != null)
         {
-            // ★ 기존 값이 있을 때만 폴백 (level=0은 아직 미초기화 상태로 간주)
             data.playerGold = GameDataBridge.CurrentData.playerGold;
             data.playerGem = GameDataBridge.CurrentData.playerGem;
             data.playerExp = GameDataBridge.CurrentData.playerExp;
@@ -279,8 +280,9 @@ public class SaveLoadManager : MonoBehaviour
         }
         else
         {
-            Debug.LogError($"[SAVE-PROTECT] ⚠⚠ GameManager + GameDataBridge 둘 다 무효 → 저장 중단! 씬:{currentScene}");
-            return null; // ★ 저장 중단 신호
+            // bridge 자체가 null인 경우만 진짜 저장 차단 (메모리 완전 무효)
+            Debug.LogError($"[SAVE-PROTECT] ⚠⚠ GameDataBridge.CurrentData == null → 저장 중단! 씬:{currentScene}");
+            return null;
         }
 
         // ── PlayerStats ──

@@ -74,6 +74,42 @@ public class ResourceBarManager : MonoBehaviour
         cropPoints = System.Math.Max(topCp, farmCp);
         Debug.Log($"[ResourceBar:Start] cropPoints 복원: bridgeTop={topCp}, bridgeFarm={farmCp} → {cropPoints} (CurrentData={(GameDataBridge.CurrentData != null ? "OK" : "NULL")}, farmData={(GameDataBridge.CurrentData?.farmData != null ? "OK" : "NULL")})");
 
+        // ★★ 강화된 폴백: bridge가 0이면 JSON 파일을 직접 다시 읽어서 farmData.cropPoints 시도
+        //    (bridge가 race로 늦게 로드되거나 reset된 경우 방어)
+        if (cropPoints == 0)
+        {
+            try
+            {
+                int slot = GameDataBridge.ActiveSlot;
+                if (GameDataBridge.FileExists(slot))
+                {
+                    string path = GameDataBridge.GetFilePath(slot);
+                    string json = System.IO.File.ReadAllText(path);
+                    SaveData fileData = JsonUtility.FromJson<SaveData>(json);
+                    long fileTop = fileData?.cropPoints ?? 0;
+                    long fileFarm = fileData?.farmData?.cropPoints ?? 0;
+                    long fileMax = System.Math.Max(fileTop, fileFarm);
+                    Debug.Log($"[ResourceBar:Start] JSON 파일 폴백 — fileTop={fileTop}, fileFarm={fileFarm}, max={fileMax}");
+                    if (fileMax > 0)
+                    {
+                        cropPoints = fileMax;
+                        // bridge에도 sync
+                        if (GameDataBridge.CurrentData != null)
+                        {
+                            GameDataBridge.CurrentData.cropPoints = cropPoints;
+                            if (GameDataBridge.CurrentData.farmData == null)
+                                GameDataBridge.CurrentData.farmData = new FarmSaveData();
+                            GameDataBridge.CurrentData.farmData.cropPoints = cropPoints;
+                        }
+                    }
+                }
+            }
+            catch (System.Exception e)
+            {
+                Debug.LogWarning($"[ResourceBar:Start] JSON 폴백 읽기 실패: {e.Message}");
+            }
+        }
+
         // ★★ 늦은 로드(서버/AutoLoadOnStart 2프레임 지연) 대비 — 여러 프레임에 걸쳐 재시도
         //    bridge 값이 더 커지면 채택. cropPoints를 0으로 클로버하지 않음 (max-only 갱신).
         StartCoroutine(WatchBridgeForLateUpdates());

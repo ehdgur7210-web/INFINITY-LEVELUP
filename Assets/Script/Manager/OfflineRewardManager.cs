@@ -27,6 +27,14 @@ public class OfflineRewardManager : MonoBehaviour
     [Header("웨이브 연동 보너스 (%)")]
     [SerializeField] private float waveRewardBonusPercent = 5f;
 
+    [Header("★ 레벨 연동 보너스 (%) — Lv 71이면 71 * 1 = 71% 추가")]
+    [Tooltip("플레이어 레벨 1당 보상 % 증가. 0이면 비활성화. 추천: 1.0")]
+    [SerializeField] private float levelRewardBonusPercent = 1.0f;
+
+    [Header("★ cropPoint 안전 최소값")]
+    [Tooltip("계산 결과가 0이어도 minutes > 0이면 최소 이 값만큼 지급. 0이면 비활성화.")]
+    [SerializeField] private int cropPointMinimumIfTimeElapsed = 1;
+
     [Header("아이템 보상")]
     [SerializeField] private OfflineItemReward[] offlineItemRewards;
 
@@ -226,11 +234,20 @@ public class OfflineRewardManager : MonoBehaviour
         float expRate       = (saved != null && saved.offlineExpRate > 0)        ? saved.offlineExpRate       : expPerMinute;
         float gemRate       = (saved != null && saved.offlineGemRate > 0)        ? saved.offlineGemRate       : gemPerMinute;
 
+        // ★ 레벨 기반 보너스 — 골드/젬은 stage에 따라 offlineGoldRate가 갱신되지만
+        //   cropPointsPerMinute는 static config라 레벨이 올라도 그대로. 형평성을 위해 levelBonus 곱셈.
+        int playerLv = (saved != null) ? Mathf.Max(1, saved.playerLevel) : 1;
+        float levelBonus = 1f + (playerLv * levelRewardBonusPercent / 100f);
+
         reward.goldReward = Mathf.RoundToInt(goldRate * minutes * rewardMultiplier * waveBonus);
         reward.expReward = Mathf.RoundToInt(expRate * minutes * rewardMultiplier * waveBonus);
         reward.gemReward = Mathf.RoundToInt(gemRate * minutes * rewardMultiplier * waveBonus);
         reward.companionTicketReward = Mathf.RoundToInt(companionTicketsPerMinute * minutes * rewardMultiplier * waveBonus);
-        reward.cropPointReward = Mathf.RoundToInt(cropPointsPerMinute * minutes * rewardMultiplier * waveBonus);
+        reward.cropPointReward = Mathf.RoundToInt(cropPointsPerMinute * minutes * rewardMultiplier * waveBonus * levelBonus);
+
+        // ★ 안전 최소값 — minutes>0 인데 RoundToInt가 0이면 최소 cropPointMinimumIfTimeElapsed 보장
+        if (reward.cropPointReward == 0 && minutes > 0f && cropPointsPerMinute > 0 && cropPointMinimumIfTimeElapsed > 0)
+            reward.cropPointReward = cropPointMinimumIfTimeElapsed;
 
         // ★ 드랍 결과 캐시 — 같은 분(minute) 안에서는 동일 결과 반환
         int currentMinute = Mathf.FloorToInt(minutes);
@@ -382,11 +399,17 @@ public class OfflineRewardManager : MonoBehaviour
             float expRate   = (saved != null && saved.offlineExpRate > 0) ? saved.offlineExpRate : expPerMinute;
             float gemRate   = (saved != null && saved.offlineGemRate > 0) ? saved.offlineGemRate : gemPerMinute;
 
+            // ★ 레벨 기반 보너스 (cropPoint 전용 — gold/exp/gem은 별도 stage rate가 있음)
+            int playerLv = (saved != null) ? Mathf.Max(1, saved.playerLevel) : 1;
+            float levelBonus = 1f + (playerLv * levelRewardBonusPercent / 100f);
+
             finalGold       = Mathf.RoundToInt(goldRate * adMinutes * rewardMultiplier * waveBonus);
             finalExp        = Mathf.RoundToInt(expRate * adMinutes * rewardMultiplier * waveBonus);
             finalGem        = Mathf.RoundToInt(gemRate * adMinutes * rewardMultiplier * waveBonus);
             finalCompTicket = Mathf.RoundToInt(companionTicketsPerMinute * adMinutes * rewardMultiplier * waveBonus);
-            finalCropPoint  = Mathf.RoundToInt(cropPointsPerMinute * adMinutes * rewardMultiplier * waveBonus);
+            finalCropPoint  = Mathf.RoundToInt(cropPointsPerMinute * adMinutes * rewardMultiplier * waveBonus * levelBonus);
+            if (finalCropPoint == 0 && cropPointsPerMinute > 0 && cropPointMinimumIfTimeElapsed > 0)
+                finalCropPoint = cropPointMinimumIfTimeElapsed;
 
             todayAdClaimCount++;
             label = $"2배 보상! ({(int)adBonusHours}시간분)\n남은 횟수: {RemainingAdClaims}/{maxAdClaimPerDay}";
