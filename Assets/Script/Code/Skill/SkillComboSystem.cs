@@ -329,12 +329,13 @@ public class SkillComboSystem : MonoBehaviour
             counts[lv]++;
         }
 
-        // ★ 6슬롯 모두 언커먼(2+) 이상이어야 콤보 발동
-        //   미장착(0)이나 커먼(1) 슬롯이 하나라도 있으면 콤보 없음
+        // ★ 언커먼(2+) 이상 장비가 2개 이상이어야 콤보 발동
+        //   미장착(0)/커먼(1)만으로는 콤보 없음
+        int uncommonPlusCount = 0;
         for (int i = 0; i < 6; i++)
-        {
-            if (levels[i] < 2) return ComboType.None;
-        }
+            if (levels[i] >= 2) uncommonPlusCount++;
+        if (uncommonPlusCount < 2)
+            return ComboType.None;
 
         // 최대 동일 개수 (미장착=0은 counts에서 제외됨 — lv=1부터 시작)
         int maxCount = 0;
