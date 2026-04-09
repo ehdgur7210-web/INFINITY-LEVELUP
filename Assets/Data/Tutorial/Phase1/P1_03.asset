@@ -22,8 +22,8 @@ MonoBehaviour:
   tipPosition: 0
   isSceneTransitionStep: 0
   delayBeforeShow: 0
-  useAreaFocus: 0
-  areaTargetName: 
+  useAreaFocus: 1
+  areaTargetName: EquipSlotParent
   hideTargets:
   - EquipLevelUpPanel
   - AllContains:LevelUpButton
