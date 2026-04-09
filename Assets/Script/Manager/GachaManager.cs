@@ -354,6 +354,9 @@ public class GachaManager : MonoBehaviour
     {
         Debug.Log($"[GachaManager] ========== {multiGachaCount}연차 가챠 시작 ==========");
 
+        // ★ 이전 연출 잔여물 클리어 (패널/영상/상태)
+        CleanupAnimationState();
+
         if (!CheckGachaPool()) return;
         if (!SpendTickets(ticketCostPerGacha * multiGachaCount)) return;
 
@@ -395,6 +398,8 @@ public class GachaManager : MonoBehaviour
     /// <summary>대량 연차 코루틴 — 프레임 분산으로 멈춤 방지</summary>
     private System.Collections.IEnumerator BulkGachaCoroutine()
     {
+        // ★ 이전 연출 잔여물 클리어
+        CleanupAnimationState();
         var results = new List<EquipmentData>(bulkGachaCount);
         int batchSize = Mathf.Max(25, bulkGachaCount / 4);
 
@@ -969,6 +974,27 @@ public class GachaManager : MonoBehaviour
         // 게임 저장
         SaveLoadManager.Instance?.SaveGame();
         Debug.Log("[GachaManager] ★ 결과 확인 → 패널 닫기 + SaveGame 완료");
+    }
+
+    /// <summary>
+    /// ★ 연출 상태 완전 초기화 — 이전 뽑기 연출이 남아있는 경우 클리어
+    /// 매 뽑기 시작 시 호출하여 잔여 애니메이션/패널/영상 정리
+    /// </summary>
+    private void CleanupAnimationState()
+    {
+        if (gachaVideoPlayer != null && gachaVideoPlayer.isPlaying)
+            gachaVideoPlayer.Stop();
+        if (gachaDirector != null && gachaDirector.state == PlayState.Playing)
+            gachaDirector.Stop();
+        if (gachaAnimationPanel != null)
+            gachaAnimationPanel.SetActive(false);
+        if (gachaResultPanel != null)
+            gachaResultPanel.SetActive(false);
+        if (videoSkipButton != null)
+            videoSkipButton.gameObject.SetActive(false);
+
+        isPlayingAnimation = false;
+        pendingResults = null;
     }
 
     /// <summary>연출(Video 또는 Timeline)을 사용할 수 있는지 확인</summary>
