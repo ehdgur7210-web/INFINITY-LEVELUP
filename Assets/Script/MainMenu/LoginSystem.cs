@@ -300,10 +300,23 @@ public class LoginSystem : MonoBehaviour
         // 뒤끝 서버 로그아웃
         BackendManager.Instance?.Logout();
 
-        ClearSavedCredentials();
-        if (usernameInput != null) usernameInput.text = "";
-        if (passwordInput != null) passwordInput.text = "";
-        if (rememberToggle != null) rememberToggle.isOn = false;
+        // ★ 아이디 기억하기가 켜져있으면 아이디는 유지, 비밀번호만 초기화
+        //   (이전: ClearSavedCredentials로 아이디까지 전부 삭제 → 기억하기 무효화)
+        if (GameDataBridge.Login.rememberLogin)
+        {
+            // 비밀번호만 지우고 아이디 + rememberLogin 유지
+            GameDataBridge.Login.rememberedPassword = "";
+            GameDataBridge.WriteLoginData();
+            if (passwordInput != null) passwordInput.text = "";
+        }
+        else
+        {
+            ClearSavedCredentials();
+            if (usernameInput != null) usernameInput.text = "";
+            if (passwordInput != null) passwordInput.text = "";
+        }
+
+        if (rememberToggle != null) rememberToggle.isOn = GameDataBridge.Login.rememberLogin;
         InitializeLogin();
     }
 }

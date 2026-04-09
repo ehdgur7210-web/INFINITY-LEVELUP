@@ -111,6 +111,14 @@ public class MailManager : MonoBehaviour
             Instance = this;
             Debug.Log("[ManagerInit] MailManager가 생성되었습니다.");
 
+            // ★ 즉시 bridge에서 메일 데이터 복원 — AutoLoadOnStart 2프레임 대기 안 기다림
+            //   이걸 안 하면 Inspector 기본 메일(isRewardClaimed=false)이 2프레임 동안 살아있어서
+            //   씬 전환 후 "보상 다시 받기" 버그 발생
+            if (GameDataBridge.CurrentData?.mailData != null)
+            {
+                LoadMailSaveData(GameDataBridge.CurrentData.mailData);
+                Debug.Log("[MailManager] ★ Awake에서 bridge 메일 데이터 즉시 복원 완료");
+            }
         }
         else
         {

@@ -697,13 +697,19 @@ public class SaveLoadManager : MonoBehaviour
 
         if (ResourceBarManager.Instance != null)
         {
-            Debug.Log($"[TICKET-LOAD] ApplySaveData → RBM: 장비={data.equipmentTickets}, 동료={data.companionTickets}, 유물={data.relicTickets}");
-            ResourceBarManager.Instance.equipmentTickets = data.equipmentTickets;
-            ResourceBarManager.Instance.companionTickets = data.companionTickets;
-            ResourceBarManager.Instance.relicTickets = data.relicTickets;
-            ResourceBarManager.Instance.crystals = data.crystals;
-            ResourceBarManager.Instance.essences = data.essences;
-            ResourceBarManager.Instance.fragments = data.fragments;
+            var rbm = ResourceBarManager.Instance;
+            // ★ AutoLoadOnStart 코루틴 대기(2프레임) 동안 몬스터/오프라인보상이 이미 티켓을 추가했을 수 있음.
+            //   세이브 파일 값이 현재 RBM 값보다 작으면 덮어쓰지 않음 (데이터 손실 방지).
+            //   세이브 값이 더 크면 적용 (농장 복귀 시 등).
+            rbm.equipmentTickets = Mathf.Max(rbm.equipmentTickets, data.equipmentTickets);
+            rbm.companionTickets = Mathf.Max(rbm.companionTickets, data.companionTickets);
+            rbm.relicTickets     = Mathf.Max(rbm.relicTickets,     data.relicTickets);
+            rbm.crystals         = Mathf.Max(rbm.crystals,         data.crystals);
+            rbm.essences         = Mathf.Max(rbm.essences,         data.essences);
+            rbm.fragments        = Mathf.Max(rbm.fragments,        data.fragments);
+            Debug.Log($"[TICKET-LOAD] ApplySaveData → RBM(Max보호): 장비={rbm.equipmentTickets}(save:{data.equipmentTickets}), 동료={rbm.companionTickets}(save:{data.companionTickets})");
+            // ★ bridge도 즉시 동기화
+            rbm.SyncTicketsToBridge();
             // cropPoints는 더 이상 ResourceBarManager 필드에 직접 쓰지 않음 — CropPointService 통해 자동 sync.
             // UI 갱신만 트리거 (CropPointService가 OnChanged를 발화하면 RBM이 자동으로 갱신하지만, 명시적 갱신도 안전)
             CropPointService.RefreshUI();

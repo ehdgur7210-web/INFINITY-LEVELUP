@@ -38,13 +38,39 @@ public class ResourceBarManager : MonoBehaviour
     [SerializeField] private Image essenceIcon;
     [SerializeField] private Image fragmentIcon;
 
-    [Header("현재 보유량")]
-    public int equipmentTickets = 0;        // 장비 뽑기 티켓 (SaveLoadManager에서 로드)
-    public int companionTickets = 0;        // 동료 뽑기 티켓 (SaveLoadManager에서 로드)
-    public int relicTickets = 0;            // 유물 뽑기 티켓 (SaveLoadManager에서 로드)
-    public int crystals = 0;                // 크리스탈
-    public int essences = 0;                // 에센스
-    public int fragments = 0;               // 파편
+    // ★★ 티켓/광물은 GameDataBridge.CurrentData가 단일 source of truth (cropPoints와 동일 패턴).
+    //    로컬 필드 대신 bridge에서 직접 읽고 쓴다. 씬 전환 시 ResourceBarManager가 파괴/재생성돼도
+    //    bridge(static)는 살아있으므로 데이터 손실 없음.
+    public int equipmentTickets
+    {
+        get => GameDataBridge.CurrentData?.equipmentTickets ?? 0;
+        set { if (GameDataBridge.CurrentData != null) GameDataBridge.CurrentData.equipmentTickets = value; }
+    }
+    public int companionTickets
+    {
+        get => GameDataBridge.CurrentData?.companionTickets ?? 0;
+        set { if (GameDataBridge.CurrentData != null) GameDataBridge.CurrentData.companionTickets = value; }
+    }
+    public int relicTickets
+    {
+        get => GameDataBridge.CurrentData?.relicTickets ?? 0;
+        set { if (GameDataBridge.CurrentData != null) GameDataBridge.CurrentData.relicTickets = value; }
+    }
+    public int crystals
+    {
+        get => GameDataBridge.CurrentData?.crystals ?? 0;
+        set { if (GameDataBridge.CurrentData != null) GameDataBridge.CurrentData.crystals = value; }
+    }
+    public int essences
+    {
+        get => GameDataBridge.CurrentData?.essences ?? 0;
+        set { if (GameDataBridge.CurrentData != null) GameDataBridge.CurrentData.essences = value; }
+    }
+    public int fragments
+    {
+        get => GameDataBridge.CurrentData?.fragments ?? 0;
+        set { if (GameDataBridge.CurrentData != null) GameDataBridge.CurrentData.fragments = value; }
+    }
 
     // ★★ cropPoints는 더 이상 ResourceBarManager 필드가 아님 — CropPointService에 위임.
     //    호환성 유지: 기존 코드 (rbm.cropPoints, rbm.AddCropPoints 등)는 그대로 동작.
@@ -426,20 +452,8 @@ public class ResourceBarManager : MonoBehaviour
     /// 씬 전환 시 FarmScene에서 SaveGame이 bridge를 읽으므로
     /// 변경 즉시 bridge에 반영해야 데이터 손실 방지.
     /// </summary>
-    private void SyncTicketsToBridge()
-    {
-        if (GameDataBridge.CurrentData == null) return;
-        int prevEq = GameDataBridge.CurrentData.equipmentTickets;
-        int prevComp = GameDataBridge.CurrentData.companionTickets;
-        GameDataBridge.CurrentData.equipmentTickets = equipmentTickets;
-        GameDataBridge.CurrentData.companionTickets = companionTickets;
-        GameDataBridge.CurrentData.relicTickets = relicTickets;
-        GameDataBridge.CurrentData.crystals = crystals;
-        GameDataBridge.CurrentData.essences = essences;
-        GameDataBridge.CurrentData.fragments = fragments;
-        if (prevEq != equipmentTickets || prevComp != companionTickets)
-            Debug.Log($"[TICKET-SYNC] Bridge 동기화: 장비티켓 {prevEq}→{equipmentTickets}, 동료티켓 {prevComp}→{companionTickets}");
-    }
+    /// <summary>★ 이제 필드가 bridge 직접 참조이므로 동기화 불필요. 호환성 유지용 빈 메서드.</summary>
+    public void SyncTicketsToBridge() { /* bridge 직접 참조 → 동기화 불필요 */ }
 
     public int GetEquipmentTickets()
     {
