@@ -508,41 +508,24 @@ public class FarmManager : MonoBehaviour
                         amount = 1; // ★ 최소 1개 보장
                     }
 
-                    // ── 농장 인벤토리 (FarmScene UI) ──
-                    // ★ Instance가 null이면 비활성 GO에서 탐색해서 일시 활성화 (Awake 트리거 → 데이터 추가)
-                    //   단, 자동 오픈 버그 방지를 위해 "원래 비활성이었는지" 기억해두고 끝나면 되돌림.
-                    bool wasForcedActive = false;
-                    if (FarmInventoryUI.Instance == null)
-                    {
-                        var found = FindObjectOfType<FarmInventoryUI>(true);
-                        if (found != null)
-                        {
-                            wasForcedActive = !found.gameObject.activeSelf;
-                            found.gameObject.SetActive(true);
-                            Debug.Log($"[FarmManager] FarmInventoryUI 비활성 상태에서 탐색 성공: {found.gameObject.name} (강제활성:{wasForcedActive})");
-                        }
-                    }
-
-                    if (FarmInventoryUI.Instance != null)
+                    // ── 농장 인벤토리 ──
+                    // ★ 단일 source of truth: GameDataBridge에 직접 추가
+                    //   FarmInventoryUI(Panel_Inventory)는 절대 force-activate 하지 않음
+                    //   (이전 fix에서 force-activate → 첫 수확 자동오픈 + 관리패널 닫힘 버그 발생)
+                    //   UI가 살아있으면 AddHarvest로 슬롯 갱신, 없으면 GameDataBridge에만 쓰고
+                    //   다음 OnEnable 때 TryLoadFromSaveData가 자동 복구.
+                    if (FarmInventoryUI.Instance != null && FarmInventoryUI.Instance.gameObject.activeInHierarchy)
                     {
                         FarmInventoryUI.Instance.AddHarvest(crop.cropID, amount);
-
-                        // ★ 사용자가 직접 인벤을 열어둔 상태일 때만 수확탭으로 자동 전환.
-                        //   처음 수확이라 우리가 강제로 활성화한 케이스에서는 탭 전환하지 않고 즉시 다시 닫음
-                        //   (자동 오픈 버그 방지 — 첫 수확 시 인벤 패널이 갑자기 뜨던 문제).
-                        if (wasForcedActive)
-                        {
-                            FarmInventoryUI.Instance.gameObject.SetActive(false);
-                        }
-                        else
-                        {
-                            FarmInventoryUI.Instance.SwitchToHarvestedTab();
-                        }
-                        Debug.Log($"[FarmManager] FarmInventoryUI.AddHarvest: cropID={crop.cropID}, amount={amount}");
+                        // ★ 사용자가 인벤을 직접 열어둔 상태면 수확탭으로 전환, 아니면 그대로 둠
+                        FarmInventoryUI.Instance.SwitchToHarvestedTab();
+                        Debug.Log($"[FarmManager] FarmInventoryUI.AddHarvest (UI 활성): cropID={crop.cropID}, amount={amount}");
                     }
                     else
                     {
-                        Debug.LogWarning($"[FarmManager] FarmInventoryUI.Instance null — 수확물 '{crop.cropName}' x{amount} UI에 추가 실패");
+                        // UI 없음 → GameDataBridge에 직접 추가 (UI 토글 절대 X)
+                        AddHarvestToSaveData(crop.cropID, amount);
+                        Debug.Log($"[FarmManager] GameDataBridge 직접 추가 (UI 비활성): cropID={crop.cropID}, amount={amount}");
                     }
 
                     // ── 메인 인벤토리 기타 탭 연동 ──
@@ -666,6 +649,43 @@ public class FarmManager : MonoBehaviour
         }
 
         current.inventoryItems = list.ToArray();
+    }
+
+    /// <summary>
+    /// FarmInventoryUI가 비활성/없을 때 GameDataBridge.farmData.inventoryData.harvests에
+    /// 직접 수확물 추가. 다음 OnEnable 시 TryLoadFromSaveData가 자동 복구.
+    /// </summary>
+    private void AddHarvestToSaveData(int cropID, int amount)
+    {
+        if (GameDataBridge.CurrentData == null) return;
+
+        if (GameDataBridge.CurrentData.farmData == null)
+            GameDataBridge.CurrentData.farmData = new FarmSaveData();
+        if (GameDataBridge.CurrentData.farmData.inventoryData == null)
+            GameDataBridge.CurrentData.farmData.inventoryData = new FarmInventorySaveData();
+        if (GameDataBridge.CurrentData.farmData.inventoryData.harvests == null)
+            GameDataBridge.CurrentData.farmData.inventoryData.harvests = new List<FarmItemCount>();
+
+        var harvests = GameDataBridge.CurrentData.farmData.inventoryData.harvests;
+
+        // 같은 cropID가 있으면 수량 합산
+        bool merged = false;
+        for (int i = 0; i < harvests.Count; i++)
+        {
+            if (harvests[i].cropID == cropID)
+            {
+                harvests[i].count += amount;
+                merged = true;
+                Debug.Log($"[Farm→Bridge] 수확물 수량 합산: cropID={cropID} +{amount} (총 {harvests[i].count})");
+                break;
+            }
+        }
+
+        if (!merged)
+        {
+            harvests.Add(new FarmItemCount { cropID = cropID, count = amount });
+            Debug.Log($"[Farm→Bridge] 신규 수확물 추가: cropID={cropID} x{amount}");
+        }
     }
 
     // ════════════════════════════════════════════════
