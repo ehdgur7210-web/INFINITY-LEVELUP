@@ -47,6 +47,7 @@ public class Monster : MonoBehaviour, IHitable
     [Tooltip("이 시간(초) 안에 사망한 다른 몬스터의 사운드/파티클 스킵")]
     [SerializeField] private float deathEffectCooldown = 0.08f;
     private static float _lastDeathEffectTime = -10f;
+    private static float _lastHitSoundTime = -10f; // ★ 피격 사운드 쿨다운 (전체 몬스터 공유)
 
     // ─── Getter/Setter ───
     public int GoldDrop { get { return goldDrop; } set { goldDrop = value; } }
@@ -310,7 +311,12 @@ public class Monster : MonoBehaviour, IHitable
 
         currentHp -= (int)damageAmount;
 
-        SoundManager.Instance?.PlayMonsterHit();
+        // ★ 피격 사운드 3초 쿨다운 (겹침 방지)
+        if (Time.time - _lastHitSoundTime >= 3f)
+        {
+            SoundManager.Instance?.PlayMonsterHit();
+            _lastHitSoundTime = Time.time;
+        }
 
         if (DamagePopupManager.Instance != null)
             DamagePopupManager.Instance.ShowDamage(transform.position, damageAmount, criticalTier);
