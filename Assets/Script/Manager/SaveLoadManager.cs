@@ -970,13 +970,30 @@ public class SaveLoadManager : MonoBehaviour
         if (harvests == null || harvests.Count == 0) return;
 
         // ★ FarmManager.Instance 없어도 전달 시도 (FindCropByID가 폴백 처리)
+        // ★ 중복 전달 방지: data.farmData.transferredHarvests에 이미 옮긴 것 기록
+        //    이전엔 harvests를 비웠지만, 그러면 팜 인벤이 매번 비어서 사용자가 혼란
+        //    이제: 팜 인벤은 그대로 두고, 옮긴 것만 마킹
+
+        if (data.farmData.transferredHarvests == null)
+            data.farmData.transferredHarvests = new System.Collections.Generic.List<FarmItemCount>();
 
         int transferred = 0;
 
         for (int i = harvests.Count - 1; i >= 0; i--)
         {
             var h = harvests[i];
-            if (h.count <= 0) { harvests.RemoveAt(i); continue; }
+            if (h.count <= 0) continue;
+
+            // ★ 이미 같은 cropID/같은 count가 transferred에 있으면 스킵 (중복 방지)
+            int alreadyTransferred = 0;
+            foreach (var t in data.farmData.transferredHarvests)
+                if (t.cropID == h.cropID) { alreadyTransferred = t.count; break; }
+
+            int toTransfer = h.count - alreadyTransferred;
+            if (toTransfer <= 0) continue;
+            // toTransfer 개수만 전달, h.count는 그대로 (팜 인벤 유지)
+            int originalCount = h.count;
+            h = new FarmItemCount { cropID = h.cropID, count = toTransfer };
 
             // ★ CropData 조회: FarmManager.allCrops → Resources.FindAll 폴백
             CropData crop = FindCropByID(h.cropID);
@@ -1024,24 +1041,35 @@ public class SaveLoadManager : MonoBehaviour
             // ★ ItemDatabase 등록 보장
             ItemDatabase.Instance?.RegisterItem(harvestItem);
 
-            // ★ 수확물은 무조건 AddItem — 중복 체크 없음
-            // harvests[]는 팜에서 수확한 수량 그대로이므로 전량 추가
+            // ★ 차분만 전달 (이미 alreadyTransferred 만큼은 옮겼으므로 toTransfer만 추가)
             if (InventoryManager.Instance != null)
             {
-                bool ok = InventoryManager.Instance.AddItem(harvestItem, h.count);
+                bool ok = InventoryManager.Instance.AddItem(harvestItem, toTransfer);
                 if (ok)
                 {
-                    Debug.Log($"[SaveLoadManager] 수확물 전달: {harvestItem.itemName} x{h.count} → 기타탭");
+                    Debug.Log($"[SaveLoadManager] 수확물 전달(diff): {harvestItem.itemName} +{toTransfer} (already:{alreadyTransferred} → total:{originalCount})");
                     transferred++;
+
+                    // ★ transferredHarvests 갱신 — 누적 옮긴 수량 기록
+                    bool found = false;
+                    foreach (var t in data.farmData.transferredHarvests)
+                    {
+                        if (t.cropID == h.cropID)
+                        {
+                            t.count = originalCount; // 이번 옮긴 후 누적 = 현재 farm count
+                            found = true;
+                            break;
+                        }
+                    }
+                    if (!found)
+                        data.farmData.transferredHarvests.Add(new FarmItemCount { cropID = h.cropID, count = originalCount });
                 }
             }
 
-            // 전달 완료 → harvests에서 제거 (중복 전달 방지)
-            harvests.RemoveAt(i);
+            // ★ harvests에서 제거하지 않음 (팜 인벤 데이터 유지)
         }
 
-        // 전달 완료 후 harvests 리스트 초기화 (재진입 시 중복 전달 방지)
-        data.farmData?.inventoryData?.harvests?.Clear();
+        // ★ harvests 리스트도 비우지 않음 (팜 인벤 데이터 유지)
 
         if (transferred > 0)
         {

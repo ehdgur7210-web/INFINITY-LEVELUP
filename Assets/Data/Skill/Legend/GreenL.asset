@@ -22,8 +22,8 @@ MonoBehaviour:
   attackStyle: 2
   requiredLevel: 1
   requiredSkillPoints: 1
-  maxLevel: 5
-  baseValue: 100
+  maxLevel: 100
+  baseValue: 300
   valuePerLevel: 20
   duration: 0
   cooldown: 5

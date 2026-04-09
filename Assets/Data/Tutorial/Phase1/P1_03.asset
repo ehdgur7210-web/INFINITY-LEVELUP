@@ -16,14 +16,14 @@ MonoBehaviour:
     \uBC84\uD2BC\uC774 \uC788\uC5B4\uC694!\n\uC7A5\uCC29 \uBC84\uD2BC\uC744 \uB20C\uB7EC\uBCF4\uC138\uC694."
   focusTargetName: Contains:EquipButton
   focusPadding: {x: 20, y: 20}
-  advanceType: 3
-  requiredAction: EquipItem
+  advanceType: 0
+  requiredAction: 
   autoAdvanceDelay: 2
   tipPosition: 0
   isSceneTransitionStep: 0
   delayBeforeShow: 0
-  useAreaFocus: 1
-  areaTargetName: EquipSlotParent
+  useAreaFocus: 0
+  areaTargetName: 
   hideTargets:
   - EquipLevelUpPanel
   - AllContains:LevelUpButton

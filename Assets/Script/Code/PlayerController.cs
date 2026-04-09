@@ -724,15 +724,8 @@ public class PlayerController : MonoBehaviour
 
         foreach (Collider2D hit in hits)
         {
-            int critTier = PlayerStats.Instance.RollCriticalTier();
-
-            float finalDmg = damageValue;
-            switch (critTier)
-            {
-                case 1: finalDmg *= (PlayerStats.Instance.criticalDamage / 100f); break;
-                case 2: finalDmg *= (PlayerStats.Instance.superCriticalDamage / 100f); break;
-                case 3: finalDmg *= (PlayerStats.Instance.ultraCriticalDamage / 100f); break;
-            }
+            // ★ 스킬 데미지 = 공격력 × (damageValue%) × skillDamageMultiplier + 크리
+            float finalDmg = PlayerStats.Instance.CalculateSkillDamageWithTier(damageValue, out int critTier);
 
             Monster monster = hit.GetComponent<Monster>();
             if (monster != null)
@@ -771,14 +764,8 @@ public class PlayerController : MonoBehaviour
     {
         SoundManager.Instance?.PlayBulletFire();
 
-        int critTier = PlayerStats.Instance.RollCriticalTier();
-        float finalDmg = damageValue;
-        switch (critTier)
-        {
-            case 1: finalDmg *= (PlayerStats.Instance.criticalDamage / 100f); break;
-            case 2: finalDmg *= (PlayerStats.Instance.superCriticalDamage / 100f); break;
-            case 3: finalDmg *= (PlayerStats.Instance.ultraCriticalDamage / 100f); break;
-        }
+        // ★ 스킬 데미지 = 공격력 × (damageValue%) × skillDamageMultiplier + 크리
+        float finalDmg = PlayerStats.Instance.CalculateSkillDamageWithTier(damageValue, out int critTier);
 
         GameObject bullet = null;
 
@@ -829,14 +816,8 @@ public class PlayerController : MonoBehaviour
     {
         SoundManager.Instance?.PlayMagicCast();
 
-        int critTier = PlayerStats.Instance.RollCriticalTier();
-        float finalDmg = damageValue;
-        switch (critTier)
-        {
-            case 1: finalDmg *= (PlayerStats.Instance.criticalDamage / 100f); break;
-            case 2: finalDmg *= (PlayerStats.Instance.superCriticalDamage / 100f); break;
-            case 3: finalDmg *= (PlayerStats.Instance.ultraCriticalDamage / 100f); break;
-        }
+        // ★ 스킬 데미지 = 공격력 × (damageValue%) × skillDamageMultiplier + 크리
+        float finalDmg = PlayerStats.Instance.CalculateSkillDamageWithTier(damageValue, out int critTier);
 
         // ★ hitEffectPrefab이 있으면 → 범위 즉발 + 몬스터마다 히트 이펙트 (번개 등)
         if (skillData.hitEffectPrefab != null)
@@ -849,15 +830,8 @@ public class PlayerController : MonoBehaviour
 
             foreach (Collider2D hit in hits)
             {
-                // 몬스터별 개별 크리티컬 판정
-                int perHitCrit = PlayerStats.Instance.RollCriticalTier();
-                float perHitDmg = damageValue;
-                switch (perHitCrit)
-                {
-                    case 1: perHitDmg *= (PlayerStats.Instance.criticalDamage / 100f); break;
-                    case 2: perHitDmg *= (PlayerStats.Instance.superCriticalDamage / 100f); break;
-                    case 3: perHitDmg *= (PlayerStats.Instance.ultraCriticalDamage / 100f); break;
-                }
+                // 몬스터별 개별 크리티컬 판정 (스킬 데미지 % 기반)
+                float perHitDmg = PlayerStats.Instance.CalculateSkillDamageWithTier(damageValue, out int perHitCrit);
 
                 Monster monster = hit.GetComponent<Monster>();
                 if (monster != null)

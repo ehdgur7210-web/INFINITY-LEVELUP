@@ -24,11 +24,11 @@ MonoBehaviour:
   sellPrice: 100
   buyPrice: 200
   equipmentStats:
-    attack: 20
-    defense: 20
+    attack: 4
+    defense: 2
     health: 40
     mana: 0
-    criticalRate: 0
+    criticalRate: 1
     criticalDamage: 0
     attackSpeed: 0
     moveSpeed: 0

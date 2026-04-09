@@ -22,9 +22,9 @@ MonoBehaviour:
   attackStyle: 2
   requiredLevel: 1
   requiredSkillPoints: 1
-  maxLevel: 5
-  baseValue: 10
-  valuePerLevel: 20
+  maxLevel: 100
+  baseValue: 100
+  valuePerLevel: 5
   duration: 0
   cooldown: 5
   manaCost: 1

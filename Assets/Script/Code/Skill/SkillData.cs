@@ -63,7 +63,27 @@ public class SkillData : ScriptableObject
     [Header("스킬 수치")]
     public int requiredLevel = 1;
     public int requiredSkillPoints = 1;
-    public int maxLevel = 5;
+    [Tooltip("스킬 최대 레벨 (기본 100)")]
+    public int maxLevel = 100;
+
+    // ─── 레벨업 재료 시스템 ──────────────────────────────────────
+    [Header("★ 레벨업 재료 (인스펙터에서 설정)")]
+    [Tooltip("이 스킬을 레벨업할 때 소비되는 동일 장비 (있으면 우선 사용)")]
+    public EquipmentData materialEquipment;
+
+    [Tooltip("이 스킬을 레벨업할 때 소비되는 동일 동료 (장비가 없을 때 사용)")]
+    public CompanionData materialCompanion;
+
+    [Tooltip("레벨별 필요 재료 개수. 배열 인덱스 = 현재 레벨-1.\n" +
+             "배열 크기보다 레벨이 크면 마지막 값 사용.")]
+    public int[] materialCountPerLevel = new int[]
+    {
+        1, 1, 2, 2, 3,  // Lv1→2 ~ Lv5→6
+        3, 4, 4, 5, 5,  // Lv6→7 ~ Lv10→11
+        6, 6, 7, 7, 8,  // Lv11→12 ~ Lv15→16
+        8, 9, 9, 10, 10 // Lv16→17 ~ Lv20→21
+        // 이후는 마지막 값(10) 반복
+    };
 
     [Header("효과")]
     public float baseValue;
@@ -101,5 +121,16 @@ public class SkillData : ScriptableObject
     public float GetValueAtLevel(int level)
     {
         return baseValue + (valuePerLevel * (level - 1));
+    }
+
+    /// <summary>
+    /// 현재 레벨에서 다음 레벨로 올리는 데 필요한 재료 개수.
+    /// 배열보다 레벨이 크면 마지막 값 반복.
+    /// </summary>
+    public int GetRequiredMaterialCount(int currentLevel)
+    {
+        if (materialCountPerLevel == null || materialCountPerLevel.Length == 0) return 1;
+        int idx = Mathf.Clamp(currentLevel - 1, 0, materialCountPerLevel.Length - 1);
+        return materialCountPerLevel[idx];
     }
 }

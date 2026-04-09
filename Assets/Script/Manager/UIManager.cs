@@ -515,16 +515,20 @@ public class UIManager : MonoBehaviour
 
         if (attackText != null)
         {
-            float totalAttack = stats.attackPower + stats.bonusAttack;
+            // ★ levelBonusAttack + 동료 보너스 포함
+            float totalAttack = stats.GetTotalAttack();
             attackText.text = $"공격력:{FormatStat(totalAttack)}";
-            attackText.color = stats.bonusAttack > 0 ? Color.green : Color.white;
+            attackText.color = (stats.bonusAttack > 0 || stats.GetCompanionBonusAttack() > 0)
+                ? Color.green : Color.white;
         }
 
         if (defenseText != null)
         {
-            float totalDefense = stats.defense + stats.bonusDefense;
+            // ★ levelBonusDefense + 동료 보너스 포함
+            float totalDefense = stats.GetTotalDefense();
             defenseText.text = $"방어력:{FormatKoreanUnit((long)totalDefense)}";
-            defenseText.color = stats.bonusDefense > 0 ? Color.green : Color.white;
+            defenseText.color = (stats.bonusDefense > 0 || stats.GetCompanionBonusDefense() > 0)
+                ? Color.green : Color.white;
         }
 
         if (maxHpText != null)
@@ -543,7 +547,8 @@ public class UIManager : MonoBehaviour
 
         if (criticalText != null)
         {
-            float totalCritical = stats.criticalRate + stats.bonusCritical;
+            // ★ levelBonusCritical 포함
+            float totalCritical = stats.GetTotalCritRate();
             criticalText.text = $"크리티컬:{totalCritical:F1}%";
             criticalText.color = stats.bonusCritical > 0 ? Color.green : Color.white;
         }

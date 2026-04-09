@@ -742,10 +742,13 @@ public class BulkEnhancePanel : MonoBehaviour
             totalFail += passFail;
             passes++;
 
-            // ★ 매 패스마다 SelectFilter()/RefreshEquipDisplay() 호출하지 않음.
+            // ★★★ 패스 종료 후 _currentDisplayList를 재필터링!
+            //   성공한 아이템은 enhanceLevel이 _currentFilter보다 커져서 더 이상 이 필터에 속하지 않음.
+            //   실패한 아이템도 _currentFilter > 0 이면 enhanceLevel--로 이탈함.
+            //   재필터 안 하면 다음 패스에서 이미 강화된 아이템이 또 강화돼 폭주(+2/+3/...)함.
             //   슬롯/필터버튼 재생성은 종료 시점에 한 번만 수행 (Instantiate 폭주 방지).
-            //   대신 _currentDisplayList의 내부 상태(enhanceLevel)는 DoBulkEnhancePass에서
-            //   이미 갱신됐으므로 다음 패스 계산에는 영향 없음.
+            _currentDisplayList.RemoveAll(e =>
+                e == null || e.instance == null || e.instance.enhanceLevel != _currentFilter);
 
             // 무한 루프 방지: 진전이 없는 경우(전부 실패하고 +0이라 강화수치 변화 없음) 종료
             if (passSuccess == 0 && _currentFilter == 0)
@@ -761,6 +764,9 @@ public class BulkEnhancePanel : MonoBehaviour
             stopReason = "안전 상한 도달";
 
         // ★ 자동강화 종료 시 1회만 UI 전체 갱신
+        //   _currentDisplayList를 명시적으로 비워서 SelectFilter가 새로 빌드하게 함
+        //   (stale 데이터 잔존으로 다음 manual 일괄강화가 한 번 빈 클릭 되는 버그 방지)
+        _currentDisplayList.Clear();
         RefreshFilterButtons();
         SelectFilter(_currentFilter);
         CombatPowerManager.Instance?.Recalculate();

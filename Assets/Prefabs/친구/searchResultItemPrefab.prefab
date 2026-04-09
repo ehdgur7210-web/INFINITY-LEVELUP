@@ -145,6 +145,7 @@ GameObject:
   - component: {fileID: 8968177299030124784}
   - component: {fileID: 8123671018443229661}
   - component: {fileID: 6395090661652291805}
+  - component: {fileID: 688379093095878728}
   m_Layer: 5
   m_Name: searchResultItemPrefab
   m_TagString: Untagged
@@ -213,6 +214,23 @@ MonoBehaviour:
   m_FillOrigin: 0
   m_UseSpriteMesh: 0
   m_PixelsPerUnitMultiplier: 1
+--- !u!114 &688379093095878728
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 874381332577322604}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7a536b301a2a3cb4baa44d603d2ff608, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  iconImage: {fileID: 2747779835573707664}
+  nameText: {fileID: 2217585304533614752}
+  levelText: {fileID: 2308380247681500056}
+  addButton: {fileID: 980268836962796778}
+  addBtnText: {fileID: 0}
 --- !u!1 &3579598542862264267
 GameObject:
   m_ObjectHideFlags: 0
@@ -381,7 +399,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0.5}
   m_AnchorMax: {x: 0, y: 0.5}
-  m_AnchoredPosition: {x: 50, y: 0}
+  m_AnchoredPosition: {x: -814, y: -2}
   m_SizeDelta: {x: 150, y: 150}
   m_Pivot: {x: 0, y: 0.5}
 --- !u!222 &342598427307477756

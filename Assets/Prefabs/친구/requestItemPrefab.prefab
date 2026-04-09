@@ -34,7 +34,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0.5}
   m_AnchorMax: {x: 0, y: 0.5}
-  m_AnchoredPosition: {x: 30, y: 0}
+  m_AnchoredPosition: {x: -847, y: -3}
   m_SizeDelta: {x: 150, y: 150}
   m_Pivot: {x: 0, y: 0.5}
 --- !u!222 &236415735614431043
@@ -220,6 +220,7 @@ GameObject:
   - component: {fileID: 6260763889043279040}
   - component: {fileID: 4946081825680947287}
   - component: {fileID: 5334237737770611705}
+  - component: {fileID: 3775130530799085117}
   m_Layer: 5
   m_Name: requestItemPrefab
   m_TagString: Untagged
@@ -289,6 +290,23 @@ MonoBehaviour:
   m_FillOrigin: 0
   m_UseSpriteMesh: 0
   m_PixelsPerUnitMultiplier: 1
+--- !u!114 &3775130530799085117
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5679293327239119060}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a5d3795761d82ac49987280e79a16eed, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  iconImage: {fileID: 7335348535180262490}
+  nameText: {fileID: 5484648737326332514}
+  levelText: {fileID: 6677168982637520998}
+  acceptButton: {fileID: 5414591031652831397}
+  rejectButton: {fileID: 1920372870394542458}
 --- !u!1 &6083915820419964226
 GameObject:
   m_ObjectHideFlags: 0

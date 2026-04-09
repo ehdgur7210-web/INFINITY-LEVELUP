@@ -209,11 +209,12 @@ public class GachaManager : MonoBehaviour
         ValidateGachaPool();
         SetupAnimationSystem();
 
-        // ★ GachaResultUI 슬롯 풀 초기화 (Awake가 아닌 게임 시작 시 1회)
+        // ★ GachaResultUI 슬롯 풀 초기화 (활성화 + 슬롯 풀 + 패널 숨김)
+        //   원래대로 복구 — lazy init은 가챠 패널 활성화 누락으로 튜토리얼 깨짐
         InitGachaResultPool();
 
         isInitialized = true;
-        Debug.Log("[GachaManager] Init 완료 — 슬롯 풀링 포함");
+        Debug.Log("[GachaManager] Init 완료");
     }
 
     private void InitGachaResultPool()

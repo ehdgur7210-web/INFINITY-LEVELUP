@@ -24,4 +24,19 @@ MonoBehaviour:
   useAreaFocus: 0
   areaTargetName: 
   hideTargets: []
-  rewards: []
+  rewards:
+  - rewardType: 0
+    amount: 1000000
+    item: {fileID: 0}
+  - rewardType: 1
+    amount: 5000
+    item: {fileID: 0}
+  - rewardType: 2
+    amount: 500
+    item: {fileID: 0}
+  - rewardType: 3
+    amount: 50
+    item: {fileID: 0}
+  - rewardType: 4
+    amount: 5000
+    item: {fileID: 0}

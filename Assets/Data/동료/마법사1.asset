@@ -21,12 +21,12 @@ MonoBehaviour:
   portrait: {fileID: -286690720, guid: 677a36a549aa0954b8b656f67825af14, type: 3}
   fullIllust: {fileID: 21300000, guid: 87a77d5f8d69a814a9e5f71dd728a49e, type: 3}
   worldPrefab: {fileID: 4350560982789109391, guid: 9138dde57e4fce9468a55346063ce282, type: 3}
-  maxHealth: 500
-  attackPower: 100
+  maxHealth: 1000
+  attackPower: 25
   attackSpeed: 1
   attackRange: 5
   moveSpeed: 3.5
-  defense: 5
+  defense: 20
   skills:
   - skillID: Dark
     skillName: "\uB2E4\uD06C"

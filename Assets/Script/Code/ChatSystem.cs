@@ -134,6 +134,8 @@ public class ChatSystem : MonoBehaviour
         public int combatPower;
         public Action onRescueClick;
         public Sprite avatar;
+        public int classIndex = 0;  // ★ 발신자 캐릭터 클래스 (0=전사, 1=원거리, 2=마법사)
+        public int senderLevel = 0; // ★ 발신자 레벨 (0이면 표시 안 함)
     }
 
     // ── NPC 더미 (오프라인 폴백) ──────────────────────────────
@@ -586,12 +588,25 @@ public class ChatSystem : MonoBehaviour
             message = text,
             nameColor = new Color(1f, 1f, 0.6f),
             timestamp = DateTime.Now.ToString("HH:mm"),
-            isMe = true
+            isMe = true,
+            // ★ 내 메시지엔 자동으로 레벨/클래스 채움
+            senderLevel = GameManager.Instance != null ? GameManager.Instance.PlayerLevel : 0,
+            classIndex = GetMyClassIndex()
         };
         AddToTab(sendTab, data);
         AddToAllTab(data);
         UpdateMinimizedText($"[{GetTabDisplayName(sendTab)}] {myName}: {text}");
         StartCoroutine(ScrollToBottomNextFrame());
+    }
+
+    /// <summary>로컬 캐릭터의 클래스 인덱스 (0=전사, 1=원거리, 2=마법사)</summary>
+    private int GetMyClassIndex()
+    {
+        if (GameDataBridge.CurrentData != null)
+        {
+            return GameDataBridge.CurrentData.characterClassType;
+        }
+        return 0;
     }
 
     // ═══════════════════════════════════════════════════════════════
@@ -873,23 +888,69 @@ public class ChatSystem : MonoBehaviour
         if (messagePrefab == null || messageContent == null) return;
 
         GameObject msgObj = Instantiate(messagePrefab, messageContent);
-        TextMeshProUGUI tmp = msgObj.GetComponent<TextMeshProUGUI>()
-                          ?? msgObj.GetComponentInChildren<TextMeshProUGUI>(true);
-        if (tmp != null)
+
+        // ★ ChatMessageSlot 컴포넌트 우선 사용 — 분리 필드(이름/레벨/시간/메시지/아이콘)에 각각 채움
+        var slot = msgObj.GetComponent<ChatMessageSlot>();
+        if (slot != null)
         {
-            string hex = ColorUtility.ToHtmlStringRGB(data.nameColor);
-            string timeStr = !string.IsNullOrEmpty(data.timestamp)
-                ? $"<color=#999999><size={messageFontSize * 0.7f:F0}>{data.timestamp}</size></color> " : "";
-            string msgColor = (data.message != null && data.message.StartsWith("[→")) ? "#FFAAFF" : "#EEEEEEFF";
-            tmp.text = $"{timeStr}<color=#{hex}>{data.senderName}</color>  <color={msgColor}>{data.message}</color>";
-            tmp.enableWordWrapping = true;
-            tmp.overflowMode = TextOverflowModes.Overflow;
-            tmp.fontSize = messageFontSize;
-            tmp.alignment = TextAlignmentOptions.Left;
+            slot.Setup(
+                senderName:  data.senderName,
+                senderLevel: data.senderLevel,
+                classIndex:  data.classIndex,
+                message:     data.message,
+                nameColor:   data.nameColor,
+                timestamp:   data.timestamp
+            );
+        }
+        else
+        {
+            // 폴백: 단일 TMP 인라인 렌더
+            TextMeshProUGUI tmp = msgObj.GetComponent<TextMeshProUGUI>()
+                              ?? msgObj.GetComponentInChildren<TextMeshProUGUI>(true);
+            if (tmp != null)
+            {
+                string hex = ColorUtility.ToHtmlStringRGB(data.nameColor);
+                string timeStr = !string.IsNullOrEmpty(data.timestamp)
+                    ? $"<color=#999999><size={messageFontSize * 0.7f:F0}>{data.timestamp}</size></color> " : "";
+                string msgColor = (data.message != null && data.message.StartsWith("[→")) ? "#FFAAFF" : "#EEEEEEFF";
+                string lvStr = data.senderLevel > 0
+                    ? $"<color=#FFD700>Lv.{data.senderLevel}</color> " : "";
+                tmp.text = $"{timeStr}{lvStr}<color=#{hex}>{data.senderName}</color>  <color={msgColor}>{data.message}</color>";
+                tmp.enableWordWrapping = true;
+                tmp.overflowMode = TextOverflowModes.Overflow;
+                tmp.fontSize = messageFontSize;
+                tmp.alignment = TextAlignmentOptions.Left;
+            }
+
+            // 폴백 경로에서만 휴리스틱 아이콘 탐색
+            ApplyChatProfileIcon(msgObj, data.classIndex);
         }
 
         ConfigureMessageLayout(msgObj);
         activeMessageObjects.Add(msgObj);
+    }
+
+    /// <summary>
+    /// 메시지 프리팹 안에서 "Icon"/"Profile"/"Avatar" 이름 Image를 찾아
+    /// 발신자 클래스 아이콘 적용. 없으면 무시.
+    /// </summary>
+    private void ApplyChatProfileIcon(GameObject msgObj, int classIndex)
+    {
+        Sprite sp = ProfileIconDatabase.GetIcon(classIndex);
+        if (sp == null) return;
+
+        var images = msgObj.GetComponentsInChildren<Image>(true);
+        foreach (var img in images)
+        {
+            string n = img.gameObject.name.ToLowerInvariant();
+            if (n.Contains("icon") || n.Contains("profile") || n.Contains("avatar"))
+            {
+                img.sprite = sp;
+                img.preserveAspect = true;
+                img.enabled = true;
+                return;
+            }
+        }
     }
 
     private void SpawnSystemMessage(ChatMessageData data)
@@ -897,15 +958,27 @@ public class ChatSystem : MonoBehaviour
         if (messagePrefab == null) return;
 
         GameObject msgObj = Instantiate(messagePrefab, messageContent);
-        TextMeshProUGUI tmp = msgObj.GetComponent<TextMeshProUGUI>()
-                          ?? msgObj.GetComponentInChildren<TextMeshProUGUI>(true);
-        if (tmp != null)
+
+        // ★ ChatMessageSlot이 있으면 슬롯 컴포넌트로 채우되, 시스템은 아이콘/이름/레벨/시간 모두 숨김
+        var slot = msgObj.GetComponent<ChatMessageSlot>();
+        if (slot != null)
         {
-            tmp.text = $"<color=#FFD700>[시스템] {data.message}</color>";
-            tmp.enableWordWrapping = true;
-            tmp.overflowMode = TextOverflowModes.Overflow;
-            tmp.fontSize = messageFontSize;
-            tmp.alignment = TextAlignmentOptions.Center;
+            // 시스템 메시지는 본문만 표시
+            slot.SetupSystem($"[시스템] {data.message}");
+        }
+        else
+        {
+            // 폴백
+            TextMeshProUGUI tmp = msgObj.GetComponent<TextMeshProUGUI>()
+                              ?? msgObj.GetComponentInChildren<TextMeshProUGUI>(true);
+            if (tmp != null)
+            {
+                tmp.text = $"<color=#FFD700>[시스템] {data.message}</color>";
+                tmp.enableWordWrapping = true;
+                tmp.overflowMode = TextOverflowModes.Overflow;
+                tmp.fontSize = messageFontSize;
+                tmp.alignment = TextAlignmentOptions.Center;
+            }
         }
 
         ConfigureMessageLayout(msgObj);
@@ -937,15 +1010,26 @@ public class ChatSystem : MonoBehaviour
         }
         else
         {
+            // ★ messagePrefab 폴백 — ChatMessageSlot이 있으면 슬롯 컴포넌트로 (아이콘 숨김)
             string cpStr = RankingFormatUtil.FormatK(data.combatPower);
-            TextMeshProUGUI tmp = msgObj.GetComponent<TextMeshProUGUI>()
-                              ?? msgObj.GetComponentInChildren<TextMeshProUGUI>(true);
-            if (tmp != null)
+            string hex = ColorUtility.ToHtmlStringRGB(data.nameColor);
+            string formatted = $"<color=#{hex}>[{data.senderName}]</color> <color=#FF9999>전투력 {cpStr} — 구출 요청!</color>";
+
+            var slot = msgObj.GetComponent<ChatMessageSlot>();
+            if (slot != null)
             {
-                string hex = ColorUtility.ToHtmlStringRGB(data.nameColor);
-                tmp.text = $"<color=#{hex}>[{data.senderName}]</color> <color=#FF9999>전투력 {cpStr} — 구출 요청!</color>";
-                tmp.enableWordWrapping = true;
-                tmp.fontSize = messageFontSize;
+                slot.SetupRescue(data.senderName, data.combatPower, data.nameColor, formatted);
+            }
+            else
+            {
+                TextMeshProUGUI tmp = msgObj.GetComponent<TextMeshProUGUI>()
+                                  ?? msgObj.GetComponentInChildren<TextMeshProUGUI>(true);
+                if (tmp != null)
+                {
+                    tmp.text = formatted;
+                    tmp.enableWordWrapping = true;
+                    tmp.fontSize = messageFontSize;
+                }
             }
         }
 

@@ -219,4 +219,7 @@ public partial class FarmSaveData
     public long cropPoints;
     public FarmBuildingSaveData buildingData;
     public FarmInventorySaveData inventoryData; // ★ 씨앗/수확물 수량 저장
+    // ★ 메인 인벤으로 이미 옮긴 수확물 누적 (중복 전달 방지용)
+    //   harvests[] 자체는 팜 인벤 표시용으로 유지하고, transferredHarvests로 차분 계산
+    public System.Collections.Generic.List<FarmItemCount> transferredHarvests;
 }

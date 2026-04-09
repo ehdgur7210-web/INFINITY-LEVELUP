@@ -1,0 +1,19 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7c748bffe2e48454c91deb4f4a656377, type: 3}
+  m_Name: ProfileIconDatabase
+  m_EditorClassIdentifier: 
+  classSprites:
+  - {fileID: 1591417432, guid: abe89a9323683a44e9deccf2cf3c1fe1, type: 3}
+  - {fileID: 1149848597, guid: 7b0f89283b6ba69498f124829c93bdc5, type: 3}
+  - {fileID: 258930265, guid: 5da5ba6914ad18b449752911c8d6598b, type: 3}
+  defaultSprite: {fileID: 258930265, guid: 5da5ba6914ad18b449752911c8d6598b, type: 3}

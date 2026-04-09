@@ -21,12 +21,12 @@ MonoBehaviour:
   portrait: {fileID: -1032025320, guid: b0d1946b864253d44b0b1a5fef156e08, type: 3}
   fullIllust: {fileID: 21300000, guid: 70c8dce376617464e9410a94c12d77be, type: 3}
   worldPrefab: {fileID: 4350560982789109391, guid: 9b7100f39cadff44db0f156f1d8d4d08, type: 3}
-  maxHealth: 500
-  attackPower: 100
+  maxHealth: 1000
+  attackPower: 25
   attackSpeed: 1
   attackRange: 5
   moveSpeed: 3.5
-  defense: 5
+  defense: 20
   skills:
   - skillID: Fire
     skillName: "\uD30C\uC774\uC5B4\uC6D4"

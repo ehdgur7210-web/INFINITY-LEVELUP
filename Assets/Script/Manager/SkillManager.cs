@@ -520,6 +520,122 @@ public class SkillManager : MonoBehaviour
         return true;
     }
 
+    // ════════════════════════════════════════════════════════════════
+    // ★ 재료 기반 스킬 레벨업 (동일 장비/캐릭터 소비)
+    // ════════════════════════════════════════════════════════════════
+
+    /// <summary>
+    /// 동일 장비/캐릭터를 재료로 소비해서 스킬 레벨업.
+    /// 우선순위: SkillData.materialEquipment → SkillData.materialCompanion
+    /// </summary>
+    /// <returns>레벨업 성공 여부</returns>
+    public bool TryLevelUpSkillWithMaterial(int skillID)
+    {
+        LearnedSkill learned = GetLearnedSkill(skillID);
+        if (learned == null || learned.skillData == null)
+        {
+            Debug.LogWarning($"[SkillManager] TryLevelUpSkillWithMaterial: skillID={skillID} 미습득");
+            return false;
+        }
+
+        SkillData sd = learned.skillData;
+
+        if (learned.currentLevel >= sd.maxLevel)
+        {
+            UIManager.Instance?.ShowMessage($"{sd.skillName} 최대 레벨!", Color.yellow);
+            return false;
+        }
+
+        int needed = sd.GetRequiredMaterialCount(learned.currentLevel);
+
+        // 1) 장비 재료 우선
+        if (sd.materialEquipment != null)
+        {
+            if (InventoryManager.Instance == null)
+            {
+                Debug.LogWarning("[SkillManager] InventoryManager.Instance == null");
+                return false;
+            }
+
+            int owned = InventoryManager.Instance.GetItemCount(sd.materialEquipment);
+            if (owned < needed)
+            {
+                UIManager.Instance?.ShowMessage(
+                    $"{sd.materialEquipment.itemName} {needed}개 필요 (보유 {owned})", Color.red);
+                return false;
+            }
+
+            if (!InventoryManager.Instance.RemoveItem(sd.materialEquipment, needed))
+            {
+                Debug.LogWarning("[SkillManager] 재료 장비 제거 실패");
+                return false;
+            }
+
+            ApplySkillLevelUp(learned, needed, sd.materialEquipment.itemName);
+            return true;
+        }
+
+        // 2) 동료 재료
+        if (sd.materialCompanion != null)
+        {
+            if (CompanionInventoryManager.Instance == null)
+            {
+                Debug.LogWarning("[SkillManager] CompanionInventoryManager.Instance == null");
+                return false;
+            }
+
+            CompanionInventoryManager.CompanionEntry entry = CompanionInventoryManager.Instance.FindCompanionEntry(
+                sd.materialCompanion.companionID);
+            int owned = entry != null ? entry.count : 0;
+
+            if (owned < needed)
+            {
+                UIManager.Instance?.ShowMessage(
+                    $"{sd.materialCompanion.companionName} {needed}개 필요 (보유 {owned})", Color.red);
+                return false;
+            }
+
+            if (!CompanionInventoryManager.Instance.RemoveCompanion(sd.materialCompanion, needed))
+            {
+                Debug.LogWarning("[SkillManager] 재료 동료 제거 실패");
+                return false;
+            }
+
+            ApplySkillLevelUp(learned, needed, sd.materialCompanion.companionName);
+            return true;
+        }
+
+        UIManager.Instance?.ShowMessage($"{sd.skillName}에 레벨업 재료가 설정되지 않음", Color.red);
+        Debug.LogWarning($"[SkillManager] {sd.skillName}: materialEquipment/materialCompanion 둘 다 null");
+        return false;
+    }
+
+    private void ApplySkillLevelUp(LearnedSkill learned, int consumedCount, string materialName)
+    {
+        int oldLevel = learned.currentLevel;
+        learned.currentLevel++;
+
+        Debug.Log($"[SkillManager] ★ 재료 레벨업: {learned.skillData.skillName} " +
+                  $"Lv.{oldLevel} → Lv.{learned.currentLevel} (재료: {materialName} x{consumedCount})");
+        UIManager.Instance?.ShowMessage(
+            $"{learned.skillData.skillName} Lv.{learned.currentLevel}!", Color.cyan);
+
+        UpdateSkillTreeUI();
+        SaveSkills();
+    }
+
+    /// <summary>
+    /// 다음 레벨에 필요한 재료 개수 조회 (UI 표시용)
+    /// </summary>
+    public int GetSkillLevelUpMaterialCount(int skillID)
+    {
+        LearnedSkill learned = GetLearnedSkill(skillID);
+        if (learned == null || learned.skillData == null) return 0;
+        return learned.skillData.GetRequiredMaterialCount(learned.currentLevel);
+    }
+
+    // ════════════════════════════════════════════════════════════════
+
     /// <summary>장비로부터 스킬 습득 (등급별 스킬 시스템용)</summary>
     public void LearnSkillFromEquipment(SkillData skill)
     {

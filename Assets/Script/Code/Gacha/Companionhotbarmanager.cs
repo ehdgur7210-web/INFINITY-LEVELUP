@@ -36,11 +36,14 @@ public class CompanionHotbarManager : MonoBehaviour
     [Tooltip("동료가 소환될 기준 Transform (Player)")]
     public Transform companionSpawnAnchor;
 
-    [Tooltip("동시에 소환 가능한 최대 동료 수")]
-    public int maxActiveSummons = 3;
+    [Tooltip("동시에 소환 가능한 최대 동료 수 (전체)")]
+    public int maxActiveSummons = 6;
+
+    [Tooltip("한 슬롯(같은 캐릭터)당 최대 동시 소환 수")]
+    public int maxPerSlot = 2;
 
     [Header("기본 쿨타임 (CompanionData에 값이 0이면 이 값 사용)")]
-    public float defaultSummonCooldown = 60f;
+    public float defaultSummonCooldown = 30f;
 
     [Header("오토 소환")]
     [Tooltip("자동 소환 활성화 (오토 버튼과 연결)")]
@@ -61,8 +64,8 @@ public class CompanionHotbarManager : MonoBehaviour
     private List<CompanionHotbarSlotData> slotDataList = new List<CompanionHotbarSlotData>();
     private List<CompanionHotbarSlot> slotUIs = new List<CompanionHotbarSlot>();
 
-    // 소환된 동료 Agent 목록
-    private Dictionary<int, CompanionAgent> spawnedAgents = new Dictionary<int, CompanionAgent>();
+    // 소환된 동료 Agent 목록 (슬롯당 List → 같은 캐릭터 여러 명 지원)
+    private Dictionary<int, List<CompanionAgent>> spawnedAgents = new Dictionary<int, List<CompanionAgent>>();
 
     // 슬롯별 쿨타임 타이머
     private float[] cooldownTimers;     // 남은 쿨타임 (0이면 소환 가능)
@@ -119,7 +122,7 @@ public class CompanionHotbarManager : MonoBehaviour
         {
             if (GetActiveSummonCount() >= maxActiveSummons) break;
             if (slotDataList[i].data == null) continue;
-            if (spawnedAgents.ContainsKey(i) && spawnedAgents[i] != null && !spawnedAgents[i].IsDead) continue;
+            if (GetSlotActiveCount(i) >= maxPerSlot) continue;
             if (cooldownTimers[i] > 0f) continue;
 
             SummonCompanion(i);
@@ -166,11 +169,12 @@ public class CompanionHotbarManager : MonoBehaviour
                     slotUIs[i].UpdateCooldown(cooldownTimers[i], cooldownMaxTimes[i]);
             }
 
-            // ── 소환된 동료가 외부에서 파괴된 경우 정리 ──
-            if (spawnedAgents.ContainsKey(i) && spawnedAgents[i] == null)
+            // ── 소환된 동료 목록에서 null/사망 정리 ──
+            if (spawnedAgents.TryGetValue(i, out var list) && list != null)
             {
-                spawnedAgents.Remove(i);
-                slotUIs[i]?.SetSummoned(false);
+                list.RemoveAll(a => a == null || a.IsDead);
+                if (list.Count == 0)
+                    slotUIs[i]?.SetSummoned(false);
             }
         }
 
@@ -179,18 +183,29 @@ public class CompanionHotbarManager : MonoBehaviour
             TryAutoSummon();
     }
 
+    /// <summary>특정 슬롯의 현재 활성 동료 수</summary>
+    public int GetSlotActiveCount(int index)
+    {
+        if (!spawnedAgents.TryGetValue(index, out var list) || list == null) return 0;
+        int count = 0;
+        foreach (var a in list)
+            if (a != null && !a.IsDead) count++;
+        return count;
+    }
+
     // ─────────────────────────────────────────────────────────
     //  현재 소환 수
     // ─────────────────────────────────────────────────────────
 
-    /// <summary>현재 활동 중인 동료 수</summary>
+    /// <summary>현재 활동 중인 전체 동료 수</summary>
     public int GetActiveSummonCount()
     {
         int count = 0;
         foreach (var kvp in spawnedAgents)
         {
-            if (kvp.Value != null && !kvp.Value.IsDead)
-                count++;
+            if (kvp.Value == null) continue;
+            foreach (var a in kvp.Value)
+                if (a != null && !a.IsDead) count++;
         }
         return count;
     }
@@ -287,10 +302,12 @@ public class CompanionHotbarManager : MonoBehaviour
         CompanionData cData = slotDataList[index].data;
         if (cData == null) return;
 
-        // 이미 소환 중이면 무시
-        if (spawnedAgents.ContainsKey(index) && spawnedAgents[index] != null && !spawnedAgents[index].IsDead)
+        // 슬롯당 최대 인원 체크 (한 캐릭당 최대 maxPerSlot명)
+        int slotCount = GetSlotActiveCount(index);
+        if (slotCount >= maxPerSlot)
         {
-            UIManager.Instance?.ShowMessage($"{cData.companionName} 전투 중!", Color.cyan);
+            UIManager.Instance?.ShowMessage(
+                $"{cData.companionName} 최대 {maxPerSlot}명!", Color.cyan);
             return;
         }
 
@@ -302,7 +319,7 @@ public class CompanionHotbarManager : MonoBehaviour
             return;
         }
 
-        // 최대 소환 수 체크
+        // 전체 최대 소환 수 체크
         if (GetActiveSummonCount() >= maxActiveSummons)
         {
             UIManager.Instance?.ShowMessage(
@@ -380,51 +397,60 @@ public class CompanionHotbarManager : MonoBehaviour
         int slotIdx = index; // 클로저 캡처
         agent.OnDied += (deadAgent) => OnCompanionDied(slotIdx, deadAgent);
 
-        spawnedAgents[index] = agent;
+        // 슬롯 List에 추가
+        if (!spawnedAgents.ContainsKey(index) || spawnedAgents[index] == null)
+            spawnedAgents[index] = new List<CompanionAgent>();
+        spawnedAgents[index].Add(agent);
+
         slotUIs[index]?.SetSummoned(true);
 
+        // ★ 소환 직후 쿨타임 시작 (사망과 무관, 다음 추가 소환까지 30초 대기)
+        float cd = GetCooldown(index);
+        cooldownTimers[index] = cd;
+        cooldownMaxTimes[index] = cd;
+        slotUIs[index]?.UpdateCooldown(cd, cd);
+
         SoundManager.Instance?.PlayButtonClick();
-        UIManager.Instance?.ShowMessage($"⚔ {cData.companionName} 소환!", Color.green);
-        Debug.Log($"[CompanionHotbarManager] {cData.companionName} 소환 ({GetActiveSummonCount()}/{maxActiveSummons})");
+        UIManager.Instance?.ShowMessage(
+            $"⚔ {cData.companionName} 소환! ({GetSlotActiveCount(index)}/{maxPerSlot})", Color.green);
+        Debug.Log($"[CompanionHotbarManager] {cData.companionName} 소환 " +
+                  $"슬롯내 {GetSlotActiveCount(index)}/{maxPerSlot} | " +
+                  $"전체 {GetActiveSummonCount()}/{maxActiveSummons}");
 
         // 튜토리얼 트리거
         TutorialManager.Instance?.OnActionCompleted("CompanionSummon");
     }
 
-    /// <summary>동료 사망 시 콜백 — 쿨타임 시작</summary>
+    /// <summary>동료 사망 시 콜백 — List에서만 제거 (쿨타임은 소환 시점에 시작됨)</summary>
     private void OnCompanionDied(int index, CompanionAgent agent)
     {
         if (index < 0 || index >= slotDataList.Count) return;
 
-        // Agent 참조 정리
-        if (spawnedAgents.ContainsKey(index))
-            spawnedAgents.Remove(index);
-
-        // 쿨타임 시작
-        float cd = GetCooldown(index);
-        cooldownTimers[index] = cd;
-        cooldownMaxTimes[index] = cd;
-
-        // UI 갱신
-        slotUIs[index]?.SetSummoned(false);
-        slotUIs[index]?.UpdateCooldown(cd, cd);
+        // 죽은 Agent를 List에서 제거 (다른 동일 캐릭터는 살아있을 수 있음)
+        if (spawnedAgents.TryGetValue(index, out var list) && list != null)
+        {
+            list.Remove(agent);
+            if (list.Count == 0)
+                slotUIs[index]?.SetSummoned(false);
+        }
 
         CompanionData cData = slotDataList[index].data;
         string name = cData != null ? cData.companionName : "동료";
-        Debug.Log($"[CompanionHotbarManager] {name} 사망 → 쿨타임 {cd}초");
+        Debug.Log($"[CompanionHotbarManager] {name} 사망 — 슬롯내 잔여 {GetSlotActiveCount(index)}/{maxPerSlot}");
     }
 
-    /// <summary>즉시 해제 (슬롯 제거/씬 전환)</summary>
+    /// <summary>즉시 해제 (슬롯 제거/씬 전환) — 슬롯 내 모든 동료 해제</summary>
     private void DismissCompanion(int index)
     {
-        if (!spawnedAgents.ContainsKey(index)) return;
+        if (!spawnedAgents.TryGetValue(index, out var list) || list == null) return;
 
-        CompanionAgent agent = spawnedAgents[index];
-        if (agent != null)
+        foreach (var agent in list)
         {
+            if (agent == null) continue;
             agent.OnDied = null; // 콜백 해제 (Dismiss는 사망이 아님)
             agent.Dismiss();
         }
+        list.Clear();
 
         spawnedAgents.Remove(index);
         slotUIs[index]?.SetSummoned(false);
@@ -608,9 +634,8 @@ public class CompanionHotbarManager : MonoBehaviour
         {
             if (slotDataList[i].data == null) continue;
 
-            // 이미 소환 중이면 스킵
-            if (spawnedAgents.ContainsKey(i) && spawnedAgents[i] != null && !spawnedAgents[i].IsDead)
-                continue;
+            // 슬롯당 최대 인원 다 찼으면 스킵
+            if (GetSlotActiveCount(i) >= maxPerSlot) continue;
 
             // 쿨타임 중이면 스킵
             if (cooldownTimers[i] > 0f) continue;

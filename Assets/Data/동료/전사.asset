@@ -21,12 +21,12 @@ MonoBehaviour:
   portrait: {fileID: -1394751975, guid: 2adfa066c5fb7f94988a416273674bd1, type: 3}
   fullIllust: {fileID: 21300000, guid: 5dcc55fcf88696340971de6e0fb8fdc0, type: 3}
   worldPrefab: {fileID: 4350560982789109391, guid: fb294e73649e42b48a079a2449fd7fae, type: 3}
-  maxHealth: 1000
-  attackPower: 200
+  maxHealth: 2000
+  attackPower: 40
   attackSpeed: 1
   attackRange: 5
   moveSpeed: 3.5
-  defense: 5
+  defense: 30
   skills:
   - skillID: Ice
     skillName: "\uC5BC\uC74C\uC138\uACC4"

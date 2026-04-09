@@ -80,6 +80,36 @@ public class PlayerStats : MonoBehaviour, IHitable
     [Range(0f, 100f)]
     public float ultraCriticalChance = 20f;
 
+    // ─── 스킬 데미지 글로벌 튜너블 ───────────────────────────────
+    [Header("★ 스킬 데미지 밸런싱 (인스펙터에서 조정)")]
+    [Tooltip("스킬 데미지 = GetTotalAttack() × (SkillData.value / 100) × skillDamageMultiplier\n" +
+             "SkillData.valuePerLevel 의 의미가 '공격력의 N%'로 해석됩니다.\n" +
+             "예: SkillData value=200 → 공격력의 200% (= 2배) 데미지")]
+    [Range(0.1f, 10f)]
+    public float skillDamageMultiplier = 1f;
+
+    [Tooltip("평타 데미지 글로벌 배율. 평타가 너무 약하거나 강하면 여기서 조정.")]
+    [Range(0.1f, 10f)]
+    public float meleeDamageMultiplier = 1f;
+
+    // ─── 체력(HP) 스케일 튜너블 ────────────────────────────────
+    [Header("★ 체력(HP) 밸런싱 (인스펙터에서 조정)")]
+    [Tooltip("레벨업으로 얻는 HP 배율. 0.5 = 절반, 1 = 그대로, 2 = 2배.\n" +
+             "maxHpGrowthPerLevel × (level-1) 에 곱해집니다.")]
+    [Range(0f, 5f)]
+    public float levelHpMultiplier = 0.5f;
+
+    [Tooltip("장비로 얻는 HP 보너스 배율. 0.5 = 절반.\n" +
+             "장비 hpBonus 누적치(bonusMaxHp)에 곱해집니다.")]
+    [Range(0f, 5f)]
+    public float equipmentHpMultiplier = 0.5f;
+
+    [Tooltip("동료로 얻는 HP 보너스 배율. 0.2 = 20%만 반영.\n" +
+             "GetCompanionBonusMaxHp() 결과(별/전달비율 미적용 단순 합산)에 곱해집니다.\n" +
+             "예: Legendary 동료 6명 × HP 2000 × 0.2 = +2400 HP 보너스")]
+    [Range(0f, 5f)]
+    public float companionHpMultiplier = 0.2f;
+
     [Header("무적 시간")]
     public float invincibilityDuration = 1f;
     private float invincibilityTimer = 0f;
@@ -348,10 +378,30 @@ public class PlayerStats : MonoBehaviour, IHitable
         return GetCompanionStatBonus(c => c.defense);
     }
 
-    /// <summary>핫바에 장착된 모든 동료의 체력 보너스 합산</summary>
+    /// <summary>
+    /// 핫바에 장착된 모든 동료의 체력 보너스 합산
+    /// ★ HP는 별/전달비율 곱셈 누적이 너무 커서 단순 합산 방식 사용
+    ///   (공격력/방어력은 기존 GetCompanionStatBonus 그대로 — 별/등급 영향 받음)
+    /// </summary>
     public float GetCompanionBonusMaxHp()
     {
-        return GetCompanionStatBonus(c => c.maxHealth);
+        if (CompanionHotbarManager.Instance == null || CompanionInventoryManager.Instance == null)
+            return 0f;
+
+        float totalHp = 0f;
+        string[] hotbarIDs = CompanionHotbarManager.Instance.GetHotbarSaveData();
+        if (hotbarIDs == null) return 0f;
+
+        foreach (string id in hotbarIDs)
+        {
+            if (string.IsNullOrEmpty(id)) continue;
+            var entry = CompanionInventoryManager.Instance.FindCompanionEntry(id);
+            if (entry == null || entry.data == null) continue;
+
+            // ★ 단순 합산 — 동료 본체 maxHealth만, 별/전달비율 적용 X
+            totalHp += entry.data.maxHealth;
+        }
+        return totalHp;
     }
 
     private float GetCompanionStatBonus(System.Func<CompanionData, float> statSelector)
@@ -483,8 +533,12 @@ public class PlayerStats : MonoBehaviour, IHitable
 
     public void RecalculateMaxHp()
     {
-        // 레벨 성장 HP도 포함
-        float newMaxHealth = baseMaxHealth + bonusMaxHp + levelBonusMaxHp + GetCompanionBonusMaxHp();
+        // ★ 각 소스별 배율 적용 (인스펙터에서 조정 가능)
+        //   base는 그대로, level/장비/동료는 각 배율 적용
+        float newMaxHealth = baseMaxHealth
+                           + (bonusMaxHp * equipmentHpMultiplier)
+                           + (levelBonusMaxHp * levelHpMultiplier)
+                           + (GetCompanionBonusMaxHp() * companionHpMultiplier);
         float healthRatio = maxHealth > 0 ? currentHealth / maxHealth : 1f;
 
         maxHealth = newMaxHealth;
@@ -582,8 +636,8 @@ public class PlayerStats : MonoBehaviour, IHitable
     /// </summary>
     public float CalculateDamageWithTier(out int criticalTier)
     {
-        // ★ 레벨 성장 공격력 포함
-        float totalAttack = GetTotalAttack();
+        // ★ 레벨 성장 공격력 + 평타 배율 포함
+        float totalAttack = GetTotalAttack() * meleeDamageMultiplier;
 
         criticalTier = RollCriticalTier();
 
@@ -614,6 +668,28 @@ public class PlayerStats : MonoBehaviour, IHitable
     {
         int tier;
         return CalculateDamageWithTier(out tier);
+    }
+
+    /// <summary>
+    /// ★ 스킬 데미지 계산 (공격력 % 기반)
+    /// damageValuePercent: SkillData.GetValueAtLevel() 결과. "공격력의 N%"로 해석.
+    /// 예: damageValuePercent=200 → 공격력의 200% (= 2배) 데미지
+    /// </summary>
+    public float CalculateSkillDamageWithTier(float damageValuePercent, out int criticalTier)
+    {
+        float baseDmg = GetTotalAttack() * (damageValuePercent / 100f) * skillDamageMultiplier;
+
+        criticalTier = RollCriticalTier();
+
+        switch (criticalTier)
+        {
+            case 0: break;
+            case 1: baseDmg *= (criticalDamage / 100f); break;
+            case 2: baseDmg *= (superCriticalDamage / 100f); break;
+            case 3: baseDmg *= (ultraCriticalDamage / 100f); break;
+        }
+
+        return baseDmg;
     }
 
     #endregion

@@ -207,22 +207,40 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   maxHealth: 100
   currentHealth: 0
-  maxMana: 100
+  maxMana: 50
   currentMana: 0
   manaRegenRate: 5
   attackPower: 10
   defense: 5
-  criticalRate: 10
+  criticalRate: 5
   criticalDamage: 150
+  attackGrowthPerLevel: 1.5
+  defenseGrowthPerLevel: 1
+  maxHpGrowthPerLevel: 15
+  maxManaGrowthPerLevel: 3
+  critGrowthPerLevel: 0.3
+  speedGrowthPerLevel: 0.05
+  useScalingGrowth: 0
+  scalingFactor: 1.05
+  superCriticalDamage: 250
+  ultraCriticalDamage: 400
+  superCriticalChance: 30
+  ultraCriticalChance: 20
+  skillDamageMultiplier: 0.3
+  meleeDamageMultiplier: 1
+  levelHpMultiplier: 1
+  equipmentHpMultiplier: 0.5
+  companionHpMultiplier: 0.3
   invincibilityDuration: 1
   healthBar: {fileID: 0}
   manaBar: {fileID: 0}
-  level: 0
+  level: 1
   bonusAttack: 0
   bonusDefense: 0
   bonusMaxHp: 0
   bonusSpeed: 0
   bonusCritical: 0
+  bonusAttackSpeed: 0
 --- !u!114 &3440106496706367546
 MonoBehaviour:
   m_ObjectHideFlags: 0

@@ -327,16 +327,39 @@ public class FriendUI : MonoBehaviour
             var item = Instantiate(friendItemPrefab, friendListContent);
             item.SetActive(true);
 
-            var texts = item.GetComponentsInChildren<TextMeshProUGUI>();
-            if (texts.Length >= 1) texts[0].text = friend.nickname;
+            // ★ FriendItemSlot 컴포넌트 우선 사용
+            var slot = item.GetComponent<FriendItemSlot>();
+            Button sendBtn = null;
+            TextMeshProUGUI sendBtnText = null;
+            Button deleteBtn = null;
 
-            var buttons = item.GetComponentsInChildren<Button>();
+            if (slot != null)
+            {
+                slot.Setup(friend);
+                sendBtn = slot.PointButton;
+                sendBtnText = slot.PointBtnText ?? (sendBtn != null ? sendBtn.GetComponentInChildren<TextMeshProUGUI>() : null);
+                deleteBtn = slot.DeleteButton;
+            }
+            else
+            {
+                // 폴백: 컴포넌트 없으면 기존 휴리스틱
+                var texts = item.GetComponentsInChildren<TextMeshProUGUI>();
+                if (texts.Length >= 1) texts[0].text = $"Lv.{friend.level} {friend.nickname}";
+                ApplyProfileIcon(item, friend.classIndex);
+
+                var buttons = item.GetComponentsInChildren<Button>();
+                if (buttons.Length >= 1)
+                {
+                    sendBtn = buttons[0];
+                    sendBtnText = sendBtn.GetComponentInChildren<TextMeshProUGUI>();
+                }
+                if (buttons.Length >= 2)
+                    deleteBtn = buttons[1];
+            }
 
             // 포인트 전송 버튼
-            if (buttons.Length >= 1)
+            if (sendBtn != null)
             {
-                var sendBtn = buttons[0];
-                var sendBtnText = sendBtn.GetComponentInChildren<TextMeshProUGUI>();
 
                 if (friend.sentToday)
                 {
@@ -364,11 +387,11 @@ public class FriendUI : MonoBehaviour
             }
 
             // 삭제 버튼
-            if (buttons.Length >= 2)
+            if (deleteBtn != null)
             {
                 string inDate = friend.inDate;
                 string nickname = friend.nickname;
-                buttons[1].onClick.AddListener(() =>
+                deleteBtn.onClick.AddListener(() =>
                 {
                     UIManager.Instance?.ShowConfirmDialog($"{nickname}님을 친구에서 삭제하시겠습니까?", () =>
                     {
@@ -423,22 +446,41 @@ public class FriendUI : MonoBehaviour
             var item = Instantiate(requestItemPrefab, requestListContent);
             item.SetActive(true);
 
-            var text = item.GetComponentInChildren<TextMeshProUGUI>();
-            if (text) text.text = req.nickname;
+            // ★ RequestItemSlot 컴포넌트 우선 사용
+            var slot = item.GetComponent<RequestItemSlot>();
+            Button acceptBtn = null;
+            Button rejectBtn = null;
 
-            var buttons = item.GetComponentsInChildren<Button>();
+            if (slot != null)
+            {
+                slot.Setup(req);
+                acceptBtn = slot.AcceptButton;
+                rejectBtn = slot.RejectButton;
+            }
+            else
+            {
+                // 폴백
+                var text = item.GetComponentInChildren<TextMeshProUGUI>();
+                if (text) text.text = $"Lv.{req.level} {req.nickname}";
+                ApplyProfileIcon(item, req.classIndex);
+
+                var buttons = item.GetComponentsInChildren<Button>();
+                if (buttons.Length >= 1) acceptBtn = buttons[0];
+                if (buttons.Length >= 2) rejectBtn = buttons[1];
+            }
+
             string inDate = req.inDate;
 
-            if (buttons.Length >= 1)
+            if (acceptBtn != null)
             {
-                buttons[0].onClick.AddListener(() =>
+                acceptBtn.onClick.AddListener(() =>
                 {
                     BackendFriendManager.Instance?.AcceptRequest(inDate);
                 });
             }
-            if (buttons.Length >= 2)
+            if (rejectBtn != null)
             {
-                buttons[1].onClick.AddListener(() =>
+                rejectBtn.onClick.AddListener(() =>
                 {
                     BackendFriendManager.Instance?.RejectRequest(inDate);
                 });
@@ -476,10 +518,23 @@ public class FriendUI : MonoBehaviour
             var item = Instantiate(searchResultItemPrefab, searchResultContent);
             item.SetActive(true);
 
-            var texts = item.GetComponentsInChildren<TextMeshProUGUI>();
-            if (texts.Length >= 1) texts[0].text = result.nickname;
+            // ★ SearchResultSlot 컴포넌트 우선 사용
+            var slot = item.GetComponent<SearchResultSlot>();
+            Button btn = null;
 
-            var btn = item.GetComponentInChildren<Button>();
+            if (slot != null)
+            {
+                slot.Setup(result);
+                btn = slot.AddButton;
+            }
+            else
+            {
+                var texts = item.GetComponentsInChildren<TextMeshProUGUI>();
+                if (texts.Length >= 1) texts[0].text = $"Lv.{result.level} {result.nickname}";
+                ApplyProfileIcon(item, result.classIndex);
+                btn = item.GetComponentInChildren<Button>();
+            }
+
             if (btn != null)
             {
                 if (result.isAlreadyFriend)
@@ -533,6 +588,30 @@ public class FriendUI : MonoBehaviour
     // ═══════════════════════════════════════
     //  메시지
     // ═══════════════════════════════════════
+
+    /// <summary>
+    /// 친구 아이템 프리팹 안에서 "Icon"/"Profile"/"Avatar" 이름이 들어간
+    /// Image 컴포넌트를 찾아서 클래스 아이콘 스프라이트를 적용.
+    /// 없으면 무시 (프리팹에 Image 추가 안 했어도 안전).
+    /// </summary>
+    private void ApplyProfileIcon(GameObject item, int classIndex)
+    {
+        Sprite sp = ProfileIconDatabase.GetIcon(classIndex);
+        if (sp == null) return;
+
+        var images = item.GetComponentsInChildren<Image>(true);
+        foreach (var img in images)
+        {
+            string n = img.gameObject.name.ToLowerInvariant();
+            if (n.Contains("icon") || n.Contains("profile") || n.Contains("avatar"))
+            {
+                img.sprite = sp;
+                img.preserveAspect = true;
+                img.enabled = true;
+                return;
+            }
+        }
+    }
 
     private void ShowMessage(string msg)
     {

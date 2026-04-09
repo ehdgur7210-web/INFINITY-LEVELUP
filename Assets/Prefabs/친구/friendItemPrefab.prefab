@@ -354,6 +354,7 @@ GameObject:
   - component: {fileID: 4533038659769807650}
   - component: {fileID: 8039827236202974577}
   - component: {fileID: 4558890559925215782}
+  - component: {fileID: -5034564288465397751}
   m_Layer: 5
   m_Name: friendItemPrefab
   m_TagString: Untagged
@@ -423,6 +424,24 @@ MonoBehaviour:
   m_FillOrigin: 0
   m_UseSpriteMesh: 0
   m_PixelsPerUnitMultiplier: 1
+--- !u!114 &-5034564288465397751
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4953667119803475515}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 050d12079b38dd64f9c5c40e14999a4a, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  iconImage: {fileID: 8928806028877118658}
+  nameText: {fileID: 5189197010234284815}
+  levelText: {fileID: 5730717274640739427}
+  pointButton: {fileID: 8793560789804782116}
+  pointBtnText: {fileID: 0}
+  deleteButton: {fileID: 5445149199737760087}
 --- !u!1 &5551478622886139100
 GameObject:
   m_ObjectHideFlags: 0

@@ -262,11 +262,22 @@ public class FarmSceneController : MonoBehaviour
 
     public void OpenHarvestInventory()
     {
+        // ★ Inspector 참조 누락 시 Instance 폴백 (씬 재진입 후에도 안전)
+        if (farmInventoryUI == null)
+            farmInventoryUI = FarmInventoryUI.Instance;
+
         if (farmInventoryUI == null)
         {
-            Debug.LogWarning("[FarmSceneController] farmInventoryUI가 연결되지 않았습니다!");
+            // 씬에 있는 비활성 오브젝트도 검색
+            farmInventoryUI = FindObjectOfType<FarmInventoryUI>(true);
+        }
+
+        if (farmInventoryUI == null)
+        {
+            Debug.LogWarning("[FarmSceneController] farmInventoryUI를 찾을 수 없습니다! Inspector 또는 Hierarchy 확인 필요");
             return;
         }
+
         SetBanner("작물인벤토리");
         farmInventoryUI.OpenPanel();
         TutorialManager.Instance?.OnActionCompleted("OpenFarmInventory");

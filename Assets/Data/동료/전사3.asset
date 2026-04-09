@@ -20,12 +20,12 @@ MonoBehaviour:
   maxStars: 20
   portrait: {fileID: 258930265, guid: 5da5ba6914ad18b449752911c8d6598b, type: 3}
   worldPrefab: {fileID: 4350560982789109391, guid: 394ee2ee7f463dc42a57fe70e8e150af, type: 3}
-  maxHealth: 500
-  attackPower: 100
+  maxHealth: 1000
+  attackPower: 25
   attackSpeed: 1
   attackRange: 5
   moveSpeed: 3.5
-  defense: 5
+  defense: 20
   skills:
   - skillID: Tree
     skillName: "\uC138\uACC4\uC218"

@@ -121,8 +121,14 @@ public class BackendFriendManager : MonoBehaviour
                     }
                 }
                 Debug.Log($"[Friend] 친구 목록 로드: {FriendList.Count}명 (원본: {(rows != null ? rows.Count : 0)}건)");
-                OnFriendListLoaded?.Invoke(FriendList);
-                callback?.Invoke(FriendList);
+
+                // ★ 레벨/클래스 정보 보강 — 랭킹 데이터에서 매칭
+                EnrichFriendsWithRankData(() =>
+                {
+                    OnFriendListLoaded?.Invoke(FriendList);
+                    callback?.Invoke(FriendList);
+                });
+                return;
             }
             else
             {
@@ -139,6 +145,50 @@ public class BackendFriendManager : MonoBehaviour
                 callback?.Invoke(FriendList);
             }
         });
+    }
+
+    // ═══════════════════════════════════════
+    //  ★ 친구 데이터 보강 — 랭킹에서 level/classIndex 가져오기
+    // ═══════════════════════════════════════
+
+    /// <summary>
+    /// 랭킹 데이터(레벨 랭킹)에서 inDate/nickname 매칭으로
+    /// FriendList의 level + classIndex를 채운다.
+    /// 매칭 안 되면 기본값(level=1, classIndex=0) 유지.
+    /// </summary>
+    private void EnrichFriendsWithRankData(Action onComplete)
+    {
+        if (BackendRankingManager.Instance == null || FriendList.Count == 0)
+        {
+            onComplete?.Invoke();
+            return;
+        }
+
+        BackendRankingManager.Instance.GetRankList(
+            RankingManager.RankType.Level,
+            (entries, success) =>
+            {
+                if (success && entries != null)
+                {
+                    foreach (var friend in FriendList)
+                    {
+                        var match = entries.Find(e =>
+                            (!string.IsNullOrEmpty(friend.inDate) && e.gamerInDate == friend.inDate) ||
+                            e.playerName == friend.nickname);
+                        if (match != null)
+                        {
+                            friend.level = match.score;
+                            friend.classIndex = match.classIndex;
+                        }
+                    }
+                    Debug.Log($"[Friend] 친구 데이터 보강 완료 ({FriendList.Count}명)");
+                }
+                else
+                {
+                    Debug.LogWarning("[Friend] 랭킹 보강 실패 — level/classIndex 기본값 사용");
+                }
+                onComplete?.Invoke();
+            });
     }
 
     // ═══════════════════════════════════════
@@ -251,6 +301,8 @@ public class BackendFriendManager : MonoBehaviour
                         {
                             nickname = entry.playerName,
                             inDate = entry.gamerInDate ?? "",
+                            level = entry.score,            // ★ 레벨 랭킹의 score = player_level
+                            classIndex = entry.classIndex,  // ★ 캐릭터 클래스
                         };
                         result.isAlreadyFriend = FriendList.Exists(f =>
                             (!string.IsNullOrEmpty(f.inDate) && f.inDate == result.inDate) ||
@@ -280,7 +332,12 @@ public class BackendFriendManager : MonoBehaviour
 
     public void SendFriendRequest(string targetInDate, Action<bool, string> callback = null)
     {
-        Debug.Log($"[Friend] ▶ SendFriendRequest 호출 — targetInDate: '{targetInDate}'");
+        SendFriendRequestInternal(targetInDate, callback, retryAfterBreak: true);
+    }
+
+    private void SendFriendRequestInternal(string targetInDate, Action<bool, string> callback, bool retryAfterBreak)
+    {
+        Debug.Log($"[Friend] ▶ SendFriendRequest 호출 — targetInDate: '{targetInDate}', retryAfterBreak:{retryAfterBreak}");
 
         if (string.IsNullOrEmpty(targetInDate))
         {
@@ -302,7 +359,7 @@ public class BackendFriendManager : MonoBehaviour
             return;
         }
 
-        // ★ 이미 친구인지 체크 (이중 수락 방지)
+        // ★ 이미 친구인지 체크 (로컬) — 이중 수락 방지
         if (FriendList.Exists(f => f.inDate == targetInDate))
         {
             callback?.Invoke(false, "이미 친구입니다.");
@@ -319,7 +376,26 @@ public class BackendFriendManager : MonoBehaviour
             }
             else
             {
-                Debug.LogWarning($"[Friend] ❌ 친구 요청 실패 — status:{bro.GetStatusCode()}, error:{bro.GetErrorCode()}, msg:{bro.GetMessage()}");
+                string status = bro.GetStatusCode();
+                string err = bro.GetErrorCode() ?? "";
+                string svrMsg = bro.GetMessage() ?? "";
+                Debug.LogWarning($"[Friend] ❌ 친구 요청 실패 — status:{status}, error:{err}, msg:{svrMsg}");
+
+                // ★ 재추가 자동 복구: 백엔드에 잔여 관계가 있으면 BreakFriend 후 1회 재시도
+                //   "AlreadyExistFriend" / "AlreadyRequest" / 409 등의 케이스
+                bool alreadyExists = err.Contains("AlreadyExist") || err.Contains("AlreadyRequest")
+                                    || svrMsg.Contains("이미") || status == "409";
+                if (alreadyExists && retryAfterBreak)
+                {
+                    Debug.Log($"[Friend] ⟳ 잔여 관계 감지 — BreakFriend 후 재요청 시도");
+                    Backend.Friend.BreakFriend(targetInDate, breakBro =>
+                    {
+                        // BreakFriend 결과 무시하고 재시도 (이미 끊겼을 수 있음)
+                        SendFriendRequestInternal(targetInDate, callback, retryAfterBreak: false);
+                    });
+                    return;
+                }
+
                 string msg = ParseFriendError(bro, "친구 요청");
                 callback?.Invoke(false, msg);
             }
@@ -382,6 +458,11 @@ public class BackendFriendManager : MonoBehaviour
 
     public void AcceptRequest(string requesterInDate, Action<bool> callback = null)
     {
+        AcceptRequestInternal(requesterInDate, callback, retryAfterBreak: true);
+    }
+
+    private void AcceptRequestInternal(string requesterInDate, Action<bool> callback, bool retryAfterBreak)
+    {
         Backend.Friend.AcceptFriend(requesterInDate, bro =>
         {
             if (bro.IsSuccess())
@@ -394,6 +475,24 @@ public class BackendFriendManager : MonoBehaviour
             }
             else
             {
+                string status = bro.GetStatusCode();
+                string err = bro.GetErrorCode() ?? "";
+                string svrMsg = bro.GetMessage() ?? "";
+                Debug.LogWarning($"[Friend] ❌ 친구 수락 실패 — status:{status}, error:{err}, msg:{svrMsg}");
+
+                // ★ 잔여 친구 관계 자동 복구 — 한 번 끊고 재시도
+                bool alreadyExists = err.Contains("AlreadyExist") || err.Contains("AlreadyRequest")
+                                    || svrMsg.Contains("이미") || status == "409";
+                if (alreadyExists && retryAfterBreak)
+                {
+                    Debug.Log($"[Friend] ⟳ 잔여 관계 감지 — BreakFriend 후 수락 재시도");
+                    Backend.Friend.BreakFriend(requesterInDate, _ =>
+                    {
+                        AcceptRequestInternal(requesterInDate, callback, retryAfterBreak: false);
+                    });
+                    return;
+                }
+
                 OnFriendError?.Invoke(ParseFriendError(bro, "수락"));
                 callback?.Invoke(false);
             }
@@ -428,8 +527,20 @@ public class BackendFriendManager : MonoBehaviour
             if (bro.IsSuccess())
             {
                 Debug.Log($"[Friend] 친구 삭제: {friendInDate}");
+
+                // ★ 1) 로컬 즉시 제거
                 FriendList.RemoveAll(f => f.inDate == friendInDate);
-                LoadFriendList();
+
+                // ★ 2) 오늘 보낸 기록도 정리 (재추가 후 다시 보낼 수 있게)
+                _todaySentSet.Remove(friendInDate);
+
+                // ★ 3) 친구 목록 + 검색 결과 둘 다 새로고침
+                //    (검색 패널에 "이미 친구" 비활성 상태로 남아있던 버튼 리셋)
+                LoadFriendList(_ =>
+                {
+                    LoadRandomUsers();
+                });
+
                 OnFriendMessage?.Invoke("친구를 삭제했습니다.");
                 callback?.Invoke(true);
             }
@@ -666,8 +777,8 @@ public class FriendData
     public string nickname;
     public string inDate;
     public bool sentToday;  // 오늘 포인트 보냈는지
-    public int level;       // 플레이어 레벨 (랭킹에서 보강)
-    public int classIndex;  // 캐릭터 클래스 (0=전사, 1=원거리, 2=마법사)
+    public int level = 1;       // ★ 친구 레벨 (랭킹에서 보강)
+    public int classIndex = 0;  // ★ 캐릭터 클래스 (0=전사, 1=원거리, 2=마법사)
 }
 
 [System.Serializable]
@@ -675,8 +786,8 @@ public class FriendRequestData
 {
     public string nickname;
     public string inDate;
-    public int level;
-    public int classIndex;
+    public int level = 1;       // ★ 요청자 레벨
+    public int classIndex = 0;  // ★ 캐릭터 클래스
 }
 
 [System.Serializable]
@@ -685,6 +796,6 @@ public class FriendSearchResult
     public string nickname;
     public string inDate;
     public bool isAlreadyFriend;
-    public int level;
-    public int classIndex;
+    public int level = 1;       // ★ 검색된 유저 레벨
+    public int classIndex = 0;  // ★ 캐릭터 클래스
 }
