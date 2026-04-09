@@ -666,6 +666,8 @@ public class FriendData
     public string nickname;
     public string inDate;
     public bool sentToday;  // 오늘 포인트 보냈는지
+    public int level;       // 플레이어 레벨 (랭킹에서 보강)
+    public int classIndex;  // 캐릭터 클래스 (0=전사, 1=원거리, 2=마법사)
 }
 
 [System.Serializable]
@@ -673,6 +675,8 @@ public class FriendRequestData
 {
     public string nickname;
     public string inDate;
+    public int level;
+    public int classIndex;
 }
 
 [System.Serializable]
@@ -681,4 +685,6 @@ public class FriendSearchResult
     public string nickname;
     public string inDate;
     public bool isAlreadyFriend;
+    public int level;
+    public int classIndex;
 }
