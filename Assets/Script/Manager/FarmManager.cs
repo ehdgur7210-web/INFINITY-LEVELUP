@@ -509,21 +509,35 @@ public class FarmManager : MonoBehaviour
                     }
 
                     // ── 농장 인벤토리 (FarmScene UI) ──
-                    // ★ Instance가 null이면 비활성 GO에서 탐색 (Awake 미호출 대비)
+                    // ★ Instance가 null이면 비활성 GO에서 탐색해서 일시 활성화 (Awake 트리거 → 데이터 추가)
+                    //   단, 자동 오픈 버그 방지를 위해 "원래 비활성이었는지" 기억해두고 끝나면 되돌림.
+                    bool wasForcedActive = false;
                     if (FarmInventoryUI.Instance == null)
                     {
                         var found = FindObjectOfType<FarmInventoryUI>(true);
                         if (found != null)
                         {
+                            wasForcedActive = !found.gameObject.activeSelf;
                             found.gameObject.SetActive(true);
-                            Debug.Log($"[FarmManager] FarmInventoryUI 비활성 상태에서 탐색 성공: {found.gameObject.name}");
+                            Debug.Log($"[FarmManager] FarmInventoryUI 비활성 상태에서 탐색 성공: {found.gameObject.name} (강제활성:{wasForcedActive})");
                         }
                     }
 
                     if (FarmInventoryUI.Instance != null)
                     {
                         FarmInventoryUI.Instance.AddHarvest(crop.cropID, amount);
-                        FarmInventoryUI.Instance.SwitchToHarvestedTab();
+
+                        // ★ 사용자가 직접 인벤을 열어둔 상태일 때만 수확탭으로 자동 전환.
+                        //   처음 수확이라 우리가 강제로 활성화한 케이스에서는 탭 전환하지 않고 즉시 다시 닫음
+                        //   (자동 오픈 버그 방지 — 첫 수확 시 인벤 패널이 갑자기 뜨던 문제).
+                        if (wasForcedActive)
+                        {
+                            FarmInventoryUI.Instance.gameObject.SetActive(false);
+                        }
+                        else
+                        {
+                            FarmInventoryUI.Instance.SwitchToHarvestedTab();
+                        }
                         Debug.Log($"[FarmManager] FarmInventoryUI.AddHarvest: cropID={crop.cropID}, amount={amount}");
                     }
                     else
