@@ -555,7 +555,7 @@ public class TutorialManager : MonoBehaviour
     private IEnumerator RetryFocusTargetCoroutine(TutorialStepData step)
     {
         float elapsed = 0f;
-        while (elapsed < 3f)
+        while (elapsed < 0.5f)
         {
             yield return null; // ★ 1프레임 대기 (즉시 재시도)
             elapsed += Time.unscaledDeltaTime;
