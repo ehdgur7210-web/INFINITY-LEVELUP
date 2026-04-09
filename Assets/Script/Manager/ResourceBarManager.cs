@@ -137,6 +137,7 @@ public class ResourceBarManager : MonoBehaviour
     {
         equipmentTickets += amount;
         UpdateEquipmentTicketUI();
+        SyncTicketsToBridge(); // ★ 즉시 bridge 동기화
 
         // ★ 가챠 UI 실시간 연동
         GachaUI.Instance?.UpdateTicketDisplay();
@@ -157,6 +158,7 @@ public class ResourceBarManager : MonoBehaviour
 
         equipmentTickets -= amount;
         UpdateEquipmentTicketUI();
+        SyncTicketsToBridge(); // ★ 즉시 bridge 동기화
 
         // ★ 가챠 UI 실시간 연동
         GachaUI.Instance?.UpdateTicketDisplay();
@@ -172,6 +174,7 @@ public class ResourceBarManager : MonoBehaviour
     {
         companionTickets += amount;
         UpdateCompanionTicketUI();
+        SyncTicketsToBridge(); // ★ 즉시 bridge 동기화
 
         if (enablePunchAnimation && companionTicketText != null)
         {
@@ -194,6 +197,7 @@ public class ResourceBarManager : MonoBehaviour
 
         companionTickets -= amount;
         UpdateCompanionTicketUI();
+        SyncTicketsToBridge(); // ★ 즉시 bridge 동기화
 
         Debug.Log($"[ResourceBar] 동료 티켓 -{amount} (현재: {companionTickets})");
         return true;
@@ -206,6 +210,7 @@ public class ResourceBarManager : MonoBehaviour
     {
         relicTickets += amount;
         UpdateRelicTicketUI();
+        SyncTicketsToBridge(); // ★ 즉시 bridge 동기화
 
         if (enablePunchAnimation && relicTicketText != null)
         {
@@ -228,6 +233,7 @@ public class ResourceBarManager : MonoBehaviour
 
         relicTickets -= amount;
         UpdateRelicTicketUI();
+        SyncTicketsToBridge(); // ★ 즉시 bridge 동기화
 
         Debug.Log($"[ResourceBar] 유물 티켓 -{amount} (현재: {relicTickets})");
         return true;
@@ -411,6 +417,28 @@ public class ResourceBarManager : MonoBehaviour
     private void OnDestroy()
     {
         CropPointService.OnChanged -= HandleCropPointsChanged;
+        // ★ 파괴 전 최종 동기화 (씬 전환 시 bridge 보존)
+        SyncTicketsToBridge();
+    }
+
+    /// <summary>
+    /// ★ 티켓/광물 값을 GameDataBridge.CurrentData에 즉시 동기화.
+    /// 씬 전환 시 FarmScene에서 SaveGame이 bridge를 읽으므로
+    /// 변경 즉시 bridge에 반영해야 데이터 손실 방지.
+    /// </summary>
+    private void SyncTicketsToBridge()
+    {
+        if (GameDataBridge.CurrentData == null) return;
+        int prevEq = GameDataBridge.CurrentData.equipmentTickets;
+        int prevComp = GameDataBridge.CurrentData.companionTickets;
+        GameDataBridge.CurrentData.equipmentTickets = equipmentTickets;
+        GameDataBridge.CurrentData.companionTickets = companionTickets;
+        GameDataBridge.CurrentData.relicTickets = relicTickets;
+        GameDataBridge.CurrentData.crystals = crystals;
+        GameDataBridge.CurrentData.essences = essences;
+        GameDataBridge.CurrentData.fragments = fragments;
+        if (prevEq != equipmentTickets || prevComp != companionTickets)
+            Debug.Log($"[TICKET-SYNC] Bridge 동기화: 장비티켓 {prevEq}→{equipmentTickets}, 동료티켓 {prevComp}→{companionTickets}");
     }
 
     public int GetEquipmentTickets()

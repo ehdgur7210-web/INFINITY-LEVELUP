@@ -372,6 +372,7 @@ public class SaveLoadManager : MonoBehaviour
             data.crystals         = (rbm.crystals        == 0 && (bridge?.crystals        ?? 0) > 0) ? bridge.crystals        : rbm.crystals;
             data.essences         = (rbm.essences        == 0 && (bridge?.essences        ?? 0) > 0) ? bridge.essences        : rbm.essences;
             data.fragments        = (rbm.fragments       == 0 && (bridge?.fragments       ?? 0) > 0) ? bridge.fragments       : rbm.fragments;
+            Debug.Log($"[TICKET-SAVE] MainScene RBM 경로: 장비={data.equipmentTickets}, 동료={data.companionTickets} (RBM: {rbm.equipmentTickets}/{rbm.companionTickets}, Bridge: {bridge?.equipmentTickets ?? -1}/{bridge?.companionTickets ?? -1})");
         }
         else if (GameDataBridge.CurrentData != null)
         {
@@ -381,6 +382,7 @@ public class SaveLoadManager : MonoBehaviour
             data.crystals = GameDataBridge.CurrentData.crystals;
             data.essences = GameDataBridge.CurrentData.essences;
             data.fragments = GameDataBridge.CurrentData.fragments;
+            Debug.Log($"[TICKET-SAVE] Bridge 폴백 경로: 장비={data.equipmentTickets}, 동료={data.companionTickets} (씬:{currentScene})");
         }
 
         // ── 작물 포인트 (단일 source of truth: GameDataBridge.CurrentData.cropPoints) ──
@@ -695,6 +697,7 @@ public class SaveLoadManager : MonoBehaviour
 
         if (ResourceBarManager.Instance != null)
         {
+            Debug.Log($"[TICKET-LOAD] ApplySaveData → RBM: 장비={data.equipmentTickets}, 동료={data.companionTickets}, 유물={data.relicTickets}");
             ResourceBarManager.Instance.equipmentTickets = data.equipmentTickets;
             ResourceBarManager.Instance.companionTickets = data.companionTickets;
             ResourceBarManager.Instance.relicTickets = data.relicTickets;

@@ -132,11 +132,24 @@ public class TutorialManager : MonoBehaviour
         if (_activeSteps == null || _currentStep >= _activeSteps.Count) return;
 
         var step = _activeSteps[_currentStep];
+
+        // ★ WaitForAction + EquipItem 스텝
         if (step.advanceType == TutorialAdvanceType.WaitForAction
             && step.requiredAction == "EquipItem")
         {
             Debug.Log("[Tutorial] OnEquipmentChanged 안전망 트리거 → EquipItem 완료 처리");
             OnActionCompleted("EquipItem");
+            return;
+        }
+
+        // ★ 장비 장착 스텝인데 advanceType이 ClickFocusTarget인 경우 (Unity가 asset 리버트)
+        //   focusTargetName에 "EquipButton"이 포함되어 있으면 장착 감지 시 자동 advance
+        if (step.advanceType == TutorialAdvanceType.ClickFocusTarget
+            && !string.IsNullOrEmpty(step.focusTargetName)
+            && step.focusTargetName.Contains("EquipButton"))
+        {
+            Debug.Log("[Tutorial] OnEquipmentChanged — EquipButton 스텝 자동 advance (asset 리버트 안전망)");
+            NextStep();
         }
     }
 
@@ -496,6 +509,19 @@ public class TutorialManager : MonoBehaviour
 
         SetupFocus(step);
         ShowTip(step);
+
+        // ★ 장착 스텝(EquipButton) 진입 시 이미 장비가 장착되어 있으면 즉시 advance
+        //   Unity가 P1_03.asset을 리버트해서 advanceType=ClickFocusTarget이 되어도
+        //   코드에서 자동 감지하여 넘어감
+        if (step.advanceType == TutorialAdvanceType.ClickFocusTarget
+            && !string.IsNullOrEmpty(step.focusTargetName)
+            && step.focusTargetName.Contains("EquipButton")
+            && IsAnyEquipmentEquipped())
+        {
+            Debug.Log("[Tutorial] EquipButton 스텝 진입 시 이미 장착됨 → 즉시 advance");
+            NextStep();
+            return;
+        }
 
         switch (step.advanceType)
         {

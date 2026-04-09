@@ -983,8 +983,9 @@ public class FarmManager : MonoBehaviour
 
         // ★ 씨앗/수확물 인벤토리 저장
         // FarmInventoryUI는 FarmScene 전용 — MainScene에서는 Instance가 null
-        // → null이면 기존 저장 데이터를 유지하여 씨앗/수확물 초기화 방지
-        if (FarmInventoryUI.Instance != null)
+        // → null이거나 비활성이면 기존 저장 데이터(GameDataBridge)를 유지하여 수확물 초기화 방지
+        //   (HarvestCrop에서 AddHarvestToSaveData로 bridge에 직접 쓴 데이터를 보존)
+        if (FarmInventoryUI.Instance != null && FarmInventoryUI.Instance.gameObject.activeInHierarchy)
         {
             data.inventoryData = FarmInventoryUI.Instance.GetSaveData();
             int seedCount = 0, harvestCount = 0;
