@@ -335,14 +335,16 @@ public static class GameDataBridge
     /// </summary>
     public static void CheckAndClearOldData()
     {
-        int savedVer = PlayerPrefs.GetInt(RESET_VERSION_KEY, -1);
+        int savedVer = PlayerPrefs.GetInt(RESET_VERSION_KEY, 0); // ★ 기본값 0 (DataResetVersion과 동일)
 
-        if (savedVer != DataResetVersion)
+        if (DataResetVersion > 0 && savedVer != DataResetVersion)
         {
+            // ★ DataResetVersion이 명시적으로 올라간 경우에만 초기화
+            //   (0 = 리셋 안 함, 1+ = 의도적 리셋)
             Debug.Log($"[GameDataBridge] ★ 데이터 버전 변경 ({savedVer} → {DataResetVersion}) → 전체 초기화");
             DeleteAllFiles();
 
-            PlayerPrefs.DeleteAll();
+            // ★ PlayerPrefs.DeleteAll() 제거 — 자기 버전 키까지 지워서 무한 초기화 루프 유발
             PlayerPrefs.SetInt(RESET_VERSION_KEY, DataResetVersion);
             PlayerPrefs.Save();
 
@@ -353,6 +355,12 @@ public static class GameDataBridge
         }
         else
         {
+            // ★ 버전키가 없던 기존 유저도 현재 버전 기록 (다음 실행 시 비교 가능)
+            if (!PlayerPrefs.HasKey(RESET_VERSION_KEY))
+            {
+                PlayerPrefs.SetInt(RESET_VERSION_KEY, DataResetVersion);
+                PlayerPrefs.Save();
+            }
             Debug.Log("[GameDataBridge] 데이터 버전 동일 → 저장 데이터 유지");
         }
     }
