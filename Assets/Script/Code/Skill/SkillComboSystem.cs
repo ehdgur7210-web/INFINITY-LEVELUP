@@ -77,7 +77,9 @@ public class SkillComboSystem : MonoBehaviour
     [SerializeField] private TextMeshProUGUI comboNameText;
     [SerializeField] private TextMeshProUGUI comboDescText;
     [SerializeField] private Image comboIconImage;
-    [SerializeField] private float comboPopupDuration = 2f;
+    [SerializeField] private float comboPopupDuration = 1.5f;
+    [Tooltip("comboPopupPanel이 비어있으면 런타임에 자동 생성")]
+    [SerializeField] private bool autoCreatePopupIfMissing = true;
 
     [Header("===== 셔플 UI =====")]
     [SerializeField] private TextMeshProUGUI shuffleTimerText;
@@ -167,12 +169,12 @@ public class SkillComboSystem : MonoBehaviour
         }
     }
 
-    /// <summary>장비 레어리티 → 레벨 (Common=1 ~ Legendary=5, 미장착=1)</summary>
+    /// <summary>장비 레어리티 → 레벨 (Common=1 ~ Legendary=5, 미장착=0)</summary>
     private int GetEquipmentLevel(EquipmentType eqType)
     {
-        if (EquipmentManager.Instance == null) return 1;
+        if (EquipmentManager.Instance == null) return 0;
         EquipmentData eq = EquipmentManager.Instance.GetEquippedItem(eqType);
-        if (eq == null) return 1;
+        if (eq == null) return 0; // ★ 미장착 = 0 (콤보 카운트에서 제외)
 
         return eq.rarity switch
         {
@@ -319,15 +321,22 @@ public class SkillComboSystem : MonoBehaviour
     {
         if (levels == null || levels.Length < 6) return ComboType.None;
 
-        // 레벨별 카운트 (인덱스 1~5)
-        int[] counts = new int[6]; // [0]미사용, [1]~[5]
+        // 레벨별 카운트 (인덱스 0~5, 0=미장착)
+        int[] counts = new int[6]; // [0]=미장착, [1]~[5]=레어리티
         for (int i = 0; i < 6; i++)
         {
-            int lv = Mathf.Clamp(levels[i], 1, 5);
+            int lv = Mathf.Clamp(levels[i], 0, 5); // ★ 미장착=0 허용
             counts[lv]++;
         }
 
-        // 최대 동일 개수
+        // ★ 6슬롯 모두 언커먼(2+) 이상이어야 콤보 발동
+        //   미장착(0)이나 커먼(1) 슬롯이 하나라도 있으면 콤보 없음
+        for (int i = 0; i < 6; i++)
+        {
+            if (levels[i] < 2) return ComboType.None;
+        }
+
+        // 최대 동일 개수 (미장착=0은 counts에서 제외됨 — lv=1부터 시작)
         int maxCount = 0;
         int secondMax = 0;
         int distinctCount = 0;
@@ -565,6 +574,10 @@ public class SkillComboSystem : MonoBehaviour
 
     private void ShowComboPopup(ComboType combo, int level, ComboSkillSet skillSet)
     {
+        // ★ 패널이 없으면 런타임에 자동 생성
+        if (comboPopupPanel == null && autoCreatePopupIfMissing)
+            EnsureRuntimePopup();
+
         if (comboPopupPanel == null) return;
 
         if (comboPopupCoroutine != null)
@@ -575,32 +588,92 @@ public class SkillComboSystem : MonoBehaviour
             displayName = GetDefaultComboName(combo, level);
 
         if (comboNameText != null)
+        {
             comboNameText.text = displayName;
-
-        if (comboDescText != null)
-            comboDescText.text = skillSet?.description ?? $"x{GetComboMultiplier(combo):F1} 데미지!";
-
-        if (comboIconImage != null && skillSet?.icon != null)
-        {
-            comboIconImage.sprite = skillSet.icon;
-            comboIconImage.gameObject.SetActive(true);
+            // 콤보 등급별 색상
+            comboNameText.color = combo >= ComboType.FiveOfAKind
+                ? new Color(1f, 0.85f, 0.1f)
+                : combo >= ComboType.Straight
+                    ? new Color(0.4f, 0.9f, 1f)
+                    : new Color(0.6f, 1f, 0.6f);
         }
-        else if (comboIconImage != null)
-        {
-            comboIconImage.gameObject.SetActive(false);
-        }
+
+        // ★ 이름만 표시 — desc/icon은 비활성화
+        if (comboDescText != null) comboDescText.gameObject.SetActive(false);
+        if (comboIconImage != null) comboIconImage.gameObject.SetActive(false);
 
         comboPopupPanel.SetActive(true);
         comboPopupCoroutine = StartCoroutine(HideComboPopup());
+    }
 
-        // 화면 메시지
-        Color comboColor = combo >= ComboType.FiveOfAKind
-            ? new Color(1f, 0.85f, 0.1f) // 금색
-            : combo >= ComboType.Straight
-                ? new Color(0.4f, 0.9f, 1f) // 파란색
-                : new Color(0.5f, 1f, 0.5f); // 초록색
+    /// <summary>
+    /// comboPopupPanel이 인스펙터에 연결 안 돼 있으면 런타임에 작은 다이얼로그 생성.
+    /// 화면 중앙 상단에 콤보 이름만 표시.
+    /// </summary>
+    private void EnsureRuntimePopup()
+    {
+        if (comboPopupPanel != null) return;
 
-        UIManager.Instance?.ShowMessage($"★ {displayName} ★", comboColor);
+        // 1) Canvas 찾기 (없으면 생성)
+        Canvas targetCanvas = null;
+        var canvases = FindObjectsOfType<Canvas>();
+        foreach (var c in canvases)
+        {
+            if (c.renderMode == RenderMode.ScreenSpaceOverlay && c.gameObject.activeInHierarchy)
+            {
+                targetCanvas = c;
+                break;
+            }
+        }
+
+        if (targetCanvas == null)
+        {
+            GameObject canvasGO = new GameObject("ComboPopupCanvas");
+            targetCanvas = canvasGO.AddComponent<Canvas>();
+            targetCanvas.renderMode = RenderMode.ScreenSpaceOverlay;
+            targetCanvas.sortingOrder = 100;
+            canvasGO.AddComponent<UnityEngine.UI.CanvasScaler>();
+            canvasGO.AddComponent<UnityEngine.UI.GraphicRaycaster>();
+        }
+
+        // 2) Panel (배경) 생성
+        GameObject panelGO = new GameObject("ComboPopupPanel");
+        panelGO.transform.SetParent(targetCanvas.transform, false);
+
+        var panelRT = panelGO.AddComponent<RectTransform>();
+        panelRT.anchorMin = new Vector2(0.5f, 0.75f);
+        panelRT.anchorMax = new Vector2(0.5f, 0.75f);
+        panelRT.pivot = new Vector2(0.5f, 0.5f);
+        panelRT.anchoredPosition = Vector2.zero;
+        panelRT.sizeDelta = new Vector2(400f, 100f);
+
+        var panelImage = panelGO.AddComponent<Image>();
+        panelImage.color = new Color(0f, 0f, 0f, 0.7f);
+        panelImage.raycastTarget = false;
+
+        // 3) Text 생성
+        GameObject textGO = new GameObject("ComboNameText");
+        textGO.transform.SetParent(panelGO.transform, false);
+
+        var textRT = textGO.AddComponent<RectTransform>();
+        textRT.anchorMin = Vector2.zero;
+        textRT.anchorMax = Vector2.one;
+        textRT.offsetMin = Vector2.zero;
+        textRT.offsetMax = Vector2.zero;
+
+        var tmp = textGO.AddComponent<TextMeshProUGUI>();
+        tmp.text = "";
+        tmp.fontSize = 50f;
+        tmp.fontStyle = FontStyles.Bold;
+        tmp.alignment = TextAlignmentOptions.Center;
+        tmp.color = Color.white;
+        tmp.raycastTarget = false;
+
+        comboPopupPanel = panelGO;
+        comboNameText = tmp;
+        panelGO.SetActive(false);
+
+        Debug.Log("[SkillComboSystem] 콤보 팝업 런타임 자동 생성 완료");
     }
 
     private IEnumerator HideComboPopup()

@@ -366,7 +366,8 @@ public class OptionUI : MonoBehaviour
         }
 
         // 페이드아웃 애니메이션
-        if (애니메이션사용 && canvasGroup != null)
+        // ★ gameObject가 비활성이면 StartCoroutine 불가 → 즉시 닫기
+        if (애니메이션사용 && canvasGroup != null && gameObject.activeInHierarchy)
         {
             StartCoroutine(FadeOut());
         }

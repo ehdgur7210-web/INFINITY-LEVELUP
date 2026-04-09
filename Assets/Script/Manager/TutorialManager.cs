@@ -111,11 +111,33 @@ public class TutorialManager : MonoBehaviour
     void OnEnable()
     {
         SceneManager.sceneLoaded += OnSceneLoaded;
+        // ★ 안전망: 사용자가 너무 빨리 장착해서 EquipItem 액션이 누락되는 케이스 방지.
+        //   장비 상태 변경 이벤트를 직접 듣고, 현재 스텝이 EquipItem 대기면 즉시 advance.
+        EquipmentManager.OnEquipmentChanged += OnEquipmentChangedTutorialHook;
     }
 
     void OnDisable()
     {
         SceneManager.sceneLoaded -= OnSceneLoaded;
+        EquipmentManager.OnEquipmentChanged -= OnEquipmentChangedTutorialHook;
+    }
+
+    /// <summary>
+    /// 장비가 장착/해제될 때마다 호출되는 안전망 훅.
+    /// 현재 튜토리얼 스텝이 EquipItem WaitForAction이면 OnActionCompleted를 우회 호출.
+    /// </summary>
+    private void OnEquipmentChangedTutorialHook(EquipmentType type, EquipmentData equip, int enhLevel)
+    {
+        if (!_isTutorialActive || equip == null) return;
+        if (_activeSteps == null || _currentStep >= _activeSteps.Count) return;
+
+        var step = _activeSteps[_currentStep];
+        if (step.advanceType == TutorialAdvanceType.WaitForAction
+            && step.requiredAction == "EquipItem")
+        {
+            Debug.Log("[Tutorial] OnEquipmentChanged 안전망 트리거 → EquipItem 완료 처리");
+            OnActionCompleted("EquipItem");
+        }
     }
 
     void Start()
@@ -510,6 +532,17 @@ public class TutorialManager : MonoBehaviour
                     focusMask?.BlockAll();
                     Debug.Log($"[Tutorial] WaitForAction 전체 차단 (액션: {step.requiredAction})");
                 }
+
+                // ★ 안전망: 사용자가 너무 빨리 장착해서 OnActionCompleted("EquipItem")가
+                //   이전 스텝(딜레이/전환 중)에 도착해 누락된 케이스 방지.
+                //   현재 장비 상태를 직접 확인 → 이미 뭔가 장착되어 있으면 즉시 advance.
+                //   (10연뽑 후 장착 P1_07에도 동일하게 적용됨)
+                if (step.requiredAction == "EquipItem" && IsAnyEquipmentEquipped())
+                {
+                    Debug.Log("[Tutorial] EquipItem 안전망 — 이미 장비 장착됨 → 즉시 advance");
+                    NextStep();
+                    return;
+                }
                 break;
         }
 
@@ -522,7 +555,7 @@ public class TutorialManager : MonoBehaviour
     private IEnumerator RetryFocusTargetCoroutine(TutorialStepData step)
     {
         float elapsed = 0f;
-        while (elapsed < 3f)
+        while (elapsed < 0.5f)
         {
             yield return null; // ★ 1프레임 대기 (즉시 재시도)
             elapsed += Time.unscaledDeltaTime;
@@ -893,6 +926,13 @@ public class TutorialManager : MonoBehaviour
 
         _focusButtonBound = false; // ★ 다음 스텝을 위해 초기화
         _currentStep++;
+
+        // ★ 스텝 전환 사이에 다른 UI 클릭 방지
+        //   (delayBeforeShow 동안 마스크가 사라져서 자유 클릭되는 버그 방지)
+        //   다음 스텝의 SetupFocus가 적절한 마스크로 덮어쓰므로 안전.
+        if (focusMask != null && _currentStep < (_activeSteps?.Count ?? 0))
+            focusMask.BlockAll();
+
         ShowStep(_currentStep);
     }
 
@@ -910,6 +950,21 @@ public class TutorialManager : MonoBehaviour
                 NextStep();
             }
         }
+    }
+
+    /// <summary>
+    /// ★ 안전망 헬퍼: 어느 슬롯이든 장비가 장착되어 있는지 확인.
+    /// 사용자가 너무 빨리 장착해서 OnActionCompleted("EquipItem")가 누락된
+    /// 케이스를 잡기 위해 현재 장착 상태를 직접 폴링.
+    /// </summary>
+    private bool IsAnyEquipmentEquipped()
+    {
+        if (EquipmentManager.Instance == null) return false;
+        foreach (EquipmentType t in System.Enum.GetValues(typeof(EquipmentType)))
+        {
+            if (EquipmentManager.Instance.IsEquipped(t)) return true;
+        }
+        return false;
     }
 
     // ★ 이미 보상을 지급한 스텝 인덱스 (중복 지급 방지)

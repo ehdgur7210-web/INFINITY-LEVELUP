@@ -609,8 +609,18 @@ public class BackendGameDataManager : MonoBehaviour
                 {
                     if (!delCallback.IsSuccess())
                     {
-                        Debug.LogError($"[BackendGameData] ❌ 삭제 실패 (slot:{slot}, row:{rowInDate}): {delCallback.GetMessage()}");
-                        allSuccess = false;
+                        // ★ "gameInfo not found"는 이미 삭제됐거나 존재하지 않는 row → 정상으로 간주
+                        //   (병렬 삭제/재시도 케이스에서 무해)
+                        string msg = delCallback.GetMessage() ?? "";
+                        if (msg.Contains("gameInfo not found") || msg.Contains("찾을 수 없"))
+                        {
+                            Debug.Log($"[BackendGameData] ⚪ 이미 삭제된 row (무시): slot:{slot}, row:{rowInDate}");
+                        }
+                        else
+                        {
+                            Debug.LogError($"[BackendGameData] ❌ 삭제 실패 (slot:{slot}, row:{rowInDate}): {msg}");
+                            allSuccess = false;
+                        }
                     }
                     deleteDone++;
 

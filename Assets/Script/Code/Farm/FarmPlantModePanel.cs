@@ -405,6 +405,10 @@ public class FarmPlantModePanel : MonoBehaviour
 
     public void ClosePanel()
     {
+        // ★ 진단 로그: 누가 ClosePanel을 호출했는지 stack trace 출력
+        //   "수확 버튼 누르면 관리패널이 닫히는 버그" 추적용
+        Debug.Log($"[FarmPlantModePanel] ClosePanel 호출됨 ← {System.Environment.StackTrace}");
+
         CloseActivePopup();
         itemSelectPopup?.Hide();
         currentPlotIndex = -1;
