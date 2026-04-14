@@ -308,9 +308,13 @@ public class TopMenuManager : MonoBehaviour
     /// <param name="closeAction">패널을 강제로 닫는 액션 (SetActive(false) 등)</param>
     private void ToggleWithBanner(string bannerName, System.Action openAction, System.Action closeAction)
     {
-        // ★ 메뉴가 접혀있으면 먼저 펼치기 (1클릭으로 바로 기능 실행)
+        // ★ 메뉴가 접혀있으면 먼저 펼치기만 하고 패널은 다음 클릭에 열기
+        // (바로 열면 슬라이드 애니메이션이 패널을 덮어 첫 클릭에 안 보이는 버그)
         if (!isExpanded)
+        {
             ExpandMenu();
+            return;
+        }
 
         // 같은 배너가 이미 열려있으면 → 닫기
         if (_currentBanner == bannerName)

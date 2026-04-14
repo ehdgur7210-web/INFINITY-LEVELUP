@@ -1655,21 +1655,28 @@ public class TutorialManager : MonoBehaviour
             {
                 if (_lastEquippedType == null)
                 {
+                    Debug.LogWarning("[Tutorial] EquipPanelSlot:LastEquipped — _lastEquippedType=null, 장착된 첫 슬롯으로 폴백");
                     // 장착 이력 없으면 현재 장착된 슬롯 중 첫 번째 반환
                     if (EquipmentManager.Instance != null)
                     {
                         foreach (var t in _allEquipTypes)
                         {
                             var s = EquipmentManager.Instance.GetEquipPanelSlot(t);
-                            if (s != null && s.currentEquipment != null) return s.gameObject;
+                            if (s != null && s.currentEquipment != null)
+                            {
+                                Debug.Log($"[Tutorial] 폴백 슬롯: {t} → {s.gameObject.name}");
+                                return s.gameObject;
+                            }
                         }
                     }
                     return null;
                 }
                 eqType = _lastEquippedType.Value;
+                Debug.Log($"[Tutorial] EquipPanelSlot:LastEquipped → eqType={eqType}");
             }
             else if (!System.Enum.TryParse<EquipmentType>(typeStr, out eqType))
             {
+                Debug.LogWarning($"[Tutorial] EquipPanelSlot 타입 파싱 실패: '{typeStr}'");
                 return null;
             }
 
@@ -1677,15 +1684,25 @@ public class TutorialManager : MonoBehaviour
             if (EquipmentManager.Instance != null)
             {
                 var slot = EquipmentManager.Instance.GetEquipPanelSlot(eqType);
-                if (slot != null) return slot.gameObject;
+                if (slot != null)
+                {
+                    Debug.Log($"[Tutorial] EquipPanelSlot 찾음: {eqType} → {slot.gameObject.name}, worldPos={slot.transform.position}");
+                    return slot.gameObject;
+                }
+                Debug.LogWarning($"[Tutorial] EquipPanelSlot {eqType} — GetEquipPanelSlot 반환 null (등록된 슬롯 수={EquipmentManager.Instance.GetRegisteredSlotCount()})");
             }
             // 폴백: 씬 DFS
             SceneManager.GetActiveScene().GetRootGameObjects(_rootObjectsCache);
             foreach (GameObject root in _rootObjectsCache)
             {
                 var slot = FindEquipPanelSlotInChildren(root.transform, eqType);
-                if (slot != null) return slot.gameObject;
+                if (slot != null)
+                {
+                    Debug.Log($"[Tutorial] EquipPanelSlot DFS 폴백 찾음: {slot.gameObject.name}");
+                    return slot.gameObject;
+                }
             }
+            Debug.LogWarning($"[Tutorial] EquipPanelSlot {eqType} — 씬 전체 DFS에서도 못 찾음");
             return null;
         }
 

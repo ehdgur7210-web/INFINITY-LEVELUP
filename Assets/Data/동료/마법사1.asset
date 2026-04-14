@@ -45,5 +45,5 @@ MonoBehaviour:
     skillEffect: {fileID: 1154723583763934663, guid: a0f354d56c99d72458a70455b9d5bed7, type: 3}
   spawnRadius: 10
   summonCooldown: 30
-  probability: 20
+  probability: 40
   legendaryVideoClip: {fileID: 0}

@@ -425,8 +425,21 @@ public class InventoryManager : MonoBehaviour
 
 
         // 정렬: 레어도(높→낮) → 타입 → ID
+        // ★ 튜토리얼 중: 소유한 Helmet을 슬롯 0번으로 강제 (포커스 고정)
+        bool isTutorialSort = TutorialManager.Instance != null && TutorialManager.Instance.IsTutorialActive;
         allEquips.Sort((a, b) =>
         {
+            if (isTutorialSort)
+            {
+                bool aHelmet = a.equipmentType == EquipmentType.Helmet
+                            && equipUnlockMap.TryGetValue(a.itemID, out EquipUnlockData aud)
+                            && aud.isUnlocked && aud.count > 0;
+                bool bHelmet = b.equipmentType == EquipmentType.Helmet
+                            && equipUnlockMap.TryGetValue(b.itemID, out EquipUnlockData bud)
+                            && bud.isUnlocked && bud.count > 0;
+                if (aHelmet && !bHelmet) return -1;
+                if (!aHelmet && bHelmet) return 1;
+            }
             int rc = ((int)a.rarity).CompareTo((int)b.rarity);
             if (rc != 0) return rc;
             int tc = ((int)a.equipmentType).CompareTo((int)b.equipmentType);

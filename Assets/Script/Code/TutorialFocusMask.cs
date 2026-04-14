@@ -68,6 +68,41 @@ public class TutorialFocusMask : MonoBehaviour, ICanvasRaycastFilter
             _uiCamera = canvas.worldCamera;
     }
 
+    /// <summary>타겟이 속한 Canvas의 카메라 반환 (Overlay면 null)</summary>
+    private Camera GetTargetCamera(RectTransform target)
+    {
+        Canvas c = target.GetComponentInParent<Canvas>();
+        if (c == null) return null;
+        Canvas root = c.rootCanvas;
+        if (root.renderMode == RenderMode.ScreenSpaceOverlay) return null;
+        return root.worldCamera;
+    }
+
+    /// <summary>스크린 좌표 → focusRect 배치 (어느 Canvas든 정확한 위치)</summary>
+    private void PositionFocusRectToScreen(Vector2 screenPos)
+    {
+        PositionRectToScreen(focusRect, screenPos);
+    }
+
+    /// <summary>스크린 좌표 → RectTransform 배치</summary>
+    private void PositionRectToScreen(RectTransform rect, Vector2 screenPos)
+    {
+        if (rect == null) return;
+        RectTransform parentRect = rect.parent as RectTransform;
+        if (parentRect == null)
+        {
+            // 부모 없으면 world 좌표 직접 설정
+            rect.position = new Vector3(screenPos.x, screenPos.y, 0f);
+            return;
+        }
+        // 부모의 로컬 좌표로 변환
+        if (RectTransformUtility.ScreenPointToLocalPointInRectangle(
+            parentRect, screenPos, _uiCamera, out Vector2 localPos))
+        {
+            rect.localPosition = new Vector3(localPos.x, localPos.y, 0f);
+        }
+    }
+
     private void HideAllElements()
     {
         if (overlayImage != null) overlayImage.enabled = false;
@@ -103,8 +138,11 @@ public class TutorialFocusMask : MonoBehaviour, ICanvasRaycastFilter
 
         Vector3[] corners = new Vector3[4];
         target.GetWorldCorners(corners);
-        Vector2 min = RectTransformUtility.WorldToScreenPoint(_uiCamera, corners[0]);
-        Vector2 max = RectTransformUtility.WorldToScreenPoint(_uiCamera, corners[2]);
+
+        // ★ 타겟이 어느 Canvas(Camera/Overlay)에 있든 스크린 좌표로 변환
+        Camera targetCam = GetTargetCamera(target);
+        Vector2 min = RectTransformUtility.WorldToScreenPoint(targetCam, corners[0]);
+        Vector2 max = RectTransformUtility.WorldToScreenPoint(targetCam, corners[2]);
 
         Vector2 focusSize = new Vector2(
             Mathf.Abs(max.x - min.x) + padding.x,
@@ -112,53 +150,71 @@ public class TutorialFocusMask : MonoBehaviour, ICanvasRaycastFilter
         );
 
         // focusRect (레이캐스트 판정용)
+        // ★ world position 직접 대입 대신 스크린→로컬 변환으로 올바르게 배치
         if (focusRect != null)
         {
             focusRect.gameObject.SetActive(true);
-            focusRect.position = target.position;
             focusRect.sizeDelta = focusSize;
+            PositionFocusRectToScreen((min + max) * 0.5f);
         }
 
-        // ★ 셰이더 구멍 업데이트
-        UpdateHoleShader(target, padding);
+        // ★ 셰이더 구멍 업데이트 — focusRect 기반 (cross-canvas 좌표 문제 완전 회피)
+        UpdateHoleShaderFromFocusRect(logOnce: true);
 
         // 손가락 위치 자동 결정
         if (fingerIcon != null)
         {
             fingerIcon.gameObject.SetActive(true);
-            actualFingerOffset = CalculateBestFingerOffset(target, _uiCamera);
-            fingerBasePosition = target.position + (Vector3)actualFingerOffset;
-            fingerIcon.position = fingerBasePosition;
+            Camera targetCam2 = GetTargetCamera(target);
+            actualFingerOffset = CalculateBestFingerOffset(target, targetCam2);
+            // ★ 스크린 좌표 기반으로 손가락 위치 설정
+            Vector2 targetScreen = RectTransformUtility.WorldToScreenPoint(targetCam2, target.position);
+            Vector2 fingerScreen = targetScreen + actualFingerOffset;
+            PositionRectToScreen(fingerIcon, fingerScreen);
+            fingerBasePosition = fingerIcon.position;
             UpdateFingerRotation();
         }
     }
 
-    /// <summary>셰이더 머티리얼에 구멍 위치/크기 전달</summary>
-    private void UpdateHoleShader(RectTransform target, Vector2 padding)
+    /// <summary>
+    /// 셰이더 구멍을 focusRect 기반으로 업데이트.
+    /// ★ focusRect는 TutorialFocusMask와 같은 Canvas에 있으므로
+    ///   cross-canvas 좌표 불일치가 발생하지 않는다.
+    /// ★ Y축: WorldToScreenPoint는 y=0이 아래, DX 셰이더 screenUV.y=0이 위 →
+    ///   DX 플랫폼에서만 cy를 반전. GL/Vulkan은 동일 방향이므로 반전 불필요.
+    /// </summary>
+    private void UpdateHoleShaderFromFocusRect(bool logOnce = false)
     {
         Material mat = GetMaterialInstance();
-        if (mat == null) return;
+        if (mat == null || focusRect == null || !focusRect.gameObject.activeSelf) return;
 
         Vector3[] corners = new Vector3[4];
-        target.GetWorldCorners(corners);
+        focusRect.GetWorldCorners(corners);
+
+        // focusRect와 TutorialFocusMask는 같은 Canvas → _uiCamera 사용
         Vector2 min = RectTransformUtility.WorldToScreenPoint(_uiCamera, corners[0]);
         Vector2 max = RectTransformUtility.WorldToScreenPoint(_uiCamera, corners[2]);
 
-        // 스크린 UV 좌표 (0~1)
         float sw = Screen.width;
         float sh = Screen.height;
 
-        Vector2 center = new Vector2(
-            (min.x + max.x) * 0.5f / sw,
-            (min.y + max.y) * 0.5f / sh
-        );
+        float cx = (min.x + max.x) * 0.5f / sw;
+        float cy = (min.y + max.y) * 0.5f / sh;
+
+        // ★ DX(Windows/Editor/Metal): 셰이더 Y=0이 위, C# Y=0이 아래 → 반전
+        //   GL/Vulkan: 둘 다 Y=0이 아래 → 반전 없음
+        if (SystemInfo.graphicsUVStartsAtTop)
+            cy = 1f - cy;
 
         Vector2 size = new Vector2(
-            (Mathf.Abs(max.x - min.x) + padding.x) / sw,
-            (Mathf.Abs(max.y - min.y) + padding.y) / sh
+            Mathf.Abs(max.x - min.x) / sw,
+            Mathf.Abs(max.y - min.y) / sh
         );
 
-        mat.SetVector(_HoleCenterID, new Vector4(center.x, center.y, 0, 0));
+        if (logOnce)
+            Debug.Log($"[FocusMask] shaderUV center=({cx:F3},{cy:F3}) size=({size.x:F3},{size.y:F3}) uvStartsAtTop={SystemInfo.graphicsUVStartsAtTop} screen={sw}x{sh}");
+
+        mat.SetVector(_HoleCenterID, new Vector4(cx, cy, 0, 0));
         mat.SetVector(_HoleSizeID, new Vector4(size.x, size.y, 0, 0));
         mat.SetFloat(_HoleRadiusID, cornerRadius);
         mat.SetFloat(_EdgeSoftnessID, edgeSoftness);
@@ -220,20 +276,25 @@ public class TutorialFocusMask : MonoBehaviour, ICanvasRaycastFilter
         if (focusRect != null)
         {
             focusRect.gameObject.SetActive(true);
-            focusRect.position = areaTarget.position;
             focusRect.sizeDelta = focusSize;
+            Camera areaCam = GetTargetCamera(areaTarget);
+            Vector2 sMin2 = RectTransformUtility.WorldToScreenPoint(areaCam, corners[0]);
+            Vector2 sMax2 = RectTransformUtility.WorldToScreenPoint(areaCam, corners[2]);
+            PositionFocusRectToScreen((sMin2 + sMax2) * 0.5f);
         }
 
-        UpdateHoleShader(areaTarget, padding);
+        UpdateHoleShaderFromFocusRect(logOnce: true);
 
         // 손가락 — fingerTarget 기준
         RectTransform ft = fingerTarget != null ? fingerTarget : areaTarget;
         if (fingerIcon != null)
         {
             fingerIcon.gameObject.SetActive(true);
-            actualFingerOffset = CalculateBestFingerOffset(ft, _uiCamera);
-            fingerBasePosition = ft.position + (Vector3)actualFingerOffset;
-            fingerIcon.position = fingerBasePosition;
+            Camera ftCam = GetTargetCamera(ft);
+            actualFingerOffset = CalculateBestFingerOffset(ft, ftCam);
+            Vector2 ftScreen = RectTransformUtility.WorldToScreenPoint(ftCam, ft.position);
+            PositionRectToScreen(fingerIcon, ftScreen + actualFingerOffset);
+            fingerBasePosition = fingerIcon.position;
             UpdateFingerRotation();
         }
     }
@@ -273,17 +334,26 @@ public class TutorialFocusMask : MonoBehaviour, ICanvasRaycastFilter
         // 타겟 추적 (구멍 위치 실시간 업데이트)
         if (currentTarget != null)
         {
-            // focusRect 추적
-            if (focusRect != null)
-                focusRect.position = currentTarget.position;
+            Camera targetCam = GetTargetCamera(currentTarget);
+            Vector3[] corners = new Vector3[4];
+            currentTarget.GetWorldCorners(corners);
+            Vector2 sMin = RectTransformUtility.WorldToScreenPoint(targetCam, corners[0]);
+            Vector2 sMax = RectTransformUtility.WorldToScreenPoint(targetCam, corners[2]);
+            Vector2 sCenter = (sMin + sMax) * 0.5f;
 
-            // 셰이더 구멍 추적
-            UpdateHoleShader(currentTarget, currentPadding);
+            // ★ focusRect: 스크린 좌표 기반으로 이동
+            if (focusRect != null)
+                PositionFocusRectToScreen(sCenter);
+
+            // 셰이더 구멍 추적 — focusRect 기반
+            UpdateHoleShaderFromFocusRect();
 
             // 손가락 추적
             if (fingerIcon != null && fingerIcon.gameObject.activeSelf)
             {
-                fingerBasePosition = currentTarget.position + (Vector3)actualFingerOffset;
+                Vector2 fingerScreen = sCenter + actualFingerOffset;
+                PositionRectToScreen(fingerIcon, fingerScreen);
+                fingerBasePosition = fingerIcon.position;
             }
         }
 

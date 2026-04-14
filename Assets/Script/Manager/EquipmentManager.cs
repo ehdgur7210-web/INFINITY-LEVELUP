@@ -114,6 +114,9 @@ public class EquipmentManager : MonoBehaviour
         return null;
     }
 
+    /// <summary>디버그용 — 등록된 슬롯 수 반환</summary>
+    public int GetRegisteredSlotCount() => registeredPanelSlots.Count;
+
     /// <summary>EquipPanelSlot 참조 캐시 (비활성 오브젝트 포함)</summary>
     public void CacheEquipPanelSlots()
     {

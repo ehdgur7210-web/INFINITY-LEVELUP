@@ -14,6 +14,7 @@ public class DragPanelHandler : MonoBehaviour, IBeginDragHandler, IDragHandler, 
     [Header("드래그 설정")]
     [SerializeField] private bool limitToScreen = true;    // 화면 경계를 벗어나지 않게
 
+    // ★ 캔버스 로컬 좌표계 기준으로 통일 (panel 로컬 좌표와 혼용하던 버그 수정)
     private Vector2 pointerOffset;
     private RectTransform canvasRect;
     private Canvas canvas;
@@ -34,42 +35,34 @@ public class DragPanelHandler : MonoBehaviour, IBeginDragHandler, IDragHandler, 
 
     public void OnBeginDrag(PointerEventData eventData)
     {
-        if (targetPanel == null) return;
+        if (targetPanel == null || canvasRect == null) return;
 
-        // 드래그 시작 위치 저장
-        Vector2 pointerPos;
+        // ★ 포인터와 패널 위치를 모두 캔버스 로컬 좌표계로 변환
         RectTransformUtility.ScreenPointToLocalPointInRectangle(
-            targetPanel,
-            eventData.position,
-            eventData.pressEventCamera,
-            out pointerPos);
+            canvasRect, eventData.position, eventData.pressEventCamera, out Vector2 pointerOnCanvas);
 
-        pointerOffset = pointerPos;
+        Vector2 panelOnCanvas = canvasRect.InverseTransformPoint(targetPanel.position);
+
+        // 오프셋 = 패널 위치 - 포인터 위치 (캔버스 로컬 기준)
+        pointerOffset = panelOnCanvas - pointerOnCanvas;
     }
 
     public void OnDrag(PointerEventData eventData)
     {
-        if (targetPanel == null) return;
+        if (targetPanel == null || canvasRect == null) return;
 
-        Vector2 localPointerPosition;
+        if (!RectTransformUtility.ScreenPointToLocalPointInRectangle(
+            canvasRect, eventData.position, eventData.pressEventCamera, out Vector2 localPointerPosition))
+            return;
 
-        if (RectTransformUtility.ScreenPointToLocalPointInRectangle(
-            canvasRect,
-            eventData.position,
-            eventData.pressEventCamera,
-            out localPointerPosition))
-        {
-            // 새 위치 계산
-            Vector3 newPosition = localPointerPosition - pointerOffset;
+        // ★ 오프셋을 더해서 패널의 새 위치 계산 (캔버스 로컬 좌표)
+        Vector2 newPos = localPointerPosition + pointerOffset;
 
-            // 화면 경계를 벗어나지 않게 처리
-            if (limitToScreen && canvasRect != null)
-            {
-                newPosition = ClampToCanvas(newPosition);
-            }
+        if (limitToScreen)
+            newPos = ClampToCanvas(newPos);
 
-            targetPanel.position = canvas.transform.TransformPoint(newPosition);
-        }
+        // 캔버스 로컬 → 월드 좌표로 변환
+        targetPanel.position = canvasRect.TransformPoint(newPos);
     }
 
     public void OnEndDrag(PointerEventData eventData)
@@ -78,16 +71,22 @@ public class DragPanelHandler : MonoBehaviour, IBeginDragHandler, IDragHandler, 
     }
 
     /// <summary>
-    /// 캔버스 영역 내로 위치 제한
+    /// 캔버스 영역 내로 위치 제한 (피벗 고려)
     /// </summary>
-    private Vector3 ClampToCanvas(Vector3 position)
+    private Vector2 ClampToCanvas(Vector2 pos)
     {
-        Vector3 minPosition = canvasRect.rect.min - targetPanel.rect.min;
-        Vector3 maxPosition = canvasRect.rect.max - targetPanel.rect.max;
+        Rect cr = canvasRect.rect;
+        Vector2 pivot = targetPanel.pivot;
+        float w = targetPanel.rect.width;
+        float h = targetPanel.rect.height;
 
-        position.x = Mathf.Clamp(position.x, minPosition.x, maxPosition.x);
-        position.y = Mathf.Clamp(position.y, minPosition.y, maxPosition.y);
+        float minX = cr.xMin + w * pivot.x;
+        float maxX = cr.xMax - w * (1f - pivot.x);
+        float minY = cr.yMin + h * pivot.y;
+        float maxY = cr.yMax - h * (1f - pivot.y);
 
-        return position;
+        pos.x = Mathf.Clamp(pos.x, minX, maxX);
+        pos.y = Mathf.Clamp(pos.y, minY, maxY);
+        return pos;
     }
 }

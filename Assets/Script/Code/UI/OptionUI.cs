@@ -183,9 +183,12 @@ public class OptionUI : MonoBehaviour
     {
         EnsureInitialized();
 
-        // 시작 시 옵션 패널 숨김
+        // 시작 시 옵션 패널 숨김 (alpha는 1로 리셋해두고 SetActive로만 관리)
         if (옵션패널 != null)
+        {
+            ForceAlpha(옵션패널, 1f); // ★ 씬에 저장된 alpha=0 잔여값 제거
             옵션패널.SetActive(false);
+        }
     }
 
     // ==========================================================
@@ -321,34 +324,22 @@ public class OptionUI : MonoBehaviour
     {
         if (옵션패널 == null) return;
 
-        // ★ 게임오브젝트가 비활성이면 먼저 활성화 (Awake/Start 호출)
         if (!gameObject.activeSelf)
             gameObject.SetActive(true);
 
-        // ★ Start()가 안 불렸을 수 있으니 수동 초기화
         EnsureInitialized();
 
-        // 패널 활성화
+        // ★ 부모 포함 모든 CanvasGroup alpha=1 강제 (씬 저장된 alpha=0 잔여값 제거)
+        ForceAlpha(옵션패널, 1f);
+
         옵션패널.SetActive(true);
 
-        // SoundManager에서 현재 설정값을 가져와서 UI에 반영
         LoadCurrentSettings();
-
-        // 게임 설정 UI 동기화
         LoadGameSettingsToUI();
 
-        // 패널 열기 효과음
-        if (SoundManager.Instance != null)
-        {
-            SoundManager.Instance.PlayPanelOpen();
-        }
+        SoundManager.Instance?.PlayPanelOpen();
 
-        // 페이드인 애니메이션
-        if (애니메이션사용 && canvasGroup != null)
-        {
-            StartCoroutine(FadeIn());
-        }
-
+        isAnimating = false;
         Debug.Log("[OptionUI] 옵션 패널 열림");
     }
 
@@ -359,25 +350,28 @@ public class OptionUI : MonoBehaviour
     {
         if (옵션패널 == null) return;
 
-        // 패널 닫기 효과음
-        if (SoundManager.Instance != null)
-        {
-            SoundManager.Instance.PlayPanelClose();
-        }
+        SoundManager.Instance?.PlayPanelClose();
 
-        // 페이드아웃 애니메이션
-        // ★ gameObject가 비활성이면 StartCoroutine 불가 → 즉시 닫기
-        if (애니메이션사용 && canvasGroup != null && gameObject.activeInHierarchy)
-        {
-            StartCoroutine(FadeOut());
-        }
-        else
-        {
-            옵션패널.SetActive(false);
-        }
+        // ★ alpha 조작 없이 SetActive만으로 숨김 (alpha=0 잔여값 남기지 않음)
+        옵션패널.SetActive(false);
+        isAnimating = false;
 
         TopMenuManager.Instance?.ClearBanner();
         Debug.Log("[OptionUI] 옵션 패널 닫힘");
+    }
+
+    /// <summary>대상 오브젝트와 부모 체인의 모든 CanvasGroup alpha를 강제 설정</summary>
+    private static void ForceAlpha(GameObject target, float alpha)
+    {
+        // 자신 포함 부모까지 모든 CanvasGroup
+        CanvasGroup[] groups = target.GetComponentsInParent<CanvasGroup>(true);
+        foreach (var cg in groups)
+            cg.alpha = alpha;
+
+        // 자신의 자식들 CanvasGroup도 포함
+        CanvasGroup[] childGroups = target.GetComponentsInChildren<CanvasGroup>(true);
+        foreach (var cg in childGroups)
+            cg.alpha = alpha;
     }
 
     /// <summary>
@@ -388,15 +382,12 @@ public class OptionUI : MonoBehaviour
     {
         if (TutorialManager.Instance != null && TutorialManager.Instance.ShouldBlockNonFocusButtons) return;
         if (옵션패널 == null) return;
+        if (isAnimating) return; // ★ 애니메이션 중 재클릭 방지
 
         if (옵션패널.activeSelf)
-        {
             CloseOptionPanel();
-        }
         else
-        {
             OpenOptionPanel();
-        }
     }
 
     public void ShowOptionPanel() => OpenOptionPanel();

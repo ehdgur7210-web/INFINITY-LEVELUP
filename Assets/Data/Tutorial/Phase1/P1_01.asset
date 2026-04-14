@@ -31,3 +31,6 @@ MonoBehaviour:
   - rewardType: 5
     amount: 1
     item: {fileID: 11400000, guid: b54f1f40150cca74f99240d603e5acb2, type: 2}
+  - rewardType: 0
+    amount: 5000
+    item: {fileID: 0}

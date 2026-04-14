@@ -89,11 +89,11 @@ public class AchievementSlot : MonoBehaviour
             string rewardInfo = "";
 
             if (reward.gold > 0)
-                rewardInfo += $"��� {reward.gold} ";
+                rewardInfo += $"골드 {reward.gold}  ";
             if (reward.gem > 0)
-                rewardInfo += $"���� {reward.gem} ";
+                rewardInfo += $"보석 {reward.gem}  ";
             if (reward.exp > 0)
-                rewardInfo += $"EXP {reward.exp} ";
+                rewardInfo += $"경험치 {reward.exp}  ";
 
             rewardText.text = rewardInfo;
         }
