@@ -10257,6 +10257,7 @@ GameObject:
   - component: {fileID: 187990054}
   - component: {fileID: 187990053}
   - component: {fileID: 187990052}
+  - component: {fileID: 187990056}
   m_Layer: 5
   m_Name: "\uB7AD\uD0B9"
   m_TagString: Untagged
@@ -10379,6 +10380,29 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 187990050}
   m_CullTransparentMesh: 1
+--- !u!223 &187990056
+Canvas:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 187990050}
+  m_Enabled: 1
+  serializedVersion: 3
+  m_RenderMode: 2
+  m_Camera: {fileID: 0}
+  m_PlaneDistance: 100
+  m_PixelPerfect: 0
+  m_ReceivesEvents: 1
+  m_OverrideSorting: 1
+  m_OverridePixelPerfect: 0
+  m_SortingBucketNormalizedSize: 0
+  m_VertexColorAlwaysGammaSpace: 0
+  m_AdditionalShaderChannelsFlag: 0
+  m_UpdateRectTransformForStandalone: 0
+  m_SortingLayerID: 0
+  m_SortingOrder: 1
+  m_TargetDisplay: 0
 --- !u!1 &189319404
 GameObject:
   m_ObjectHideFlags: 0
@@ -67521,6 +67545,7 @@ GameObject:
   - component: {fileID: 1337478359}
   - component: {fileID: 1337478361}
   - component: {fileID: 1337478360}
+  - component: {fileID: 1337478362}
   m_Layer: 5
   m_Name: ChatPanel
   m_TagString: Untagged
@@ -67587,6 +67612,29 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1337478358}
   m_CullTransparentMesh: 1
+--- !u!223 &1337478362
+Canvas:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1337478358}
+  m_Enabled: 1
+  serializedVersion: 3
+  m_RenderMode: 2
+  m_Camera: {fileID: 0}
+  m_PlaneDistance: 100
+  m_PixelPerfect: 0
+  m_ReceivesEvents: 1
+  m_OverrideSorting: 1
+  m_OverridePixelPerfect: 0
+  m_SortingBucketNormalizedSize: 0
+  m_VertexColorAlwaysGammaSpace: 0
+  m_AdditionalShaderChannelsFlag: 0
+  m_UpdateRectTransformForStandalone: 0
+  m_SortingLayerID: 0
+  m_SortingOrder: 2
+  m_TargetDisplay: 0
 --- !u!1 &1338118507
 GameObject:
   m_ObjectHideFlags: 0
@@ -71467,7 +71515,7 @@ MonoBehaviour:
       amount: 1000
     - rewardType: 1
       itemData: {fileID: 0}
-      amount: 100000000
+      amount: 10000000
   - code: "\uC2A4\uCFE8"
     description: "\"\uC2A4\uCFE8\""
     rewards:
@@ -71476,7 +71524,7 @@ MonoBehaviour:
       amount: 1000
     - rewardType: 1
       itemData: {fileID: 0}
-      amount: 100000000
+      amount: 10000000
   - code: "\uC624\uC988\uCF54\uB529"
     description: "\"\uC624\uC988\uCF54\uB529\""
     rewards:
@@ -71485,7 +71533,7 @@ MonoBehaviour:
       amount: 1000
     - rewardType: 1
       itemData: {fileID: 0}
-      amount: 100000000
+      amount: 10000000
   - code: "\uCF54\uB529\uC2A4\uCFE8"
     description: "\"\uCF54\uB529\uC2A4\uCFE8\""
     rewards:
@@ -71494,7 +71542,7 @@ MonoBehaviour:
       amount: 1000
     - rewardType: 1
       itemData: {fileID: 0}
-      amount: 100000000
+      amount: 10000000
   - code: "\uC624\uC988\uCF54\uB529\uC2A4\uCFE8"
     description: "\"\uC624\uC988\uCF54\uB529\uC2A4\uCFE8\""
     rewards:
@@ -71503,8 +71551,23 @@ MonoBehaviour:
       amount: 1000
     - rewardType: 1
       itemData: {fileID: 0}
-      amount: 1000000000
+      amount: 100000000
   - code: "\u3131"
+    description: '""'
+    rewards:
+    - rewardType: 2
+      itemData: {fileID: 0}
+      amount: 1000
+    - rewardType: 1
+      itemData: {fileID: 0}
+      amount: 10000000
+    - rewardType: 8
+      itemData: {fileID: 0}
+      amount: 100
+    - rewardType: 7
+      itemData: {fileID: 0}
+      amount: 1000
+  - code: "\uC784\uC6A9\uADDC\uAC15\uC0AC"
     description: '""'
     rewards:
     - rewardType: 2
@@ -71515,10 +71578,175 @@ MonoBehaviour:
       amount: 1000000000
     - rewardType: 8
       itemData: {fileID: 0}
-      amount: 1000
+      amount: 100
     - rewardType: 7
       itemData: {fileID: 0}
       amount: 1000
+  - code: "\uBBFC\uB3D9\uD718\uC870\uAD50"
+    description: '""'
+    rewards:
+    - rewardType: 2
+      itemData: {fileID: 0}
+      amount: 1000
+    - rewardType: 1
+      itemData: {fileID: 0}
+      amount: 10000000
+    - rewardType: 8
+      itemData: {fileID: 0}
+      amount: 20
+    - rewardType: 7
+      itemData: {fileID: 0}
+      amount: 100
+  - code: "\uC720\uC7AC\uD601\uCF54\uCE58"
+    description: '""'
+    rewards:
+    - rewardType: 2
+      itemData: {fileID: 0}
+      amount: 1000
+    - rewardType: 1
+      itemData: {fileID: 0}
+      amount: 10000000
+    - rewardType: 8
+      itemData: {fileID: 0}
+      amount: 20
+    - rewardType: 7
+      itemData: {fileID: 0}
+      amount: 100
+  - code: "\uD55C\uC751\uC601\uB9E4\uB2C8\uC800"
+    description: '""'
+    rewards:
+    - rewardType: 2
+      itemData: {fileID: 0}
+      amount: 1000
+    - rewardType: 1
+      itemData: {fileID: 0}
+      amount: 10000000
+    - rewardType: 8
+      itemData: {fileID: 0}
+      amount: 20
+    - rewardType: 7
+      itemData: {fileID: 0}
+      amount: 100
+  - code: "\uC608\uB9B0\uB9E4\uB2C8\uC800"
+    description: '""'
+    rewards:
+    - rewardType: 2
+      itemData: {fileID: 0}
+      amount: 1000
+    - rewardType: 1
+      itemData: {fileID: 0}
+      amount: 10000000
+    - rewardType: 8
+      itemData: {fileID: 0}
+      amount: 20
+    - rewardType: 7
+      itemData: {fileID: 0}
+      amount: 100
+  - code: "\uACFD\uC6B4\uB3C4\uB9E4\uB2C8\uC800"
+    description: '""'
+    rewards:
+    - rewardType: 2
+      itemData: {fileID: 0}
+      amount: 1000
+    - rewardType: 1
+      itemData: {fileID: 0}
+      amount: 10000000
+    - rewardType: 8
+      itemData: {fileID: 0}
+      amount: 20
+    - rewardType: 7
+      itemData: {fileID: 0}
+      amount: 100
+  - code: "\uB178\uACBD\uC6D0\uC870\uAD50"
+    description: '""'
+    rewards:
+    - rewardType: 2
+      itemData: {fileID: 0}
+      amount: 1000
+    - rewardType: 1
+      itemData: {fileID: 0}
+      amount: 10000000
+    - rewardType: 8
+      itemData: {fileID: 0}
+      amount: 20
+    - rewardType: 7
+      itemData: {fileID: 0}
+      amount: 100
+  - code: "\uAE40\uC6B0\uC601\uC870\uAD50"
+    description: '""'
+    rewards:
+    - rewardType: 2
+      itemData: {fileID: 0}
+      amount: 1000
+    - rewardType: 1
+      itemData: {fileID: 0}
+      amount: 10000000
+    - rewardType: 8
+      itemData: {fileID: 0}
+      amount: 20
+    - rewardType: 7
+      itemData: {fileID: 0}
+      amount: 100
+  - code: "\uBC15\uB3D9\uD601"
+    description: '""'
+    rewards:
+    - rewardType: 2
+      itemData: {fileID: 0}
+      amount: 1000
+    - rewardType: 1
+      itemData: {fileID: 0}
+      amount: 10000000
+    - rewardType: 8
+      itemData: {fileID: 0}
+      amount: 20
+    - rewardType: 7
+      itemData: {fileID: 0}
+      amount: 100
+  - code: "\uCD5C\uBBFC\uC6B0"
+    description: '""'
+    rewards:
+    - rewardType: 2
+      itemData: {fileID: 0}
+      amount: 1000
+    - rewardType: 1
+      itemData: {fileID: 0}
+      amount: 10000000
+    - rewardType: 8
+      itemData: {fileID: 0}
+      amount: 20
+    - rewardType: 7
+      itemData: {fileID: 0}
+      amount: 100
+  - code: "\uBC31\uC8FC\uC6D0"
+    description: '""'
+    rewards:
+    - rewardType: 2
+      itemData: {fileID: 0}
+      amount: 1000
+    - rewardType: 1
+      itemData: {fileID: 0}
+      amount: 10000000
+    - rewardType: 8
+      itemData: {fileID: 0}
+      amount: 20
+    - rewardType: 7
+      itemData: {fileID: 0}
+      amount: 100
+  - code: "\uD669\uCC3D\uD658"
+    description: '""'
+    rewards:
+    - rewardType: 2
+      itemData: {fileID: 0}
+      amount: 1000
+    - rewardType: 1
+      itemData: {fileID: 0}
+      amount: 10000000
+    - rewardType: 8
+      itemData: {fileID: 0}
+      amount: 20
+    - rewardType: 7
+      itemData: {fileID: 0}
+      amount: 100
   usedCoupons:
   - 
 --- !u!1 &1411806097
@@ -72642,6 +72870,7 @@ GameObject:
   - component: {fileID: 1437901375}
   - component: {fileID: 1437901374}
   - component: {fileID: 1437901377}
+  - component: {fileID: 1437901378}
   m_Layer: 5
   m_Name: "\uC635\uC158"
   m_TagString: Untagged
@@ -72764,6 +72993,29 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   buttonType: settings
+--- !u!223 &1437901378
+Canvas:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1437901372}
+  m_Enabled: 1
+  serializedVersion: 3
+  m_RenderMode: 2
+  m_Camera: {fileID: 0}
+  m_PlaneDistance: 100
+  m_PixelPerfect: 0
+  m_ReceivesEvents: 1
+  m_OverrideSorting: 1
+  m_OverridePixelPerfect: 0
+  m_SortingBucketNormalizedSize: 0
+  m_VertexColorAlwaysGammaSpace: 0
+  m_AdditionalShaderChannelsFlag: 0
+  m_UpdateRectTransformForStandalone: 0
+  m_SortingLayerID: 0
+  m_SortingOrder: 1
+  m_TargetDisplay: 0
 --- !u!1 &1440117176
 GameObject:
   m_ObjectHideFlags: 0

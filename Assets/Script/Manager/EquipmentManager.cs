@@ -106,6 +106,14 @@ public class EquipmentManager : MonoBehaviour
 
     private List<EquipPanelSlot> registeredPanelSlots = new List<EquipPanelSlot>();
 
+    /// <summary>튜토리얼에서 사용 — EquipmentType으로 슬롯 반환 (GC 없음)</summary>
+    public EquipPanelSlot GetEquipPanelSlot(EquipmentType type)
+    {
+        foreach (var slot in registeredPanelSlots)
+            if (slot != null && slot.slotType == type) return slot;
+        return null;
+    }
+
     /// <summary>EquipPanelSlot 참조 캐시 (비활성 오브젝트 포함)</summary>
     public void CacheEquipPanelSlots()
     {

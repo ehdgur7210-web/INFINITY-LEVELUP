@@ -369,9 +369,9 @@ public class GachaResultSlotUI : MonoBehaviour
         {
             case ItemRarity.Common: return "일반";
             case ItemRarity.Uncommon: return "고급";
-            case ItemRarity.Rare: return "✦ 희귀";
-            case ItemRarity.Epic: return "✦✦ 영웅";
-            case ItemRarity.Legendary: return "✦✦✦ 전설";
+            case ItemRarity.Rare: return "★ 희귀";
+            case ItemRarity.Epic: return "★★ 영웅";
+            case ItemRarity.Legendary: return "★★★ 전설";
             default: return r.ToString();
         }
     }

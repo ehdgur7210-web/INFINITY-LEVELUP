@@ -49,6 +49,16 @@ public class TutorialManager : MonoBehaviour
     // ── 숨긴 오브젝트 복원용 ──
     private List<GameObject> _hiddenObjects = new List<GameObject>();
 
+    // ── 마지막으로 장착된 슬롯 타입 (강화 스텝 자동 포커스용) ──
+    private EquipmentType? _lastEquippedType = null;
+
+    // ── GC 절감용 캐시 ──
+    // GetRootGameObjects() 는 호출마다 배열 할당 → List 재사용 오버로드 사용
+    private readonly List<GameObject> _rootObjectsCache = new List<GameObject>();
+    // Enum.GetValues() 는 boxing + 배열 할당 → static 미리 캐시
+    private static readonly EquipmentType[] _allEquipTypes =
+        (EquipmentType[])System.Enum.GetValues(typeof(EquipmentType));
+
     public bool IsTutorialActive => _isTutorialActive;
     public int CurrentPhase => _currentPhase;
 
@@ -131,6 +141,9 @@ public class TutorialManager : MonoBehaviour
         if (!_isTutorialActive || equip == null) return;
         if (_activeSteps == null || _currentStep >= _activeSteps.Count) return;
 
+        // ★ 장착된 슬롯 타입 기록 (강화 스텝에서 EquipPanelSlot:LastEquipped로 참조)
+        _lastEquippedType = type;
+
         var step = _activeSteps[_currentStep];
 
         // ★ WaitForAction + EquipItem 스텝
@@ -192,6 +205,7 @@ public class TutorialManager : MonoBehaviour
         // ★ 씬 변경 시 LateUpdate 캐시 초기화
         _cachedLevelUpPanel = null;
         _levelUpPanelSearched = false;
+        _cachedOfflineRewardUI = null;
 
         if (!_isTutorialActive || _activeSteps == null) return;
         if (_currentStep >= _activeSteps.Count) return;
@@ -228,8 +242,9 @@ public class TutorialManager : MonoBehaviour
         yield return new WaitForSeconds(1.5f);
 
         // 방치보상 패널 닫기
-        var offlineUI = FindObjectOfType<OfflineRewardUI>(true);
-        if (offlineUI != null) offlineUI.ClosePanel();
+        if (_cachedOfflineRewardUI == null)
+            _cachedOfflineRewardUI = FindObjectOfType<OfflineRewardUI>(true);
+        if (_cachedOfflineRewardUI != null) _cachedOfflineRewardUI.ClosePanel();
 
         // ★ 보상은 DoShowStep(스텝 시작 시)에서 지급 → 여기서 제거
 
@@ -274,8 +289,9 @@ public class TutorialManager : MonoBehaviour
         if (tutorialPanel != null)
             tutorialPanel.SetActive(true);
 
-        var offlineUI = FindObjectOfType<OfflineRewardUI>(true);
-        if (offlineUI != null) offlineUI.ClosePanel();
+        if (_cachedOfflineRewardUI == null)
+            _cachedOfflineRewardUI = FindObjectOfType<OfflineRewardUI>(true);
+        if (_cachedOfflineRewardUI != null) _cachedOfflineRewardUI.ClosePanel();
 
         ShowStep(_currentStep);
         Debug.Log($"[Tutorial] ★ Phase {phase} Step {step + 1} 재개");
@@ -306,8 +322,9 @@ public class TutorialManager : MonoBehaviour
         if (tutorialPanel != null)
             tutorialPanel.SetActive(true);
 
-        var offlineUI = FindObjectOfType<OfflineRewardUI>(true);
-        if (offlineUI != null) offlineUI.ClosePanel();
+        if (_cachedOfflineRewardUI == null)
+            _cachedOfflineRewardUI = FindObjectOfType<OfflineRewardUI>(true);
+        if (_cachedOfflineRewardUI != null) _cachedOfflineRewardUI.ClosePanel();
 
         ShowStep(_currentStep);
         Debug.Log($"[Tutorial] ★ Phase {phase} 시작 ({steps.Count}단계)");
@@ -322,11 +339,11 @@ public class TutorialManager : MonoBehaviour
         _areaFocusRect = null;
         _isTutorialActive = false;
 
+        focusMask?.ClearFocus(); // ★ tutorialPanel 비활성화 전에 먼저 해제
+        HideTip();
+
         if (tutorialPanel != null)
             tutorialPanel.SetActive(false);
-
-        focusMask?.ClearFocus();
-        HideTip();
 
         if (GameDataBridge.CurrentData != null)
         {
@@ -493,6 +510,26 @@ public class TutorialManager : MonoBehaviour
                              || focusName.Contains("BtnClose")
                              || focusName.StartsWith("InvenSlot:")
                              || focusName.StartsWith("EquipPanelSlot:");
+
+        // ★ 강화 스텝 진입 전 장비 미착용 체크 → 장착 스텝으로 강제 이동
+        // equipStep != stepIndex 가드: InvenSlot 스텝 자신은 리다이렉트 제외 (무한재귀 방지)
+        if (isEnhanceRelated && !IsAnyEquipmentEquipped())
+        {
+            int equipStep = FindEquipStepIndex();
+            if (equipStep >= 0 && equipStep != stepIndex)
+            {
+                Debug.Log($"[Tutorial] 강화 스텝 진입 but 장비 미착용 → Step {equipStep}(장착)으로 되돌림");
+                // ★ 전환 중 다른 버튼 클릭 방지 — 즉시 전체 차단
+                focusMask?.BlockAll();
+                // ★ Hide Targets로 숨겨진 오브젝트(EquipButton 등) 먼저 복원
+                RestoreHiddenObjects();
+                UIManager.Instance?.ShowMessage("먼저 장비를 장착해주세요!", Color.yellow);
+                _currentStep = equipStep;
+                ShowStep(_currentStep);
+                return;
+            }
+        }
+
         if (isEnhanceRelated)
         {
             // 채팅 숨기기 (화면 겹침 방지)
@@ -511,8 +548,6 @@ public class TutorialManager : MonoBehaviour
         ShowTip(step);
 
         // ★ 장착 스텝(EquipButton) 진입 시 이미 장비가 장착되어 있으면 즉시 advance
-        //   Unity가 P1_03.asset을 리버트해서 advanceType=ClickFocusTarget이 되어도
-        //   코드에서 자동 감지하여 넘어감
         if (step.advanceType == TutorialAdvanceType.ClickFocusTarget
             && !string.IsNullOrEmpty(step.focusTargetName)
             && step.focusTargetName.Contains("EquipButton")
@@ -521,6 +556,16 @@ public class TutorialManager : MonoBehaviour
             Debug.Log("[Tutorial] EquipButton 스텝 진입 시 이미 장착됨 → 즉시 advance");
             NextStep();
             return;
+        }
+
+        // ★ 장착 버튼 포커스 스텝 → LevelUpButton 자동 숨김 (장착 강제)
+        //   Inspector Hide Targets에 추가 안 해도 코드에서 자동 처리
+        if (!string.IsNullOrEmpty(step.focusTargetName)
+            && step.focusTargetName.Contains("EquipButton"))
+        {
+            SceneManager.GetActiveScene().GetRootGameObjects(_rootObjectsCache);
+            foreach (GameObject root in _rootObjectsCache)
+                HideAllContainsInChildren(root.transform, "LevelUpButton");
         }
 
         switch (step.advanceType)
@@ -868,17 +913,18 @@ public class TutorialManager : MonoBehaviour
         tipText.text = step.tipMessage;
         tipPanel.gameObject.SetActive(true);
 
-        if (!string.IsNullOrEmpty(step.focusTargetName))
+        // ★ SetupFocus에서 이미 찾은 _currentFocusTargetObj 재사용 (FindTargetByName 중복 호출 제거)
+        GameObject tipTarget = _currentFocusTargetObj;
+        if (tipTarget == null && !string.IsNullOrEmpty(step.focusTargetName))
+            tipTarget = FindTargetByName(step.focusTargetName);
+
+        if (tipTarget != null)
         {
-            GameObject target = FindTargetByName(step.focusTargetName);
-            if (target != null)
+            RectTransform targetRT = tipTarget.GetComponent<RectTransform>();
+            if (targetRT != null)
             {
-                RectTransform targetRT = target.GetComponent<RectTransform>();
-                if (targetRT != null)
-                {
-                    PositionTipNearTarget(targetRT, step.tipPosition);
-                    return;
-                }
+                PositionTipNearTarget(targetRT, step.tipPosition);
+                return;
             }
         }
 
@@ -986,11 +1032,51 @@ public class TutorialManager : MonoBehaviour
     private bool IsAnyEquipmentEquipped()
     {
         if (EquipmentManager.Instance == null) return false;
-        foreach (EquipmentType t in System.Enum.GetValues(typeof(EquipmentType)))
+        foreach (EquipmentType t in _allEquipTypes) // ★ static 캐시 사용 (Enum.GetValues GC 제거)
         {
             if (EquipmentManager.Instance.IsEquipped(t)) return true;
         }
         return false;
+    }
+
+    /// <summary>
+    /// 장착 플로우의 시작 스텝 인덱스 반환.
+    /// 우선순위: InvenSlot(아이템 클릭) → EquipButton(장착 버튼) → EquipItem(액션)
+    /// 없으면 -1.
+    /// </summary>
+    private int FindEquipStepIndex()
+    {
+        if (_activeSteps == null) return -1;
+
+        int invenSlotStep = -1;
+        int equipButtonStep = -1;
+
+        for (int i = 0; i < _activeSteps.Count; i++)
+        {
+            var s = _activeSteps[i];
+            if (s == null) continue;
+
+            // InvenSlot: → 인벤토리에서 아이템 클릭하는 스텝 (장착 플로우 시작점)
+            if (invenSlotStep < 0
+                && !string.IsNullOrEmpty(s.focusTargetName)
+                && s.focusTargetName.StartsWith("InvenSlot:"))
+            {
+                invenSlotStep = i;
+            }
+
+            // EquipButton → 장착 버튼 클릭 스텝
+            if (equipButtonStep < 0
+                && ((!string.IsNullOrEmpty(s.focusTargetName) && s.focusTargetName.Contains("EquipButton"))
+                    || (!string.IsNullOrEmpty(s.requiredAction) && s.requiredAction == "EquipItem")))
+            {
+                equipButtonStep = i;
+            }
+        }
+
+        // InvenSlot 스텝이 있으면 거기서부터 (포커스가 아이템에 잡힘)
+        // 없으면 EquipButton 스텝
+        if (invenSlotStep >= 0) return invenSlotStep;
+        return equipButtonStep;
     }
 
     // ★ 이미 보상을 지급한 스텝 인덱스 (중복 지급 방지)
@@ -1068,6 +1154,9 @@ public class TutorialManager : MonoBehaviour
         {
             if (Input.GetMouseButtonDown(0) || (Input.touchCount > 0 && Input.GetTouch(0).phase == TouchPhase.Began))
             {
+                // ★ 클릭 감지 즉시 전체 차단 — 같은 클릭이 AUTO/가챠 버튼에도 전달되는 것 방지
+                focusMask?.BlockAll();
+                yield return null; // 1프레임 대기 후 NextStep (UI 이벤트 처리 분리)
                 NextStep();
                 yield break;
             }
@@ -1155,31 +1244,29 @@ public class TutorialManager : MonoBehaviour
         // 강화 패널 — 강화 관련 단계에서는 닫지 않음
         if (!isEnhanceStep)
         {
-            var enhance = FindObjectOfType<EnhancementSystem>(true);
+            // ★ FindObjectOfType 대신 Instance 사용 (GC 절감)
+            var enhance = EnhancementSystem.Instance;
             if (enhance != null && enhance.enhancementPanel != null && enhance.enhancementPanel.activeSelf)
-            {
                 enhance.enhancementPanel.SetActive(false);
-                Debug.Log("[Tutorial] 강화 패널 강제 닫기");
-            }
         }
 
-        // 레벨업 패널
-        var levelUp = FindObjectOfType<EquipmentLevelUpPanel>(true);
-        if (levelUp != null && levelUp.gameObject.activeSelf)
+        // 레벨업 패널 — 캐시 사용
+        if (!_levelUpPanelSearched)
         {
-            levelUp.gameObject.SetActive(false);
-            Debug.Log("[Tutorial] 레벨업 패널 강제 닫기");
+            _cachedLevelUpPanel = EquipmentLevelUpPanel.Instance ?? FindObjectOfType<EquipmentLevelUpPanel>(true);
+            _levelUpPanelSearched = true;
         }
+        if (_cachedLevelUpPanel != null && _cachedLevelUpPanel.gameObject.activeSelf)
+            _cachedLevelUpPanel.gameObject.SetActive(false);
 
-        // 동료 뽑기 패널
-        var compGacha = FindObjectOfType<CompanionGachaManager>(true);
+        // 동료 뽑기 패널 — Instance 사용 (FindObjectOfType 제거)
+        var compGacha = CompanionGachaManager.Instance;
         if (compGacha != null && compGacha.companionGachaPanel != null
             && compGacha.companionGachaPanel.activeSelf
             && !(_activeSteps[_currentStep].focusTargetName == "CompanionGachaBtn"
               || _activeSteps[_currentStep].focusTargetName == "CompanionSinglePullBtn"))
         {
             compGacha.companionGachaPanel.SetActive(false);
-            Debug.Log("[Tutorial] 동료뽑기 패널 강제 닫기");
         }
     }
 
@@ -1193,19 +1280,15 @@ public class TutorialManager : MonoBehaviour
             if (string.IsNullOrEmpty(targetName)) continue;
 
             // ★ "AllContains:키워드" → 해당 키워드를 포함하는 모든 활성 오브젝트 숨기기
+            // ★ FindObjectsOfType<Transform> 대신 씬 루트 DFS로 GC 절감
             if (targetName.StartsWith("AllContains:"))
             {
                 string keyword = targetName.Substring("AllContains:".Length);
-                var allTransforms = FindObjectsOfType<Transform>(false);
-                foreach (var t in allTransforms)
-                {
-                    if (t.gameObject.activeInHierarchy && t.name.Contains(keyword))
-                    {
-                        t.gameObject.SetActive(false);
-                        _hiddenObjects.Add(t.gameObject);
-                    }
-                }
-                Debug.Log($"[Tutorial] 전체 숨김: {keyword} ({_hiddenObjects.Count}개)");
+                int before = _hiddenObjects.Count;
+                // ★ GetRootGameObjects(List) 오버로드로 배열 할당 제거
+                SceneManager.GetActiveScene().GetRootGameObjects(_rootObjectsCache);
+                foreach (GameObject root in _rootObjectsCache)
+                    HideAllContainsInChildren(root.transform, keyword);
                 continue;
             }
 
@@ -1219,17 +1302,26 @@ public class TutorialManager : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// AllContains용 DFS — FindObjectsOfType&lt;Transform&gt; 대신 씬 루트부터 순회 (GC 절감)
+    /// </summary>
+    private void HideAllContainsInChildren(Transform parent, string keyword)
+    {
+        if (parent == null) return;
+        if (parent.gameObject.activeInHierarchy && parent.name.Contains(keyword))
+        {
+            parent.gameObject.SetActive(false);
+            _hiddenObjects.Add(parent.gameObject);
+        }
+        for (int i = 0; i < parent.childCount; i++)
+            HideAllContainsInChildren(parent.GetChild(i), keyword);
+    }
+
     /// <summary>숨긴 오브젝트 전부 복원</summary>
     private void RestoreHiddenObjects()
     {
         foreach (var obj in _hiddenObjects)
-        {
-            if (obj != null)
-            {
-                obj.SetActive(true);
-                Debug.Log($"[Tutorial] 복원: {obj.name}");
-            }
-        }
+            if (obj != null) obj.SetActive(true);
         _hiddenObjects.Clear();
     }
 
@@ -1261,6 +1353,7 @@ public class TutorialManager : MonoBehaviour
         if (completed)
         {
             _isTutorialActive = false;
+            focusMask?.ClearFocus(); // ★ 마스크 먼저 해제
             if (tutorialPanel != null) tutorialPanel.SetActive(false);
         }
     }
@@ -1271,21 +1364,24 @@ public class TutorialManager : MonoBehaviour
 
         // ═══ 특수 패턴 처리 ═══
 
-        // "FarmPlot:N" → plotIndex=N인 FarmPlotController (Image 자식 우선)
+        // "FarmPlot:N" → plotIndex=N인 FarmPlotController
+        // ★ FindObjectsOfType<FarmPlotController> 제거 → 씬 DFS로 교체
         if (targetName.StartsWith("FarmPlot:"))
         {
             string idxStr = targetName.Substring("FarmPlot:".Length);
             if (int.TryParse(idxStr, out int idx))
             {
-                var plots = FindObjectsOfType<FarmPlotController>(true);
-                foreach (var p in plots)
+                SceneManager.GetActiveScene().GetRootGameObjects(_rootObjectsCache);
+                foreach (GameObject root in _rootObjectsCache)
                 {
-                    if (p.plotIndex != idx) continue;
-                    // ★ Image 자식이 있으면 그 위치를 타겟 (시각적 정확도)
-                    var img = p.GetComponentInChildren<Image>();
-                    if (img != null && img.GetComponent<RectTransform>() != null)
-                        return img.gameObject;
-                    return p.gameObject;
+                    var plot = FindFarmPlotInChildren(root.transform, idx);
+                    if (plot != null)
+                    {
+                        var img = plot.GetComponentInChildren<Image>();
+                        if (img != null && img.GetComponent<RectTransform>() != null)
+                            return img.gameObject;
+                        return plot.gameObject;
+                    }
                 }
             }
             return null;
@@ -1387,23 +1483,17 @@ public class TutorialManager : MonoBehaviour
             return null;
         }
 
-        // "CompanionGachaBtn" → 동료뽑기 버튼 (이름에 "동료뽑" 포함된 버튼)
+        // "CompanionGachaBtn" → 동료뽑기 버튼
+        // ★ FindObjectsOfType<Button> 제거 → 씬 루트 DFS로 교체
         if (targetName == "CompanionGachaBtn")
         {
-            // 활성 오브젝트 중 "동료뽑" 포함 + Button 컴포넌트가 있는 것
-            var allBtns = FindObjectsOfType<Button>(false);
-            foreach (var btn in allBtns)
+            SceneManager.GetActiveScene().GetRootGameObjects(_rootObjectsCache);
+            foreach (GameObject root in _rootObjectsCache)
             {
-                if (btn.gameObject.activeInHierarchy && btn.gameObject.name.Contains("동료뽑"))
-                    return btn.gameObject;
-            }
-            // 폴백: TMP 텍스트에 "동료뽑기" 포함된 버튼의 부모
-            var allTmps = FindObjectsOfType<TMPro.TextMeshProUGUI>(false);
-            foreach (var tmp in allTmps)
-            {
-                if (tmp.text.Contains("동료뽑기"))
+                Transform result = FindInChildrenContains(root.transform, "동료뽑");
+                if (result != null)
                 {
-                    var btn = tmp.GetComponentInParent<Button>();
+                    Button btn = result.GetComponent<Button>() ?? result.GetComponentInParent<Button>();
                     if (btn != null) return btn.gameObject;
                 }
             }
@@ -1413,7 +1503,7 @@ public class TutorialManager : MonoBehaviour
         // "CompanionSinglePullBtn" → 동료 1회 뽑기 버튼
         if (targetName == "CompanionSinglePullBtn")
         {
-            var mgr = FindObjectOfType<CompanionGachaManager>(true);
+            var mgr = CompanionGachaManager.Instance ?? FindObjectOfType<CompanionGachaManager>(true);
             if (mgr != null && mgr.singlePullBtn != null) return mgr.singlePullBtn.gameObject;
             return null;
         }
@@ -1421,7 +1511,7 @@ public class TutorialManager : MonoBehaviour
         // "EnhanceActionBtn" → 강화 실행 버튼
         if (targetName == "EnhanceActionBtn")
         {
-            var sys = FindObjectOfType<EnhancementSystem>(true);
+            var sys = EnhancementSystem.Instance ?? FindObjectOfType<EnhancementSystem>(true);
             if (sys != null && sys.enhanceButton != null) return sys.enhanceButton.gameObject;
             return null;
         }
@@ -1429,7 +1519,7 @@ public class TutorialManager : MonoBehaviour
         // "EnhancePanel" → 강화 패널
         if (targetName == "EnhancePanel")
         {
-            var sys = FindObjectOfType<EnhancementSystem>(true);
+            var sys = EnhancementSystem.Instance ?? FindObjectOfType<EnhancementSystem>(true);
             if (sys != null && sys.enhancementPanel != null) return sys.enhancementPanel;
             return null;
         }
@@ -1437,7 +1527,7 @@ public class TutorialManager : MonoBehaviour
         // "PlantModePanel" → 작물관리 패널 (FarmPlantModePanel 자체)
         if (targetName == "PlantModePanel")
         {
-            var panel = FindObjectOfType<FarmPlantModePanel>(true);
+            var panel = FarmPlantModePanel.Instance ?? FindObjectOfType<FarmPlantModePanel>(true);
             if (panel != null) return panel.gameObject;
             return null;
         }
@@ -1454,7 +1544,7 @@ public class TutorialManager : MonoBehaviour
         // "CompanionResultPanel" → 동료 뽑기 결과 패널
         if (targetName == "CompanionResultPanel")
         {
-            var mgr = FindObjectOfType<CompanionGachaManager>(true);
+            var mgr = CompanionGachaManager.Instance ?? FindObjectOfType<CompanionGachaManager>(true);
             if (mgr != null && mgr.resultPanel != null) return mgr.resultPanel;
             return null;
         }
@@ -1462,7 +1552,7 @@ public class TutorialManager : MonoBehaviour
         // "CompanionResultCloseBtn" → 동료 뽑기 결과 닫기 버튼
         if (targetName == "CompanionResultCloseBtn")
         {
-            var mgr = FindObjectOfType<CompanionGachaManager>(true);
+            var mgr = CompanionGachaManager.Instance ?? FindObjectOfType<CompanionGachaManager>(true);
             if (mgr != null && mgr.resultCloseBtn != null) return mgr.resultCloseBtn.gameObject;
             return null;
         }
@@ -1470,7 +1560,7 @@ public class TutorialManager : MonoBehaviour
         // "CompanionAutoBtn" → 동료 오토 버튼
         if (targetName == "CompanionAutoBtn")
         {
-            var hotbarMgr = FindObjectOfType<CompanionHotbarManager>(true);
+            var hotbarMgr = CompanionHotbarManager.Instance ?? FindObjectOfType<CompanionHotbarManager>(true);
             if (hotbarMgr != null && hotbarMgr.autoButton != null)
                 return hotbarMgr.autoButton.gameObject;
             return null;
@@ -1479,7 +1569,7 @@ public class TutorialManager : MonoBehaviour
         // "HundredGachaBtn" → 100연차 버튼
         if (targetName == "HundredGachaBtn")
         {
-            var gachaUI = FindObjectOfType<GachaUI>(true);
+            var gachaUI = GachaUI.Instance ?? FindObjectOfType<GachaUI>(true);
             if (gachaUI != null && gachaUI.hundredGachaButton != null)
                 return gachaUI.hundredGachaButton.gameObject;
             return null;
@@ -1512,7 +1602,9 @@ public class TutorialManager : MonoBehaviour
         // "EquipLevelUpPanel" → 장비 레벨업 패널 전체 (튜토리얼 중 숨김용)
         if (targetName == "EquipLevelUpPanel")
         {
-            var panel = FindObjectOfType<EquipmentLevelUpPanel>(true);
+            // ★ _cachedLevelUpPanel 재사용 (FindObjectOfType 제거)
+            var panel = EquipmentLevelUpPanel.Instance
+                        ?? (_cachedLevelUpPanel != null ? _cachedLevelUpPanel : FindObjectOfType<EquipmentLevelUpPanel>(true));
             if (panel != null) return panel.gameObject;
             return null;
         }
@@ -1520,7 +1612,7 @@ public class TutorialManager : MonoBehaviour
         // "GachaResultCloseBtn" → 가챠 결과 닫기 버튼 (포커스 포인터용)
         if (targetName == "GachaResultCloseBtn")
         {
-            var resultUI = FindObjectOfType<GachaResultUI>(true);
+            var resultUI = GachaResultUI.Instance ?? FindObjectOfType<GachaResultUI>(true);
             if (resultUI != null && resultUI.closeButton != null)
                 return resultUI.closeButton.gameObject;
             return null;
@@ -1529,7 +1621,7 @@ public class TutorialManager : MonoBehaviour
         // "CropShopPanel" → 작물상점 전체 패널 (영역 포커스용)
         if (targetName == "CropShopPanel")
         {
-            var shop = FindObjectOfType<FarmCropShopUI>(true);
+            var shop = FarmCropShopUI.Instance ?? FindObjectOfType<FarmCropShopUI>(true);
             if (shop != null && shop.shopPanel != null) return shop.shopPanel;
             if (shop != null) return shop.gameObject;
             return null;
@@ -1538,7 +1630,7 @@ public class TutorialManager : MonoBehaviour
         // "CropShopCloseBtn" → 작물상점 닫기 버튼
         if (targetName == "CropShopCloseBtn")
         {
-            var shop = FindObjectOfType<FarmCropShopUI>(true);
+            var shop = FarmCropShopUI.Instance ?? FindObjectOfType<FarmCropShopUI>(true);
             if (shop != null && shop.closeButton != null) return shop.closeButton.gameObject;
             return null;
         }
@@ -1546,39 +1638,53 @@ public class TutorialManager : MonoBehaviour
         // "CropShopDetail" → 작물상점 디테일+구매 패널
         if (targetName == "CropShopDetail")
         {
-            var shop = FindObjectOfType<FarmCropShopUI>(true);
+            var shop = FarmCropShopUI.Instance ?? FindObjectOfType<FarmCropShopUI>(true);
             if (shop != null && shop.detailPanel != null) return shop.detailPanel;
             return null;
         }
 
-        // "EquipPanelSlot:타입" → 캐릭터 장비 패널 슬롯 (EquipmentType 이름으로 검색)
-        //   예: EquipPanelSlot:Helmet, EquipPanelSlot:WeaponLeft 등
+        // "EquipPanelSlot:타입" → 캐릭터 장비 패널 슬롯
+        // ★ FindObjectsOfType<EquipPanelSlot> 제거 → EquipmentManager 또는 씬 DFS로 교체
         if (targetName.StartsWith("EquipPanelSlot:"))
         {
             string typeStr = targetName.Substring("EquipPanelSlot:".Length);
-            if (System.Enum.TryParse<EquipmentType>(typeStr, out EquipmentType eqType))
+
+            // ★ "LastEquipped" → 마지막으로 장착한 슬롯 타입 사용
+            EquipmentType eqType;
+            if (typeStr == "LastEquipped")
             {
-                // ★ 활성 슬롯 우선, 없으면 비활성 포함
-                EquipPanelSlot matchedSlot = null;
-                var slots = FindObjectsOfType<EquipPanelSlot>(true);
-                foreach (var slot in slots)
+                if (_lastEquippedType == null)
                 {
-                    if (slot.slotType == eqType)
+                    // 장착 이력 없으면 현재 장착된 슬롯 중 첫 번째 반환
+                    if (EquipmentManager.Instance != null)
                     {
-                        if (slot.gameObject.activeInHierarchy)
+                        foreach (var t in _allEquipTypes)
                         {
-                            matchedSlot = slot;
-                            break; // 활성 슬롯 우선
+                            var s = EquipmentManager.Instance.GetEquipPanelSlot(t);
+                            if (s != null && s.currentEquipment != null) return s.gameObject;
                         }
-                        if (matchedSlot == null) matchedSlot = slot; // 비활성 폴백
                     }
+                    return null;
                 }
-                if (matchedSlot != null)
-                {
-                    Debug.Log($"[Tutorial] EquipPanelSlot:{typeStr} 발견: {matchedSlot.name} (active={matchedSlot.gameObject.activeInHierarchy}, pos={matchedSlot.transform.position})");
-                    return matchedSlot.gameObject;
-                }
-                Debug.LogWarning($"[Tutorial] EquipPanelSlot:{typeStr} 못 찾음! 전체 슬롯 수: {slots.Length}");
+                eqType = _lastEquippedType.Value;
+            }
+            else if (!System.Enum.TryParse<EquipmentType>(typeStr, out eqType))
+            {
+                return null;
+            }
+
+            // eqType 결정됨 → 슬롯 조회
+            if (EquipmentManager.Instance != null)
+            {
+                var slot = EquipmentManager.Instance.GetEquipPanelSlot(eqType);
+                if (slot != null) return slot.gameObject;
+            }
+            // 폴백: 씬 DFS
+            SceneManager.GetActiveScene().GetRootGameObjects(_rootObjectsCache);
+            foreach (GameObject root in _rootObjectsCache)
+            {
+                var slot = FindEquipPanelSlotInChildren(root.transform, eqType);
+                if (slot != null) return slot.gameObject;
             }
             return null;
         }
@@ -1639,18 +1745,15 @@ public class TutorialManager : MonoBehaviour
         if (targetName.StartsWith("Contains:"))
         {
             string keyword = targetName.Substring("Contains:".Length);
-            foreach (GameObject root in SceneManager.GetActiveScene().GetRootGameObjects())
+            // ★ List 재사용 (GetRootGameObjects 배열 할당 제거)
+            SceneManager.GetActiveScene().GetRootGameObjects(_rootObjectsCache);
+            foreach (GameObject root in _rootObjectsCache)
             {
                 Transform result = FindInChildrenContains(root.transform, keyword);
                 if (result != null) return result.gameObject;
             }
-            // DontDestroyOnLoad도 탐색
-            var allObj = FindObjectsOfType<Transform>(false);
-            foreach (var t in allObj)
-            {
-                if (t.gameObject.activeInHierarchy && t.name.Contains(keyword))
-                    return t.gameObject;
-            }
+            // DontDestroyOnLoad: tutorialPanel 부모 등 DDOL 오브젝트만 직접 탐색
+            // FindObjectsOfType<Transform> 제거 → 씬 루트만으로 충분한 경우가 대부분
             return null;
         }
 
@@ -1660,20 +1763,38 @@ public class TutorialManager : MonoBehaviour
         GameObject found = GameObject.Find(targetName);
         if (found != null) return found;
 
-        // 2. 씬 루트 DFS (비활성 자식 포함)
-        foreach (GameObject root in SceneManager.GetActiveScene().GetRootGameObjects())
+        // 2. 씬 루트 DFS (비활성 자식 포함) — List 재사용
+        SceneManager.GetActiveScene().GetRootGameObjects(_rootObjectsCache);
+        foreach (GameObject root in _rootObjectsCache)
         {
             Transform result = FindInChildren(root.transform, targetName);
             if (result != null) return result.gameObject;
         }
 
-        // 3. DontDestroyOnLoad 오브젝트도 검색
-        var ddolObjects = FindObjectsOfType<Transform>(true);
-        foreach (var t in ddolObjects)
-        {
-            if (t.name == targetName) return t.gameObject;
-        }
+        return null;
+    }
 
+    private FarmPlotController FindFarmPlotInChildren(Transform parent, int plotIndex)
+    {
+        var plot = parent.GetComponent<FarmPlotController>();
+        if (plot != null && plot.plotIndex == plotIndex) return plot;
+        for (int i = 0; i < parent.childCount; i++)
+        {
+            var found = FindFarmPlotInChildren(parent.GetChild(i), plotIndex);
+            if (found != null) return found;
+        }
+        return null;
+    }
+
+    private EquipPanelSlot FindEquipPanelSlotInChildren(Transform parent, EquipmentType eqType)
+    {
+        var slot = parent.GetComponent<EquipPanelSlot>();
+        if (slot != null && slot.slotType == eqType) return slot;
+        for (int i = 0; i < parent.childCount; i++)
+        {
+            var found = FindEquipPanelSlotInChildren(parent.GetChild(i), eqType);
+            if (found != null) return found;
+        }
         return null;
     }
 
@@ -1702,6 +1823,7 @@ public class TutorialManager : MonoBehaviour
     // ── LateUpdate 캐싱 ──
     private EquipmentLevelUpPanel _cachedLevelUpPanel;
     private bool _levelUpPanelSearched = false;
+    private OfflineRewardUI _cachedOfflineRewardUI;
 
     /// <summary>매 프레임 차단 패널 감시 — 튜토리얼 중 열리면 안 되는 패널 즉시 닫기</summary>
     void LateUpdate()
@@ -1724,7 +1846,7 @@ public class TutorialManager : MonoBehaviour
             // ★ FindObjectOfType 캐싱 (매 프레임 호출 방지)
             if (!_levelUpPanelSearched)
             {
-                _cachedLevelUpPanel = FindObjectOfType<EquipmentLevelUpPanel>(true);
+                _cachedLevelUpPanel = EquipmentLevelUpPanel.Instance ?? FindObjectOfType<EquipmentLevelUpPanel>(true);
                 _levelUpPanelSearched = true;
             }
             if (_cachedLevelUpPanel != null && _cachedLevelUpPanel.gameObject.activeSelf)

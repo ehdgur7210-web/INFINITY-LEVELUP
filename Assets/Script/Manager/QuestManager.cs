@@ -236,7 +236,7 @@ public class QuestManager : MonoBehaviour
         Debug.Log($"[QuestManager] ✅ 퀘스트 시작: {nextQuest.questName} (인덱스: {currentQuestIndex})");
         SetPanelActive(true);
         UpdateQuestUI();
-        UIManager.Instance?.ShowMessage($"📜 새 퀘스트: {nextQuest.questName}", Color.cyan);
+        UIManager.Instance?.ShowMessage($"새 퀘스트: {nextQuest.questName}", Color.cyan);
     }
 
     // ─────────────────────────────────────────
@@ -380,8 +380,8 @@ public class QuestManager : MonoBehaviour
         currentQuest.status = QuestStatus.Rewarded;
         completedQuestIDs.Add(quest.questID);
 
-        Debug.Log($"[QuestManager] 🎁 보상 수령: {quest.questName}");
-        UIManager.Instance?.ShowMessage("🎁 보상 획득!", Color.yellow);
+        Debug.Log($"[QuestManager] 보상 수령: {quest.questName}");
+        UIManager.Instance?.ShowMessage("보상 획득!", Color.yellow);
 
         AchievementSystem.Instance?.UpdateAchievementProgress(AchievementType.CompleteQuests, "", 1);
 

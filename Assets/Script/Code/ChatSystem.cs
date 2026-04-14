@@ -624,6 +624,7 @@ public class ChatSystem : MonoBehaviour
 
     public void Expand()
     {
+        Debug.Log($"[ChatSystem] Expand() 호출 — isExpanded={isExpanded}, isVisible={isVisible}");
         if (isExpanded) return;
         isExpanded = true;
         HidePanelsForChat();

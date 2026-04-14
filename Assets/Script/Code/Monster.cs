@@ -84,6 +84,9 @@ public class Monster : MonoBehaviour, IHitable
     private Transform player = null;
     private Coroutine flashCoroutine;
 
+    // ★ Physics2D.OverlapCircleNonAlloc용 정적 버퍼 (GC + ALLOC_TEMP 제거)
+    private static readonly Collider2D[] _detectionBuffer = new Collider2D[8];
+
     // ─── 4방향 ───
     private Vector2 facingDirection = Vector2.down; // 현재 바라보는 방향
 
@@ -208,8 +211,9 @@ public class Monster : MonoBehaviour, IHitable
 
     private void DetectTarget()
     {
-        Collider2D[] targets = Physics2D.OverlapCircleAll(transform.position, attackRange, targetLayer);
-        currentTarget = targets.Length > 0 ? targets[0].transform : null;
+        // ★ NonAlloc: 정적 버퍼 재사용 → OverlapCircleAll의 네이티브 ALLOC_TEMP 제거
+        int count = Physics2D.OverlapCircleNonAlloc(transform.position, attackRange, _detectionBuffer, targetLayer);
+        currentTarget = count > 0 ? _detectionBuffer[0].transform : null;
     }
 
     private void Attack()
@@ -302,11 +306,6 @@ public class Monster : MonoBehaviour, IHitable
             case "Move":    animator.SetInteger("State", 1); break;
             case "Attack":  animator.SetInteger("State", 2); break;
         }
-
-        // bool 파라미터 (기존 호환)
-        animator.SetBool("IsIdle", state == "Idle");
-        animator.SetBool("IsMoving", state == "Move");
-        animator.SetBool("IsAttacking", state == "Attack");
     }
 
     // ════════════════════════════════════════

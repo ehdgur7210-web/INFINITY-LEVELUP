@@ -488,6 +488,9 @@ public class SkillComboSystem : MonoBehaviour
     //  범위 데미지
     // ═══════════════════════════════════════════════════════════════
 
+    // ★ NonAlloc 정적 버퍼 (ALLOC_TEMP_MAIN 제거)
+    private static readonly Collider2D[] _comboAreaBuffer = new Collider2D[32];
+
     private void DealAreaDamage(float damage, float radius)
     {
         Transform player = GetPlayerTransform();
@@ -495,12 +498,13 @@ public class SkillComboSystem : MonoBehaviour
 
         Vector3 center = player.position;
 
-        // Physics2D 기반 적 탐색
-        Collider2D[] hits = Physics2D.OverlapCircleAll(center, radius);
+        // ★ NonAlloc: 정적 버퍼 재사용 → OverlapCircleAll 네이티브 할당 제거
+        int count = Physics2D.OverlapCircleNonAlloc(center, radius, _comboAreaBuffer);
         int hitCount = 0;
 
-        foreach (var col in hits)
+        for (int i = 0; i < count; i++)
         {
+            var col = _comboAreaBuffer[i];
             if (col == null || col.gameObject == player.gameObject) continue;
 
             // ★ 동료(CompanionAgent)는 범위 공격 대상에서 제외

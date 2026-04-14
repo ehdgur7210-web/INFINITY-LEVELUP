@@ -26,6 +26,7 @@ public class FireballProjectile : MonoBehaviour
     private int criticalTier;
     private float explosionRadius;
     private bool hasExploded = false;
+    private static readonly Collider2D[] _explodeBuffer = new Collider2D[16];
     private float spawnTime;
     private Rigidbody2D rb;
     private CircleCollider2D col;
@@ -125,15 +126,12 @@ public class FireballProjectile : MonoBehaviour
         // ★ 파이어볼 폭발 효과음
         SoundManager.Instance?.PlaySFX("FireballExplode");
 
-        // 범위 내 모든 적에게 데미지
-        Collider2D[] enemies = Physics2D.OverlapCircleAll(
-            transform.position,
-            explosionRadius,
-            enemyLayer
-        );
+        // ★ NonAlloc: 정적 버퍼 재사용 → OverlapCircleAll 네이티브 할당 제거
+        int count = Physics2D.OverlapCircleNonAlloc(transform.position, explosionRadius, _explodeBuffer, enemyLayer);
 
-        foreach (Collider2D enemy in enemies)
+        for (int i = 0; i < count; i++)
         {
+            Collider2D enemy = _explodeBuffer[i];
             Monster monster = enemy.GetComponent<Monster>();
             if (monster != null)
             {

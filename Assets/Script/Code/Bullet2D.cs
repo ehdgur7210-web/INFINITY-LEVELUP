@@ -32,6 +32,9 @@ public class Bullet2D : MonoBehaviour
     private bool isActive = false;
     private Transform currentTarget;
 
+    // ★ NonAlloc 정적 버퍼 (다수의 발사체 공유 — Update는 단일 스레드라 안전)
+    private static readonly Collider2D[] _bulletBuffer = new Collider2D[16];
+
     // ★★★ 크리티컬 등급 저장 변수 ★★★
     // PlayerController.Fire()에서 SetCriticalTier()로 설정됨
     // 0=일반(흰), 1=크리티컬(빨강), 2=슈퍼(주황), 3=울트라(노랑)
@@ -140,10 +143,12 @@ public class Bullet2D : MonoBehaviour
     {
         isActive = false;
 
-        Collider2D[] hits = Physics2D.OverlapCircleAll(transform.position, radius, monsterLayer);
+        // ★ NonAlloc: 정적 버퍼 재사용
+        int count = Physics2D.OverlapCircleNonAlloc(transform.position, radius, _bulletBuffer, monsterLayer);
 
-        foreach (Collider2D hit in hits)
+        for (int i = 0; i < count; i++)
         {
+            Collider2D hit = _bulletBuffer[i];
             // ★ Monster면 크리티컬 등급 포함 Hit → 팝업 자동
             Monster monster = hit.GetComponent<Monster>();
             if (monster != null)
@@ -171,23 +176,25 @@ public class Bullet2D : MonoBehaviour
 
     private void FindClosestTarget()
     {
-        Collider2D[] monsters = Physics2D.OverlapCircleAll(transform.position, targetSearchRange, monsterLayer);
+        // ★ NonAlloc: 매 프레임 발사체마다 호출 → 정적 버퍼 재사용
+        int count = Physics2D.OverlapCircleNonAlloc(transform.position, targetSearchRange, _bulletBuffer, monsterLayer);
 
         float closestDistance = Mathf.Infinity;
         Transform closestMonster = null;
 
-        foreach (Collider2D monster in monsters)
+        for (int i = 0; i < count; i++)
         {
-            Monster monsterScript = monster.GetComponent<Monster>();
+            Collider2D col = _bulletBuffer[i];
+            Monster monsterScript = col.GetComponent<Monster>();
             if (monsterScript != null && monsterScript.currentHp <= 0)
                 continue;
 
-            float distance = Vector2.Distance(transform.position, monster.transform.position);
+            float distance = Vector2.Distance(transform.position, col.transform.position);
 
             if (distance < closestDistance)
             {
                 closestDistance = distance;
-                closestMonster = monster.transform;
+                closestMonster = col.transform;
             }
         }
 

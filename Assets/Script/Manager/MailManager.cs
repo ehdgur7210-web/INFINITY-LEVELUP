@@ -472,7 +472,7 @@ public class MailManager : MonoBehaviour
             return false;
         }
 
-        SendRewardMail($"🎁 쿠폰 보상: {coupon.description}",
+        SendRewardMail($"쿠폰 보상: {coupon.description}",
             $"쿠폰 코드 '{code}'를 사용하여 보상을 받았습니다!",
             coupon.rewards);
 

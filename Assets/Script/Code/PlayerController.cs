@@ -84,6 +84,10 @@ public class PlayerController : MonoBehaviour
     // ★ 씬 전환 중 전투 비활성화 플래그
     private bool _combatEnabled = true;
 
+    // ★ Physics2D NonAlloc 정적 버퍼 (OverlapCircleAll 대체 → ALLOC_TEMP_MAIN 제거)
+    private static readonly Collider2D[] _aimBuffer    = new Collider2D[32]; // FindClosestEnemy
+    private static readonly Collider2D[] _attackBuffer = new Collider2D[32]; // 근거리/스킬 공격
+
     /// <summary>씬 전환 시 전투를 비활성화/활성화</summary>
     public void SetCombatEnabled(bool enabled)
     {
@@ -370,13 +374,10 @@ public class PlayerController : MonoBehaviour
 
     private void FindClosestEnemy()
     {
-        Collider2D[] enemies = Physics2D.OverlapCircleAll(
-            transform.position,
-            aimRange,
-            enemyLayer
-        );
+        // ★ NonAlloc: 정적 버퍼 재사용 → 매 프레임 ALLOC_TEMP_MAIN 616bytes 제거
+        int count = Physics2D.OverlapCircleNonAlloc(transform.position, aimRange, _aimBuffer, enemyLayer);
 
-        if (enemies.Length == 0)
+        if (count == 0)
         {
             currentTarget = null;
             return;
@@ -385,13 +386,13 @@ public class PlayerController : MonoBehaviour
         float closestDistance = Mathf.Infinity;
         Transform closest = null;
 
-        foreach (Collider2D enemy in enemies)
+        for (int i = 0; i < count; i++)
         {
-            float distance = Vector2.Distance(transform.position, enemy.transform.position);
+            float distance = Vector2.Distance(transform.position, _aimBuffer[i].transform.position);
             if (distance < closestDistance)
             {
                 closestDistance = distance;
-                closest = enemy.transform;
+                closest = _aimBuffer[i].transform;
             }
         }
 
@@ -431,14 +432,17 @@ public class PlayerController : MonoBehaviour
 
     private void PerformMeleeAttack()
     {
-        Collider2D[] hits = Physics2D.OverlapCircleAll(
+        // ★ NonAlloc: 정적 버퍼 재사용
+        int hitCount = Physics2D.OverlapCircleNonAlloc(
             (Vector2)transform.position + aimDirection * (meleeAttackRange * 0.5f),
             meleeAttackRange * 0.5f,
+            _attackBuffer,
             enemyLayer
         );
 
-        foreach (Collider2D hit in hits)
+        for (int _hi = 0; _hi < hitCount; _hi++)
         {
+            Collider2D hit = _attackBuffer[_hi];
             float damage = PlayerStats.Instance.CalculateDamageWithTier(out int critTier);
 
             Monster monster = hit.GetComponent<Monster>();
@@ -720,10 +724,12 @@ public class PlayerController : MonoBehaviour
 
         Vector2 attackCenter = (Vector2)transform.position + aimDirection * (attackRange * 0.5f);
 
-        Collider2D[] hits = Physics2D.OverlapCircleAll(attackCenter, attackRadius, enemyLayer);
+        // ★ NonAlloc: 정적 버퍼 재사용
+        int hitCount = Physics2D.OverlapCircleNonAlloc(attackCenter, attackRadius, _attackBuffer, enemyLayer);
 
-        foreach (Collider2D hit in hits)
+        for (int _hi = 0; _hi < hitCount; _hi++)
         {
+            Collider2D hit = _attackBuffer[_hi];
             // ★ 스킬 데미지 = 공격력 × (damageValue%) × skillDamageMultiplier + 크리
             float finalDmg = PlayerStats.Instance.CalculateSkillDamageWithTier(damageValue, out int critTier);
 
@@ -825,10 +831,12 @@ public class PlayerController : MonoBehaviour
             float attackRadius = skillData.areaRadius > 0 ? skillData.areaRadius : attackRange * 0.5f;
 
             Vector2 attackCenter = (Vector2)transform.position + aimDirection * (attackRange * 0.5f);
-            Collider2D[] hits = Physics2D.OverlapCircleAll(attackCenter, attackRadius, enemyLayer);
+            // ★ NonAlloc: 정적 버퍼 재사용
+            int hitCount = Physics2D.OverlapCircleNonAlloc(attackCenter, attackRadius, _attackBuffer, enemyLayer);
 
-            foreach (Collider2D hit in hits)
+            for (int _hi = 0; _hi < hitCount; _hi++)
             {
+                Collider2D hit = _attackBuffer[_hi];
                 // 몬스터별 개별 크리티컬 판정 (스킬 데미지 % 기반)
                 float perHitDmg = PlayerStats.Instance.CalculateSkillDamageWithTier(damageValue, out int perHitCrit);
 

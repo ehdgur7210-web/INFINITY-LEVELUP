@@ -513,18 +513,22 @@ public class CompanionAgent : MonoBehaviour, IHitable
         Debug.Log($"[CompanionAgent] {companionName} 스킬 사용: {skill.skillName} (Lv.{skillLevel}, 쿨타임:{skill.cooldown}s)");
     }
 
+    // ★ NonAlloc 정적 버퍼 (ALLOC_TEMP_MAIN 제거)
+    private static readonly Collider2D[] _areaBuffer   = new Collider2D[16];
+    private static readonly Collider2D[] _searchBuffer = new Collider2D[16];
+
     /// <summary>범위 데미지 — 중심점 주변 적 전체 피격</summary>
     private void DealAreaDamage(Vector3 center, float radius, float damage)
     {
-        Collider2D[] hits = Physics2D.OverlapCircleAll(center, radius, enemyLayer);
-        foreach (var col in hits)
+        int count = Physics2D.OverlapCircleNonAlloc(center, radius, _areaBuffer, enemyLayer);
+        for (int i = 0; i < count; i++)
         {
-            if (col == null || col.gameObject == gameObject) continue;
-            DealDamageToTarget(col.transform, damage);
+            if (_areaBuffer[i] == null || _areaBuffer[i].gameObject == gameObject) continue;
+            DealDamageToTarget(_areaBuffer[i].transform, damage);
         }
 
         // LayerMask 미설정 시 태그 폴백
-        if (hits.Length == 0)
+        if (count == 0)
         {
             GameObject[] enemies = null;
             try { enemies = GameObject.FindGameObjectsWithTag("Monster"); } catch { }
@@ -699,16 +703,16 @@ public class CompanionAgent : MonoBehaviour, IHitable
 
     private Transform FindNearestEnemy()
     {
-        // LayerMask 기반 탐색
-        Collider2D[] hits = Physics2D.OverlapCircleAll(
-            transform.position, detectionRadius, enemyLayer);
+        // ★ NonAlloc: 0.2초 간격이지만 동료 수만큼 반복 → 정적 버퍼 재사용
+        int count = Physics2D.OverlapCircleNonAlloc(transform.position, detectionRadius, _searchBuffer, enemyLayer);
 
-        if (hits.Length > 0)
+        if (count > 0)
         {
             Transform nearest = null;
             float nearestDist = float.MaxValue;
-            foreach (var col in hits)
+            for (int i = 0; i < count; i++)
             {
+                var col = _searchBuffer[i];
                 if (col == null || col.gameObject == gameObject) continue;
                 float d = Vector2.Distance(transform.position, col.transform.position);
                 if (d < nearestDist)

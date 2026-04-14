@@ -118,16 +118,21 @@ public class BossMonster : Monster
             Instantiate(appearEffect, transform.position, Quaternion.identity);
     }
 
+    // ★ PerformSpecialAttack NonAlloc 버퍼 (정적 공유 — 보스는 동시 다발 특수공격 없음)
+    private static readonly Collider2D[] _specialAttackBuffer = new Collider2D[16];
+
     // ───────────────────────────────────────────
     /// <summary>
     /// 주변 플레이어에게 특수 공격 (범위 데미지)
     /// </summary>
     private void PerformSpecialAttack()
     {
-        // 반경 3f 안의 모든 Collider 탐색
-        Collider2D[] targets = Physics2D.OverlapCircleAll(transform.position, 3f);
-        foreach (Collider2D target in targets)
+        // ★ NonAlloc: 정적 버퍼 재사용 → OverlapCircleAll의 네이티브 ALLOC_TEMP 제거
+        int count = Physics2D.OverlapCircleNonAlloc(transform.position, 3f, _specialAttackBuffer);
+        for (int i = 0; i < count; i++)
         {
+            Collider2D target = _specialAttackBuffer[i];
+            if (target == null) continue;
             if (target.CompareTag("Player"))
             {
                 PlayerStats ps = target.GetComponent<PlayerStats>();
