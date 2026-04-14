@@ -125,22 +125,15 @@ public class BossMonsterHealthBar : MonsterHealthBar
     {
         if (bossBarRoot == null) return;
 
-        // 이름으로 찾기
-        Transform t;
-
-        t = bossBarRoot.transform.Find("BossIcon");
-        if (t != null) bossIconImage = t.GetComponent<Image>();
-
-        t = bossBarRoot.transform.Find("BossName");
-        if (t != null) nameText = t.GetComponent<TextMeshProUGUI>();
-
-        t = bossBarRoot.transform.Find("BarCount");
-        if (t != null) barCountText = t.GetComponent<TextMeshProUGUI>();
-
-        // BarFront, BarBack는 깊은 곳에 있을 수 있으므로 재귀 탐색
+        // ★ 모든 UI를 재귀 탐색으로 찾기 (깊은 자식도 탐색)
+        bossIconImage = FindDeepChild<Image>(bossBarRoot.transform, "BossIcon");
+        nameText = FindDeepChild<TextMeshProUGUI>(bossBarRoot.transform, "BossName");
+        barCountText = FindDeepChild<TextMeshProUGUI>(bossBarRoot.transform, "BarCount");
         barFillFront = FindDeepChild<Image>(bossBarRoot.transform, "BarFront");
         barFillBack = FindDeepChild<Image>(bossBarRoot.transform, "BarBack");
 
+        if (nameText == null)
+            Debug.LogWarning("[BossHP] BossName을 찾지 못했습니다!");
         if (barFillFront == null)
             Debug.LogWarning("[BossHP] BarFront를 찾지 못했습니다!");
         if (barFillBack == null)
@@ -239,6 +232,10 @@ public class BossMonsterHealthBar : MonsterHealthBar
     public override void UpdateBar(float hpRatio)
     {
         UpdateMultiBar();
+
+        // ★ HP가 0 이하면 체력바 즉시 제거 (Die 호출 누락 대비 안전장치)
+        if (hpRatio <= 0f)
+            DestroyBar();
     }
 
     // ══════════════════════════════════════════════════════
@@ -253,7 +250,26 @@ public class BossMonsterHealthBar : MonsterHealthBar
     public int GetHpPerBar() => hpPerBar;
 
     // ══════════════════════════════════════════════════════
-    void OnDisable()
+    /// <summary>보스 이름 실시간 변경 (InitializeBoss에서 호출)</summary>
+    public void UpdateBossName(string newName)
+    {
+        if (nameText != null)
+            nameText.text = newName;
+    }
+
+    /// <summary>보스 사망 시 체력바 즉시 제거 (외부에서 호출 가능)</summary>
+    public void DestroyBar()
+    {
+        if (bossBarRoot != null)
+        {
+            Destroy(bossBarRoot);
+            bossBarRoot = null;
+            healthBarInstance = null;
+        }
+    }
+
+    // ══════════════════════════════════════════════════════
+    protected override void OnDisable()
     {
         if (bossBarRoot != null)
         {

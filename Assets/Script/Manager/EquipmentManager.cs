@@ -368,7 +368,7 @@ public class EquipmentManager : MonoBehaviour
         if (PlayerStats.Instance == null || eq == null) return;
 
         float sign = apply ? 1f : -1f;
-        float bonusMultiplier = 1f + (enhanceLevel * 0.1f); // 강화당 10% 증가
+        float bonusMultiplier = EnhancementSystem.GetEnhanceMultiplier(enhanceLevel);
 
         PlayerStats.Instance.bonusAttack += eq.equipmentStats.attack * bonusMultiplier * sign;
         PlayerStats.Instance.bonusDefense += eq.equipmentStats.defense * bonusMultiplier * sign;

@@ -97,7 +97,6 @@ public class FireballProjectile : MonoBehaviour
             rb.velocity = direction * moveSpeed;
         }
 
-        Debug.Log($"[Fireball] 초기화 - 방향:{dir}, 데미지:{dmg}, 범위:{radius}, 위치:{transform.position}");
     }
 
     void OnTriggerEnter2D(Collider2D other)
@@ -111,7 +110,6 @@ public class FireballProjectile : MonoBehaviour
         // 적과 충돌 시 폭발
         if (other.CompareTag("Monster") || ((1 << other.gameObject.layer) & enemyLayer) != 0)
         {
-            Debug.Log($"[Fireball] 적과 충돌: {other.name}");
             Explode();
         }
     }
@@ -127,16 +125,12 @@ public class FireballProjectile : MonoBehaviour
         // ★ 파이어볼 폭발 효과음
         SoundManager.Instance?.PlaySFX("FireballExplode");
 
-        Debug.Log($"[Fireball] 폭발 시작! 위치:{transform.position}, 범위:{explosionRadius}");
-
         // 범위 내 모든 적에게 데미지
         Collider2D[] enemies = Physics2D.OverlapCircleAll(
             transform.position,
             explosionRadius,
             enemyLayer
         );
-
-        Debug.Log($"[Fireball] 범위 내 적 발견: {enemies.Length}개");
 
         foreach (Collider2D enemy in enemies)
         {
@@ -212,6 +206,7 @@ public class FireballProjectile : MonoBehaviour
         tex.Apply();
         sr.sprite = Sprite.Create(tex, new Rect(0, 0, 64, 64), new Vector2(0.5f, 0.5f));
         sr.transform.localScale = Vector3.one * explosionRadius;
+        Destroy(tex); // ★ Sprite가 참조를 복사했으므로 원본 Texture2D 즉시 해제
 
         // 폭발 애니메이션
         explosion.AddComponent<ExplosionEffect>();

@@ -25,6 +25,32 @@ public class EnhancementSystem : MonoBehaviour
     [Tooltip("최대 강화 수치")]
     public int maxEnhanceLevel = 20;
 
+    [Header("강화 스탯 보너스")]
+    [Tooltip("기본 강화 1단계당 스탯 증가 비율 (0.1 = 10%). customEnhanceBonuses 배열이 비어있을 때 사용")]
+    public float enhanceBonusPerLevel = 0.1f;
+
+    [Tooltip("강화 단계별 누적 보너스 비율 (직접 지정).\n배열이 비어있으면 enhanceBonusPerLevel * level 공식 사용.\n인덱스 0 = +1강 보너스, 1 = +2강 보너스...\n예: [0.1, 0.2, 0.35] → +1강=10%, +2강=20%, +3강=35%")]
+    public float[] customEnhanceBonuses;
+
+    /// <summary>다른 스크립트에서 참조할 수 있는 기본 강화 보너스 비율</summary>
+    public static float EnhanceBonusPerLevel => Instance != null ? Instance.enhanceBonusPerLevel : 0.1f;
+
+    /// <summary>
+    /// 특정 강화 레벨의 스탯 배율 반환 (1.0 = 기본, 1.1 = +10%)
+    /// customEnhanceBonuses 배열이 있으면 해당 레벨의 값 사용, 없으면 공식 계산
+    /// </summary>
+    public static float GetEnhanceMultiplier(int enhanceLevel)
+    {
+        if (enhanceLevel <= 0) return 1f;
+        if (Instance != null && Instance.customEnhanceBonuses != null
+            && Instance.customEnhanceBonuses.Length > 0
+            && enhanceLevel <= Instance.customEnhanceBonuses.Length)
+        {
+            return 1f + Instance.customEnhanceBonuses[enhanceLevel - 1];
+        }
+        return 1f + (enhanceLevel * EnhanceBonusPerLevel);
+    }
+
     [Header("강화 비용 설정")]
     public int baseEnhanceCost = 100;
     public float costMultiplier = 1.5f;
@@ -536,22 +562,23 @@ public class EnhancementSystem : MonoBehaviour
             int baseDef = currentEquipment.equipmentStats.defense;
             int baseHp = currentEquipment.equipmentStats.health;
 
-            float bonus = 1f + (currentEnhanceLevel * 0.1f);
+            float bonus = GetEnhanceMultiplier(currentEnhanceLevel);
             int curAtk = Mathf.RoundToInt(baseAtk * bonus);
             int curDef = Mathf.RoundToInt(baseDef * bonus);
             int curHp = Mathf.RoundToInt(baseHp * bonus);
 
-            float nextBonus = 1f + ((currentEnhanceLevel + 1) * 0.1f);
+            float nextBonus = GetEnhanceMultiplier(currentEnhanceLevel + 1);
             int nextAtk = Mathf.RoundToInt(baseAtk * nextBonus);
             int nextDef = Mathf.RoundToInt(baseDef * nextBonus);
             int nextHp = Mathf.RoundToInt(baseHp * nextBonus);
 
+            int curPct = Mathf.RoundToInt((bonus - 1f) * 100f);
             statsText.text = "<b>【 현재 능력치 】</b>\n";
             if (currentEnhanceLevel > 0)
             {
-                statsText.text += $" 공격력: <b>{curAtk}</b> <color=#888>({baseAtk}+{currentEnhanceLevel * 10}%)</color>\n";
-                statsText.text += $" 방어력: <b>{curDef}</b> <color=#888>({baseDef}+{currentEnhanceLevel * 10}%)</color>\n";
-                statsText.text += $" 체력: <b>{curHp}</b>  <color=#888>({baseHp}+{currentEnhanceLevel * 10}%)</color>\n";
+                statsText.text += $" 공격력: <b>{curAtk}</b> <color=#888>({baseAtk}+{curPct}%)</color>\n";
+                statsText.text += $" 방어력: <b>{curDef}</b> <color=#888>({baseDef}+{curPct}%)</color>\n";
+                statsText.text += $" 체력: <b>{curHp}</b>  <color=#888>({baseHp}+{curPct}%)</color>\n";
             }
             else
             {

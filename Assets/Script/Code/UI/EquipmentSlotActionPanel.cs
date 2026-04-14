@@ -143,7 +143,7 @@ public class EquipmentSlotActionPanel : MonoBehaviour
         if (statsText != null)
         {
             EquipmentStats stats = currentEquip.GetLeveledStats(currentSlot.itemLevel);
-            float enhMult = 1f + (currentSlot.enhanceLevel * 0.1f);
+            float enhMult = EnhancementSystem.GetEnhanceMultiplier(currentSlot.enhanceLevel);
             string s = "";
             int atk = Mathf.RoundToInt(stats.attack * enhMult);
             int def = Mathf.RoundToInt(stats.defense * enhMult);

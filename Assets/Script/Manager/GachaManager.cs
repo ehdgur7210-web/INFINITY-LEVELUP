@@ -790,9 +790,12 @@ public class GachaManager : MonoBehaviour
 
     private void SetupAnimationSystem()
     {
-        // 결과 확인 버튼 연결
+        // 결과 확인 버튼 연결 (중복 방지 — SetupAnimationSystem은 여러 번 호출될 수 있음)
         if (resultConfirmButton != null)
+        {
+            resultConfirmButton.onClick.RemoveAllListeners();
             resultConfirmButton.onClick.AddListener(OnResultConfirmClicked);
+        }
 
         // 초기 패널 비활성화
         if (gachaAnimationPanel != null)
@@ -800,21 +803,28 @@ public class GachaManager : MonoBehaviour
         if (gachaResultPanel != null)
             gachaResultPanel.SetActive(false);
 
-        // PlayableDirector 종료 이벤트 연결
+        // PlayableDirector 종료 이벤트 연결 (중복 방지)
         if (gachaDirector != null)
+        {
+            gachaDirector.stopped -= OnTimelineStopped;
             gachaDirector.stopped += OnTimelineStopped;
+        }
 
-        // ★ VideoPlayer 설정
+        // ★ VideoPlayer 설정 (중복 방지)
         if (gachaVideoPlayer != null)
         {
             gachaVideoPlayer.playOnAwake = false;
             gachaVideoPlayer.isLooping = false;
+            gachaVideoPlayer.loopPointReached -= OnVideoFinished;
             gachaVideoPlayer.loopPointReached += OnVideoFinished;
         }
 
-        // 스킵 버튼 연결
+        // 스킵 버튼 연결 (중복 방지)
         if (videoSkipButton != null)
+        {
+            videoSkipButton.onClick.RemoveAllListeners();
             videoSkipButton.onClick.AddListener(OnVideoSkipClicked);
+        }
 
         Debug.Log("[GachaManager] 연출 시스템 초기화 완료 " +
                   $"(Video:{gachaVideoPlayer != null}, Timeline:{gachaDirector != null})");

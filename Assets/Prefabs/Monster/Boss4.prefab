@@ -101,7 +101,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: baebf2c7ce0728d49a240bb8006831db, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  monsterName: Monster
+  monsterName: "\uC0AC\uC790\uC655"
   maxHp: 10000
   currentHp: 0
   damage: 10
@@ -118,9 +118,11 @@ MonoBehaviour:
   goldDrop: 10
   expDrop: 5
   equipmentTickets: 1
+  equipmentTicketDropChance: 50
   itemDropTable: []
   deathParticlePrefab: {fileID: 0}
   deathParticleDuration: 1
+  deathEffectCooldown: 0.08
   bossTitle: "\uAC15\uB825\uD55C"
   hasPhases: 0
   phaseThresholds: 
@@ -231,7 +233,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 75118db4ae6fc7b4095e332e3ff511d4, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  healthBarPrefab: {fileID: 278050180543554877, guid: 84a718baf5e3cbe4dadaf0859d2473cb, type: 3}
+  healthBarPrefab: {fileID: 3218350589112570600, guid: e46981ed629c98d4e8cc0b3329c248d6, type: 3}
   offset: {x: 0, y: 1.5, z: 0}
   barScale: 0.01
   highHpColor: {r: 0, g: 1, b: 0, a: 1}
@@ -239,6 +241,6 @@ MonoBehaviour:
   lowHpColor: {r: 1, g: 0, b: 0, a: 1}
   alwaysVisible: 1
   visibleDuration: 3
-  bossBarPrefab: {fileID: 0}
+  bossBarPrefab: {fileID: 3218350589112570600, guid: e46981ed629c98d4e8cc0b3329c248d6, type: 3}
   hpPerBar: 1000
   bossTitle: "\uAC15\uB825\uD55C"

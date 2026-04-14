@@ -59,11 +59,44 @@ public class MonsterHealthBar : MonoBehaviour
     // ��������������������������������������������������������������������������������������
     void Start()
     {
-        // ���� ������Ʈ�� Monster ������Ʈ ��������
+        hasStarted = true;
         monster = GetComponent<Monster>();
-
-        // �� virtual �Լ� ȣ�� �� �ڽ� Ŭ������ ������ �ڽ� ������ �����
         CreateHealthBar();
+    }
+
+    private bool hasStarted = false;
+
+    // ★ 풀에서 재사용(SetActive true)될 때 체력바 재생성
+    protected virtual void OnEnable()
+    {
+        // Start()가 아직 안 불린 최초 활성화(풀 Instantiate 시점)는 건너뜀
+        if (!hasStarted) return;
+
+        if (monster == null)
+            monster = GetComponent<Monster>();
+        if (monster == null) return;
+
+        // 체력바가 파괴됐으면 다시 생성
+        if (healthBarInstance == null)
+        {
+            CreateHealthBar();
+        }
+        else
+        {
+            healthBarInstance.SetActive(true);
+        }
+    }
+
+    // ★ 풀에 반환(SetActive false)될 때 체력바 파괴
+    protected virtual void OnDisable()
+    {
+        if (healthBarInstance != null)
+        {
+            Destroy(healthBarInstance);
+            healthBarInstance = null;
+            hpSlider = null;
+            fillImage = null;
+        }
     }
 
     // ��������������������������������������������������������������������������������������

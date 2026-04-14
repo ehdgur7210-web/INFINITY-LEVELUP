@@ -828,6 +828,10 @@ public class CompanionGachaManager : MonoBehaviour
 
     private void PlayLegendaryAnimation(List<CompanionData> results, CompanionData highlightTarget = null)
     {
+        // ★ 이전 전설 연출 잔재 정리 (다시뽑기/연뽑 시 이전 연출이 남는 버그 방지)
+        if (isLegendaryAnimPlaying || isWaitingForTap)
+            CleanupLegendaryState();
+
         pendingLegendaryResults = results;
         isLegendaryAnimPlaying = true;
         isWaitingForTap = false;
@@ -889,13 +893,17 @@ public class CompanionGachaManager : MonoBehaviour
         Debug.Log("[CompanionGachaManager] ★ 전설 영상 재생 완료 → 비디오 끄고 등장 연출 표시");
         isLegendaryAnimPlaying = false;
 
-        // 1단계: 비디오(RawImage) 끄기
+        // 1단계: 비디오(RawImage) 끄기 + 텍스처 제거 (잔상 방지)
         if (legendaryVideoPlayer != null)
             legendaryVideoPlayer.Stop();
         if (legendaryAnimPanel != null)
         {
             var rawImg = legendaryAnimPanel.GetComponentInChildren<UnityEngine.UI.RawImage>(true);
-            if (rawImg != null) rawImg.gameObject.SetActive(false);
+            if (rawImg != null)
+            {
+                rawImg.texture = null;
+                rawImg.gameObject.SetActive(false);
+            }
         }
 
         // 2단계: 전설 등장 연출 표시
@@ -943,30 +951,48 @@ public class CompanionGachaManager : MonoBehaviour
     {
         if (!isLegendaryAnimPlaying && !isWaitingForTap) return;
 
+        CleanupLegendaryState();
+        ShowMainUI();
+    }
+
+    /// <summary>★ 전설 연출 상태 완전 정리 (잔재 방지)</summary>
+    private void CleanupLegendaryState()
+    {
+        // 비디오 정지
         if (legendaryVideoPlayer != null && legendaryVideoPlayer.isPlaying)
             legendaryVideoPlayer.Stop();
 
+        // RawImage 텍스처 제거 (마지막 프레임 잔상 방지)
         if (legendaryAnimPanel != null)
         {
             var rawImg = legendaryAnimPanel.GetComponentInChildren<UnityEngine.UI.RawImage>(true);
-            if (rawImg != null) rawImg.texture = null;
+            if (rawImg != null)
+            {
+                rawImg.texture = null;
+                rawImg.gameObject.SetActive(true); // 다음 재생을 위해 활성화 복원
+            }
+            legendaryAnimPanel.SetActive(false);
         }
 
-        if (legendaryAnimPanel != null) legendaryAnimPanel.SetActive(false);
+        // 하위 연출 오브젝트 비활성화
         if (legendaryRevealGO != null) legendaryRevealGO.SetActive(false);
         if (tapToContinueGO != null) tapToContinueGO.SetActive(false);
 
+        // 상태 플래그 초기화
         isLegendaryAnimPlaying = false;
         isWaitingForTap = false;
         pendingLegendaryResults = null;
 
-        ShowMainUI();
+        Debug.Log("[CompanionGachaManager] ★ 전설 연출 상태 정리 완료");
     }
 
     void OnDestroy()
     {
         if (legendaryVideoPlayer != null)
             legendaryVideoPlayer.loopPointReached -= OnLegendaryVideoFinished;
+
+        // ★ 전설 연출 잔재 완전 정리
+        CleanupLegendaryState();
 
         // RenderTexture 정리
         if (_videoRT != null) { _videoRT.Release(); _videoRT = null; }

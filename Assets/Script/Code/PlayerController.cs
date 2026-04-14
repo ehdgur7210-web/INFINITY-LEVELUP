@@ -757,7 +757,6 @@ public class PlayerController : MonoBehaviour
             SpawnSkillEffect(skillData, attackCenter);
         TriggerAttackAnimation();
 
-        Debug.Log($"[SkillMelee] {skillData.skillName} — {hits.Length}개 적 공격");
     }
 
     public void PerformSkillRanged(SkillData skillData, float damageValue)
@@ -933,6 +932,7 @@ public class PlayerController : MonoBehaviour
         tex.Apply();
         sr.sprite = Sprite.Create(tex, new Rect(0, 0, 32, 32), new Vector2(0.5f, 0.5f));
         sr.transform.localScale = Vector3.one * 1.5f;
+        Destroy(tex); // ★ Texture2D 즉시 해제
 
         Destroy(effect, 0.4f);
         return effect;
@@ -956,6 +956,7 @@ public class PlayerController : MonoBehaviour
         tex.Apply();
         sr.sprite = Sprite.Create(tex, new Rect(0, 0, 32, 32), new Vector2(0.5f, 0.5f));
         sr.transform.localScale = Vector3.one * 0.6f;
+        Destroy(tex); // ★ Texture2D 즉시 해제
 
         Rigidbody2D newRb = fireball.AddComponent<Rigidbody2D>();
         newRb.gravityScale = 0f;

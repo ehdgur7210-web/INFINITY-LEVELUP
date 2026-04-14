@@ -120,7 +120,7 @@ public class EquipmentStats
     public EquipmentStats GetEnhancedStats(int enhanceLevel)
     {
         EquipmentStats enhanced = new EquipmentStats();
-        float multiplier = 1 + (enhanceLevel * 0.1f);
+        float multiplier = EnhancementSystem.GetEnhanceMultiplier(enhanceLevel);
         enhanced.attack = Mathf.RoundToInt(attack * multiplier);
         enhanced.defense = Mathf.RoundToInt(defense * multiplier);
         enhanced.health = Mathf.RoundToInt(health * multiplier);

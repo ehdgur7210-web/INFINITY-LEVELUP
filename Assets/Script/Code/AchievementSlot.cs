@@ -3,25 +3,25 @@ using UnityEngine.UI;
 using TMPro;
 
 /// <summary>
-/// ¾÷Àû ½½·Ô UI
-/// - ¾÷Àû Á¤º¸ Ç¥½Ã
-/// - ÁøÇàµµ ¹Ù
-/// - º¸»ó ¼ö·É ¹öÆ°
+/// ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ UI
+/// - ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ Ç¥ï¿½ï¿½
+/// - ï¿½ï¿½ï¿½àµµ ï¿½ï¿½
+/// - ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½Æ°
 /// </summary>
 public class AchievementSlot : MonoBehaviour
 {
-    [Header("UI ¿ä¼Ò")]
-    public Image iconImage;                      // ¾÷Àû ¾ÆÀÌÄÜ
-    public TextMeshProUGUI nameText;             // ¾÷Àû ÀÌ¸§
-    public TextMeshProUGUI descriptionText;      // ¼³¸í
-    public TextMeshProUGUI progressText;         // ÁøÇàµµ ÅØ½ºÆ® (3/10)
-    public Slider progressBar;                   // ÁøÇàµµ ¹Ù
-    public TextMeshProUGUI rewardText;           // º¸»ó Á¤º¸
-    public Button claimButton;                   // º¸»ó ¼ö·É ¹öÆ°
-    public GameObject completedMark;             // ¿Ï·á Ç¥½Ã
-    public Image gradeImage;                     // µî±Þ Ç¥½Ã
+    [Header("UI ï¿½ï¿½ï¿½")]
+    public Image iconImage;                      // ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
+    public TextMeshProUGUI nameText;             // ï¿½ï¿½ï¿½ï¿½ ï¿½Ì¸ï¿½
+    public TextMeshProUGUI descriptionText;      // ï¿½ï¿½ï¿½ï¿½
+    public TextMeshProUGUI progressText;         // ï¿½ï¿½ï¿½àµµ ï¿½Ø½ï¿½Æ® (3/10)
+    public Slider progressBar;                   // ï¿½ï¿½ï¿½àµµ ï¿½ï¿½
+    public TextMeshProUGUI rewardText;           // ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½
+    public Button claimButton;                   // ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½Æ°
+    public GameObject completedMark;             // ï¿½Ï·ï¿½ Ç¥ï¿½ï¿½
+    public Image gradeImage;                     // ï¿½ï¿½ï¿½ Ç¥ï¿½ï¿½
 
-    [Header("µî±Þ »ö»ó")]
+    [Header("ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½")]
     public Color bronzeColor = new Color(0.8f, 0.5f, 0.2f);
     public Color silverColor = new Color(0.75f, 0.75f, 0.75f);
     public Color goldColor = new Color(1f, 0.84f, 0f);
@@ -33,71 +33,78 @@ public class AchievementSlot : MonoBehaviour
     {
         if (claimButton != null)
         {
+            claimButton.onClick.RemoveAllListeners();
             claimButton.onClick.AddListener(OnClaimButtonClicked);
         }
     }
 
+    void OnDestroy()
+    {
+        if (claimButton != null)
+            claimButton.onClick.RemoveAllListeners();
+    }
+
     /// <summary>
-    /// ¾÷Àû ½½·Ô ¼³Á¤
+    /// ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½
     /// </summary>
     public void SetupSlot(AchievementProgress progress)
     {
         currentProgress = progress;
 
-        // ¾ÆÀÌÄÜ
+        // ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
         if (iconImage != null && progress.achievement.icon != null)
         {
             iconImage.sprite = progress.achievement.icon;
             iconImage.enabled = true;
         }
 
-        // ÀÌ¸§
+        // ï¿½Ì¸ï¿½
         if (nameText != null)
         {
             nameText.text = progress.achievement.achievementName;
         }
 
-        // ¼³¸í
+        // ï¿½ï¿½ï¿½ï¿½
         if (descriptionText != null)
         {
             descriptionText.text = progress.achievement.description;
         }
 
-        // ÁøÇàµµ ÅØ½ºÆ®
+        // ï¿½ï¿½ï¿½àµµ ï¿½Ø½ï¿½Æ®
         if (progressText != null)
         {
             progressText.text = $"{progress.currentAmount}/{progress.achievement.targetAmount}";
         }
 
-        // ÁøÇàµµ ¹Ù
+        // ï¿½ï¿½ï¿½àµµ ï¿½ï¿½
         if (progressBar != null)
         {
             progressBar.value = progress.GetProgressRatio();
         }
 
-        // º¸»ó Á¤º¸
+        // ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½
         if (rewardText != null)
         {
             AchievementReward reward = progress.achievement.reward;
             string rewardInfo = "";
 
             if (reward.gold > 0)
-                rewardInfo += $"°ñµå {reward.gold} ";
+                rewardInfo += $"ï¿½ï¿½ï¿½ {reward.gold} ";
             if (reward.gem > 0)
-                rewardInfo += $"º¸¼® {reward.gem} ";
+                rewardInfo += $"ï¿½ï¿½ï¿½ï¿½ {reward.gem} ";
             if (reward.exp > 0)
                 rewardInfo += $"EXP {reward.exp} ";
 
             rewardText.text = rewardInfo;
         }
 
-        // µî±Þ »ö»ó
+        // ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½
         if (gradeImage != null)
         {
             gradeImage.color = GetGradeColor(progress.achievement.grade);
         }
 
-        // º¸»ó ¼ö·É ¹öÆ°
+        // ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½Æ°
         if (claimButton != null)
         {
             if (progress.isCompleted && !progress.isRewarded)
@@ -111,7 +118,7 @@ public class AchievementSlot : MonoBehaviour
             }
         }
 
-        // ¿Ï·á Ç¥½Ã
+        // ï¿½Ï·ï¿½ Ç¥ï¿½ï¿½
         if (completedMark != null)
         {
             completedMark.SetActive(progress.isRewarded);
@@ -119,7 +126,7 @@ public class AchievementSlot : MonoBehaviour
     }
 
     /// <summary>
-    /// µî±Þº° »ö»ó ¹ÝÈ¯
+    /// ï¿½ï¿½Þºï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½È¯
     /// </summary>
     Color GetGradeColor(AchievementGrade grade)
     {
@@ -134,16 +141,16 @@ public class AchievementSlot : MonoBehaviour
     }
 
     /// <summary>
-    /// º¸»ó ¼ö·É ¹öÆ° Å¬¸¯
+    /// ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½Æ° Å¬ï¿½ï¿½
     /// </summary>
     void OnClaimButtonClicked()
     {
         if (currentProgress != null && AchievementSystem.Instance != null)
         {
-            // ¡Ú ¾÷Àû º¸»ó ¹öÆ° Å¬¸¯ (AchievementSystem.ClaimAchievementReward ³»ºÎ¿¡¼­µµ ¿ï¸²)
+            // ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½Æ° Å¬ï¿½ï¿½ (AchievementSystem.ClaimAchievementReward ï¿½ï¿½ï¿½Î¿ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¸²)
             SoundManager.Instance?.PlayButtonClick();
             AchievementSystem.Instance.ClaimAchievementReward(currentProgress);
-            SetupSlot(currentProgress); // UI °»½Å
+            SetupSlot(currentProgress); // UI ï¿½ï¿½ï¿½ï¿½
         }
     }
 }

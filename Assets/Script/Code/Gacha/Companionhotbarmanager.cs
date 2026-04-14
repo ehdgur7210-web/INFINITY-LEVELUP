@@ -7,13 +7,13 @@ using TMPro;
 /// <summary>
 /// CompanionHotbarManager
 /// ─────────────────────────────────────────────────────────
-/// 동료 핫바 (4슬롯, 최대 동시 소환 3마리)
+/// 동료 핫바 (6슬롯, 최대 동시 소환 6마리)
 ///
 /// [기능]
 ///   - 동료 인벤 → 핫바에 등록
 ///   - 핫바 슬롯 클릭 → 동료 소환 (시간 제한 없이 계속 활동)
 ///   - 동료 HP가 0이 되면 사망 → 쿨타임 시작 → 재소환 가능
-///   - 최대 동시 소환 3마리 (maxActiveSummons)
+///   - 최대 동시 소환 6마리 (maxActiveSummons)
 ///   - 꾹 누르고 밖에 드래그 → 핫바에서 제거
 ///
 /// [Inspector 연결]
@@ -30,7 +30,7 @@ public class CompanionHotbarManager : MonoBehaviour
     [Header("핫바 슬롯 설정")]
     public GameObject hotbarSlotPrefab;
     public Transform hotbarParent;
-    public int maxSlots = 4;
+    public int maxSlots = 6;
 
     [Header("소환 설정")]
     [Tooltip("동료가 소환될 기준 Transform (Player)")]
@@ -71,6 +71,9 @@ public class CompanionHotbarManager : MonoBehaviour
     private float[] cooldownTimers;     // 남은 쿨타임 (0이면 소환 가능)
     private float[] cooldownMaxTimes;   // 총 쿨타임 시간
 
+    /// <summary>핫바 데이터 로드 완료 여부 (로드 전 SaveGame으로 빈 데이터 덮어쓰기 방지)</summary>
+    public bool IsHotbarLoaded { get; private set; } = false;
+
     [System.Serializable]
     public class CompanionHotbarSlotData
     {
@@ -92,6 +95,15 @@ public class CompanionHotbarManager : MonoBehaviour
         InitializeSlots();
         FindPlayer();
         SetupAutoButton();
+
+        // ★ GameDataBridge에 저장된 핫바 데이터가 있으면 즉시 복원 (씬 전환 시 데이터 유실 방지)
+        if (!IsHotbarLoaded && GameDataBridge.CurrentData?.companionHotbarIDs != null)
+        {
+            Debug.Log("[CompanionHotbarManager] Start → GameDataBridge에서 핫바 즉시 복원");
+            LoadHotbarSaveData(GameDataBridge.CurrentData.companionHotbarIDs);
+            SetAutoSummon(GameDataBridge.CurrentData.autoSummonEnabled);
+        }
+
         RefreshAutoButtonUI();
         FixParentRaycast();
 
@@ -247,6 +259,7 @@ public class CompanionHotbarManager : MonoBehaviour
 
     public bool RegisterCompanion(CompanionData data)
     {
+        IsHotbarLoaded = true; // 유저 조작 = 로드 완료 상태
         // 이미 등록된 동료인지 확인
         for (int i = 0; i < slotDataList.Count; i++)
         {
@@ -500,6 +513,7 @@ public class CompanionHotbarManager : MonoBehaviour
     public void LoadHotbarSaveData(string[] savedIDs)
     {
         if (savedIDs == null) return;
+        IsHotbarLoaded = true;
 
         var allCompanions = new List<CompanionData>(Resources.FindObjectsOfTypeAll<CompanionData>());
 

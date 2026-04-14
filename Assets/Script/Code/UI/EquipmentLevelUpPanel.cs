@@ -583,8 +583,9 @@ public class EquipmentLevelUpPanel : MonoBehaviour
         int matNeeded = currentEquip.GetRequiredMaterials(currentLevel);
         int matHave = Mathf.Max(0, currentSlot.itemCount - 1);
 
-        // 골드 확인 및 차감
-        if (GameManager.Instance == null || !GameManager.Instance.SpendGold(goldNeeded))
+        // 골드 확인
+        long goldHave = GameManager.Instance != null ? GameManager.Instance.PlayerGold : 0;
+        if (goldHave < goldNeeded)
         {
             UIManager.Instance?.ShowMessage("골드가 부족합니다!", Color.red);
             return;
@@ -593,18 +594,100 @@ public class EquipmentLevelUpPanel : MonoBehaviour
         // 재료 확인
         if (matHave < matNeeded)
         {
-            GameManager.Instance?.AddGold(goldNeeded); // 환불
             UIManager.Instance?.ShowMessage("재료가 부족합니다!", Color.red);
             return;
         }
 
-        // 재료 차감 (동일 아이템 n개)
+        // ★★ 재료 인스턴스 선택 — 강화수치 낮은 순 우선
+        // 현재 레벨업 대상 인스턴스는 제외 (첫 번째 인스턴스 = 대표)
+        string excludeId = null;
+        if (InventoryManager.Instance != null)
+        {
+            var candidates = InventoryManager.Instance.GetMaterialCandidates(
+                currentEquip.itemID, matNeeded, excludeId);
+
+            if (candidates != null && candidates.Count >= matNeeded)
+            {
+                // ★ 10강 이상 재료 경고 체크
+                bool hasHighEnhance = false;
+                int highestEnhance = 0;
+                foreach (var inst in candidates)
+                {
+                    if (inst.enhanceLevel >= 10)
+                    {
+                        hasHighEnhance = true;
+                        if (inst.enhanceLevel > highestEnhance)
+                            highestEnhance = inst.enhanceLevel;
+                    }
+                }
+
+                if (hasHighEnhance)
+                {
+                    // 경고 팝업 후 확인 시 실행
+                    UIManager.Instance?.ShowConfirmDialog(
+                        $"<color=#FF4444>경고!</color>\n\n재료 중 <color=#FFD700>+{highestEnhance}</color> 강화된 장비가 포함되어 있습니다.\n\n정말 레벨업 재료로 사용하시겠습니까?",
+                        () => ExecuteLevelUp(goldNeeded, matNeeded, candidates));
+                    return;
+                }
+
+                // 10강 미만이면 바로 실행
+                ExecuteLevelUp(goldNeeded, matNeeded, candidates);
+                return;
+            }
+        }
+
+        // InventoryManager 없으면 기존 방식 폴백
+        ExecuteLevelUpLegacy(goldNeeded, matNeeded);
+    }
+
+    /// <summary>★ 레벨업 실행 — 인스턴스 기반 재료 소비 (강화수치 낮은 순)</summary>
+    private void ExecuteLevelUp(int goldNeeded, int matNeeded, List<InventoryManager.EquipInstance> materialInstances)
+    {
+        // 골드 차감
+        if (!GameManager.Instance.SpendGold(goldNeeded))
+        {
+            UIManager.Instance?.ShowMessage("골드가 부족합니다!", Color.red);
+            return;
+        }
+
+        // ★ 인스턴스 기반 재료 소비 (강화수치 낮은 순으로 이미 정렬됨)
+        InventoryManager.Instance.ConsumeInstances(currentEquip.itemID, materialInstances);
+
+        // UI 슬롯 카운트 동기화
         currentSlot.itemCount -= matNeeded;
         currentLevel++;
         currentSlot.itemLevel = currentLevel;
         currentSlot.UpdateItemLevel(currentLevel);
 
-        // 해금 맵에 동기화
+        // 첫 번째 인스턴스(레벨업 대상)의 레벨 갱신
+        if (InventoryManager.Instance != null)
+        {
+            var remaining = InventoryManager.Instance.GetMaterialCandidates(currentEquip.itemID, 0);
+            // SyncEquipSlotToMap 대신 직접 인스턴스 레벨 갱신은 ConsumeInstances에서 처리됨
+            InventoryManager.Instance.SyncEquipSlotToMap(
+                currentEquip.itemID,
+                currentSlot.itemCount,
+                currentSlot.enhanceLevel,
+                currentLevel);
+        }
+
+        FinalizeLevelUp();
+    }
+
+    /// <summary>기존 방식 폴백 (InventoryManager 없을 때)</summary>
+    private void ExecuteLevelUpLegacy(int goldNeeded, int matNeeded)
+    {
+        if (!GameManager.Instance.SpendGold(goldNeeded))
+        {
+            UIManager.Instance?.ShowMessage("골드가 부족합니다!", Color.red);
+            return;
+        }
+
+        currentSlot.itemCount -= matNeeded;
+        currentLevel++;
+        currentSlot.itemLevel = currentLevel;
+        currentSlot.UpdateItemLevel(currentLevel);
+
         if (InventoryManager.Instance != null)
         {
             InventoryManager.Instance.SyncEquipSlotToMap(
@@ -614,10 +697,14 @@ public class EquipmentLevelUpPanel : MonoBehaviour
                 currentLevel);
         }
 
-        // 전투력 재계산
+        FinalizeLevelUp();
+    }
+
+    /// <summary>레벨업 후 공통 처리 (전투력, 효과음, 퀘스트, 저장, UI)</summary>
+    private void FinalizeLevelUp()
+    {
         CombatPowerManager.Instance?.Recalculate();
 
-        // 효과음 + 메시지
         SoundManager.Instance?.PlayEnhanceSuccess();
         UIManager.Instance?.ShowMessage($"{currentEquip.itemName} Lv.{currentLevel} 달성!", Color.green);
 
@@ -627,7 +714,6 @@ public class EquipmentLevelUpPanel : MonoBehaviour
 
         SaveLoadManager.Instance?.SaveGame();
 
-        // UI 갱신
         RefreshUI();
         InventoryManager.Instance?.RefreshEquipDisplay();
     }

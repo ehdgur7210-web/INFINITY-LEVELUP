@@ -173,8 +173,12 @@ public class BossMonster : Monster
         if (UIManager.Instance != null)
             UIManager.Instance.ShowMessage($"{monsterName} 처치!", Color.yellow);
 
+        // ★ 체력바 즉시 제거 (풀 반환 전에 확실히 정리)
+        var hpBar = GetComponent<BossMonsterHealthBar>();
+        if (hpBar != null)
+            hpBar.DestroyBar();
+
         // ★ base.Die() 호출 → 부모의 Die 실행 (애니메이션, 풀 반환 등)
-        // BossMonsterHealthBar는 이 오브젝트가 파괴될 때 OnDestroy에서 자동 정리됨
         base.Die();
     }
 
@@ -205,7 +209,7 @@ public class BossMonster : Monster
                         InventoryManager.Instance.AddItem(item, 1);
 
                         if (UIManager.Instance != null)
-                            UIManager.Instance.ShowMessage($"{item.itemName} 획득!", Color.yellow);
+                            UIManager.Instance.ShowMessage(GetDropMsg(item.itemName, 1), Color.yellow);
                     }
                 }
             }
@@ -237,7 +241,7 @@ public class BossMonster : Monster
                 InventoryManager.Instance.AddItem(dropData.item, dropAmount);
 
                 if (UIManager.Instance != null)
-                    UIManager.Instance.ShowMessage($"{dropData.item.itemName} x{dropAmount} 획득!", Color.green);
+                    UIManager.Instance.ShowMessage(GetDropMsg(dropData.item.itemName, dropAmount), Color.green);
             }
         }
     }
@@ -251,6 +255,11 @@ public class BossMonster : Monster
         Initialize(name, hp, atk, speed, direction); // 부모(Monster) 초기화
         bossTitle = title;
         monsterName = $"{bossTitle} {name}";
+
+        // ★ 체력바 이름 실시간 갱신
+        var hpBar = GetComponent<BossMonsterHealthBar>();
+        if (hpBar != null)
+            hpBar.UpdateBossName(monsterName);
     }
 
     // ───────────────────────────────────────────

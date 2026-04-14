@@ -320,6 +320,11 @@ public class CompanionInventorySlot : MonoBehaviour, IPointerClickHandler
             if (gradeSprites != null && rarityIndex < gradeSprites.Length
                 && gradeSprites[rarityIndex] != null)
             {
+                // ★ 부모 오브젝트도 같이 활성화
+                Transform parent = gradeStarsImage.transform.parent;
+                if (parent != null && !parent.gameObject.activeSelf)
+                    parent.gameObject.SetActive(true);
+
                 gradeStarsImage.sprite = gradeSprites[rarityIndex];
                 gradeStarsImage.color = Color.white;
                 gradeStarsImage.gameObject.SetActive(true);
@@ -337,6 +342,10 @@ public class CompanionInventorySlot : MonoBehaviour, IPointerClickHandler
         // 텍스트 폴백
         if (gradeText != null)
         {
+            Transform parent = gradeText.transform.parent;
+            if (parent != null && !parent.gameObject.activeSelf)
+                parent.gameObject.SetActive(true);
+
             gradeText.text = GetGradeStarText(rarityIndex);
             gradeText.color = GetRarityTextColor(rarityIndex);
             gradeText.gameObject.SetActive(true);

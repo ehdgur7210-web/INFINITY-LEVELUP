@@ -127,6 +127,12 @@ public class UIManager : MonoBehaviour
     private Queue<GameObject> notificationPool = new Queue<GameObject>();
     private List<GameObject> activeNotifications = new List<GameObject>();
 
+    // ★ 메시지 시스템 캐시 — GC 방지
+    private CanvasGroup _messageCanvasGroup;
+    private WaitForSeconds _waitMsgDuration;
+    private WaitForSeconds _waitMsgFade;
+    private Coroutine _msgCoroutine;
+
     // 현재 활성화된 다이얼로그 콜백
     private System.Action currentConfirmAction;
     private System.Action currentCancelAction;
@@ -156,6 +162,18 @@ public class UIManager : MonoBehaviour
         }
 
         UpdateStatsUI();
+
+        // ★ WaitForSeconds 캐시 (Inspector 값 확정 후 Start에서 생성)
+        _waitMsgDuration = new WaitForSeconds(messageDuration);
+        _waitMsgFade     = new WaitForSeconds(messageFadeTime);
+
+        // ★ CanvasGroup 캐시 (코루틴마다 GetComponent 방지)
+        if (messagePanel != null)
+        {
+            _messageCanvasGroup = messagePanel.GetComponent<CanvasGroup>();
+            if (_messageCanvasGroup == null)
+                _messageCanvasGroup = messagePanel.AddComponent<CanvasGroup>();
+        }
     }
 
     void Update()
@@ -654,8 +672,13 @@ public class UIManager : MonoBehaviour
     {
         if (messagePanel == null || messageText == null) return;
 
-        StopAllCoroutines();
-        StartCoroutine(ShowMessageCoroutine(message, color ?? Color.red));
+        // ★ 이전 코루틴만 중단 (StopAllCoroutines → 다른 코루틴까지 죽이는 문제 방지)
+        if (_msgCoroutine != null)
+        {
+            StopCoroutine(_msgCoroutine);
+            _msgCoroutine = null;
+        }
+        _msgCoroutine = StartCoroutine(ShowMessageCoroutine(message, color ?? Color.red));
     }
 
     private IEnumerator ShowMessageCoroutine(string message, Color color)
@@ -664,17 +687,13 @@ public class UIManager : MonoBehaviour
         messageText.color = color;
         messagePanel.SetActive(true);
 
-        CanvasGroup canvasGroup = messagePanel.GetComponent<CanvasGroup>();
-        if (canvasGroup == null)
-        {
-            canvasGroup = messagePanel.AddComponent<CanvasGroup>();
-        }
-
-        yield return StartCoroutine(FadeCanvasGroup(canvasGroup, 0f, 1f, messageFadeTime));
-        yield return new WaitForSeconds(messageDuration);
-        yield return StartCoroutine(FadeCanvasGroup(canvasGroup, 1f, 0f, messageFadeTime));
+        // ★ 캐시된 CanvasGroup + WaitForSeconds 사용 (매번 GetComponent/new 방지)
+        yield return StartCoroutine(FadeCanvasGroup(_messageCanvasGroup, 0f, 1f, messageFadeTime));
+        yield return _waitMsgDuration;
+        yield return StartCoroutine(FadeCanvasGroup(_messageCanvasGroup, 1f, 0f, messageFadeTime));
 
         messagePanel.SetActive(false);
+        _msgCoroutine = null;
     }
 
     #endregion

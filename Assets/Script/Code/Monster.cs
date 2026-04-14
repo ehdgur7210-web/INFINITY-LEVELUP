@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 using System.Collections;
 
@@ -12,7 +13,7 @@ public class Monster : MonoBehaviour, IHitable
 
     // ★ PoolManager에 등록한 tag와 일치해야 함
     [SerializeField] private string poolTag = "Monster";
-    public string PoolTag => poolTag;
+    public string PoolTag { get => poolTag; set => poolTag = value; }
 
     [Header("이동 설정")]
     [SerializeField] private bool usePlayerTracking = true;
@@ -48,6 +49,21 @@ public class Monster : MonoBehaviour, IHitable
     [SerializeField] private float deathEffectCooldown = 0.08f;
     private static float _lastDeathEffectTime = -10f;
     private static float _lastHitSoundTime = -10f; // ★ 피격 사운드 쿨다운 (전체 몬스터 공유)
+
+    // ★ 드롭 메시지 string 캐시 — 같은 아이템/수량 조합이면 기존 string 재사용 (GC 방지)
+    private static readonly Dictionary<(string, int), string> _dropMsgCache
+        = new Dictionary<(string, int), string>(32);
+
+    protected static string GetDropMsg(string itemName, int amount)
+    {
+        var key = (itemName, amount);
+        if (!_dropMsgCache.TryGetValue(key, out string msg))
+        {
+            msg = $"{itemName} x{amount} 획득!";
+            _dropMsgCache[key] = msg;
+        }
+        return msg;
+    }
 
     // ─── Getter/Setter ───
     public int GoldDrop { get { return goldDrop; } set { goldDrop = value; } }
@@ -440,7 +456,6 @@ public class Monster : MonoBehaviour, IHitable
         {
             // ★ 기본 파티클 없으면 간단한 스케일 축소 효과로 대체
             // (프리팹을 Inspector에서 연결하는 것을 권장)
-            Debug.Log($"[Monster] {monsterName} 사망 — deathParticlePrefab 미설정");
         }
     }
 
@@ -538,7 +553,7 @@ public class Monster : MonoBehaviour, IHitable
                 int dropAmount = Random.Range(dropData.minAmount, dropData.maxAmount + 1);
                 InventoryManager.Instance.AddItem(dropData.item, dropAmount);
                 if (UIManager.Instance != null)
-                    UIManager.Instance.ShowMessage($"{dropData.item.itemName} x{dropAmount} 획득!", Color.green);
+                    UIManager.Instance.ShowMessage(GetDropMsg(dropData.item.itemName, dropAmount), Color.green);
             }
         }
     }

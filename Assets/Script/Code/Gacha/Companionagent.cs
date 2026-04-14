@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 
 /// <summary>
@@ -82,6 +83,9 @@ public class CompanionAgent : MonoBehaviour, IHitable
     private float buffTimer = 0f;         // 버프 남은 시간
     private float buffMultiplier = 1f;    // 버프 공격력 배율
 
+    // ── 분리 캐시 (FindObjectsOfType 매 프레임 방지) ──
+    private static readonly List<CompanionAgent> _allAgents = new List<CompanionAgent>();
+
     // ── 2D 컴포넌트 ──
     private Rigidbody2D rb;
     private SpriteRenderer spriteRenderer;
@@ -118,6 +122,14 @@ public class CompanionAgent : MonoBehaviour, IHitable
 
         if (spriteRenderer != null)
             originalColor = spriteRenderer.color;
+
+        // ★ 전역 레지스트리 등록 (FindObjectsOfType 매 프레임 대체)
+        _allAgents.Add(this);
+    }
+
+    void OnDestroy()
+    {
+        _allAgents.Remove(this);
     }
 
     void Start()
@@ -280,9 +292,9 @@ public class CompanionAgent : MonoBehaviour, IHitable
     private void ApplySeparation()
     {
         Vector2 sepDir = Vector2.zero;
-        var companions = FindObjectsOfType<CompanionAgent>();
 
-        foreach (var other in companions)
+        // ★ static 레지스트리 사용 — FindObjectsOfType 매 프레임 호출 제거
+        foreach (var other in _allAgents)
         {
             if (other == this || other.IsDead || !other.isActive) continue;
             Vector2 diff = (Vector2)transform.position - (Vector2)other.transform.position;
@@ -415,10 +427,7 @@ public class CompanionAgent : MonoBehaviour, IHitable
         string cName = data != null ? data.companionName : "???";
 
         if (data == null || data.skills == null || skillCooldowns == null)
-        {
-            Debug.Log($"[동료스킬] {cName}: 스킬 데이터 없음 (skills={data?.skills?.Count ?? 0})");
             return -1;
-        }
 
         for (int i = 0; i < data.skills.Count; i++)
         {
@@ -427,17 +436,9 @@ public class CompanionAgent : MonoBehaviour, IHitable
             CompanionSkillInfo skill = data.skills[i];
             if (skill == null) continue;
 
-            // 해금 레벨 체크
-            if (companionLevel < skill.unlockCompanionLevel)
-            {
-                Debug.Log($"[동료스킬] {cName}: {skill.skillName} 레벨 부족 (현재 Lv.{companionLevel}, 필요 Lv.{skill.unlockCompanionLevel})");
-                continue;
-            }
-
-            // 쿨타임 체크
+            if (companionLevel < skill.unlockCompanionLevel) continue;
             if (skillCooldowns[i] > 0f) continue;
 
-            Debug.Log($"[동료스킬] {cName}: {skill.skillName} 발동! (타입:{skill.skillType}, 범위:{skill.areaRadius})");
             return i;
         }
 

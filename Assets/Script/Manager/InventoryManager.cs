@@ -1411,6 +1411,57 @@ public class InventoryManager : MonoBehaviour
     }
 
     // ═══════════════════════════════════════════════════════════════
+    //  ★ 레벨업 재료 선택 — 강화수치 낮은 순 우선
+    // ═══════════════════════════════════════════════════════════════
+
+    /// <summary>
+    /// 레벨업 재료로 소비될 인스턴스 목록 조회 (강화수치 낮은 순)
+    /// 장착 중인 인스턴스는 제외
+    /// </summary>
+    /// <param name="itemID">대상 장비 아이템 ID</param>
+    /// <param name="count">필요 재료 수</param>
+    /// <param name="excludeInstanceId">레벨업 대상 인스턴스 ID (재료에서 제외)</param>
+    public List<EquipInstance> GetMaterialCandidates(int itemID, int count, string excludeInstanceId = null)
+    {
+        if (!equipUnlockMap.TryGetValue(itemID, out EquipUnlockData data))
+            return new List<EquipInstance>();
+
+        // 후보: 장착 중이 아니고 레벨업 대상이 아닌 인스턴스
+        List<EquipInstance> candidates = new List<EquipInstance>();
+        foreach (var inst in data.instances)
+        {
+            if (inst.isEquipped) continue;
+            if (excludeInstanceId != null && inst.instanceId == excludeInstanceId) continue;
+            candidates.Add(inst);
+        }
+
+        // 강화수치 오름차순 정렬 (낮은 것부터 소비)
+        candidates.Sort((a, b) =>
+        {
+            int cmp = a.enhanceLevel.CompareTo(b.enhanceLevel);
+            if (cmp != 0) return cmp;
+            return a.itemLevel.CompareTo(b.itemLevel);
+        });
+
+        // count개만 반환
+        if (candidates.Count > count)
+            candidates.RemoveRange(count, candidates.Count - count);
+
+        return candidates;
+    }
+
+    /// <summary>
+    /// 지정된 인스턴스들을 인벤토리에서 제거 (레벨업 재료 소비)
+    /// </summary>
+    public void ConsumeInstances(int itemID, List<EquipInstance> toRemove)
+    {
+        if (!equipUnlockMap.TryGetValue(itemID, out EquipUnlockData data)) return;
+        foreach (var inst in toRemove)
+            data.instances.Remove(inst);
+        Debug.Log($"[InventoryManager] 재료 소비: ID={itemID}, {toRemove.Count}개 인스턴스 제거 (남은 {data.count}개)");
+    }
+
+    // ═══════════════════════════════════════════════════════════════
     //  인덱스 기반 제거
     // ═══════════════════════════════════════════════════════════════
 

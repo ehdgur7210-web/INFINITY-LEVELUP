@@ -428,7 +428,8 @@ public class SaveLoadManager : MonoBehaviour
         }
 
         // ── 동료 핫바 (MainScene 전용) ──
-        if (isMainScene && CompanionHotbarManager.Instance != null)
+        // ★★ IsHotbarLoaded 가드: 로드 전 SaveGame이 호출되면 빈 핫바로 덮어쓰기 방지
+        if (isMainScene && CompanionHotbarManager.Instance != null && CompanionHotbarManager.Instance.IsHotbarLoaded)
         {
             data.companionHotbarIDs = CompanionHotbarManager.Instance.GetHotbarSaveData();
             data.autoSummonEnabled = CompanionHotbarManager.Instance.autoSummonEnabled;
@@ -437,6 +438,8 @@ public class SaveLoadManager : MonoBehaviour
         {
             data.companionHotbarIDs = GameDataBridge.CurrentData.companionHotbarIDs;
             data.autoSummonEnabled = GameDataBridge.CurrentData.autoSummonEnabled;
+            if (isMainScene && CompanionHotbarManager.Instance != null && !CompanionHotbarManager.Instance.IsHotbarLoaded)
+                Debug.LogWarning($"[SAVE-PROTECT] CompanionHotbarManager.IsHotbarLoaded=false → GameDataBridge 폴백 사용 ({GameDataBridge.CurrentData.companionHotbarIDs.Length}슬롯)");
         }
 
         // ── VIP ──
@@ -526,30 +529,10 @@ public class SaveLoadManager : MonoBehaviour
             data.adClaimDate  = GameDataBridge.CurrentData.adClaimDate;
         }
 
-        // ── 스테이지/웨이브 (오프라인 보상과 독립적으로 저장) ──
-        // ★ PendingWaveIndex가 있으면 최우선 (아직 WaveSpawner에 적용 전인 복원 대기 값)
-        if (WaveSpawner.PendingWaveIndex >= 0)
-        {
-            data.offlineCurrentWave = WaveSpawner.PendingWaveIndex;
-            Debug.Log($"[SaveLoadManager] ★ 웨이브 저장 (PendingWaveIndex): {data.offlineCurrentWave}");
-        }
-        else if (WaveSpawner.Instance != null && WaveSpawner.Instance.CurrentWaveIndex > 0)
-        {
-            data.offlineCurrentWave = WaveSpawner.Instance.CurrentWaveIndex;
-            Debug.Log($"[SaveLoadManager] ★ 웨이브 저장 (WaveSpawner): {data.offlineCurrentWave}");
-        }
-        else if (GameDataBridge.HasData && GameDataBridge.CurrentData.offlineCurrentWave > 0)
-        {
-            data.offlineCurrentWave = GameDataBridge.CurrentData.offlineCurrentWave;
-            Debug.Log($"[SaveLoadManager] ★ 웨이브 보존 (GameDataBridge 폴백): {data.offlineCurrentWave}");
-        }
-        else
-        {
-            // WaveSpawner가 있고 index가 0이면 실제 1-1 스테이지
-            if (WaveSpawner.Instance != null)
-                data.offlineCurrentWave = WaveSpawner.Instance.CurrentWaveIndex;
-            Debug.Log($"[SaveLoadManager] 웨이브 저장: {data.offlineCurrentWave} (기본)");
-        }
+        // ── 스테이지/웨이브 ──
+        // ★ WaveSpawner.CurrentWaveIndex가 bridge 직접 참조이므로 항상 bridge에서 읽으면 됨
+        data.offlineCurrentWave = GameDataBridge.CurrentData?.offlineCurrentWave ?? 0;
+        Debug.Log($"[SaveLoadManager] ★ 웨이브 저장 (bridge 직접): {data.offlineCurrentWave}");
 
         // ── 튜토리얼 ──
         data.tutorialCompleted = TutorialManager.Instance != null
@@ -813,19 +796,9 @@ public class SaveLoadManager : MonoBehaviour
             OfflineRewardManager.Instance.LoadOfflineData(data);
 
         // ── 스테이지/웨이브 복원 ──
-        Debug.Log($"[SaveLoadManager] ★ 웨이브 복원 시도: data.offlineCurrentWave={data.offlineCurrentWave}, WaveSpawner={WaveSpawner.Instance != null}");
-        if (WaveSpawner.Instance != null)
-        {
-            WaveSpawner.Instance.ApplyWaveIndex(data.offlineCurrentWave);
-            Debug.Log($"[SaveLoadManager] ★ 웨이브 복원 완료: {WaveSpawner.Instance.StageLabel}");
-        }
-        else
-        {
-            // ★ WaveSpawner가 아직 없으면 PendingWaveIndex에 보관
-            // SaveGame이 중간에 GameDataBridge를 덮어써도 이 값은 안전
-            WaveSpawner.PendingWaveIndex = data.offlineCurrentWave;
-            Debug.LogWarning($"[SaveLoadManager] ⚠ WaveSpawner 없음 → PendingWaveIndex={data.offlineCurrentWave} 보관");
-        }
+        // ★ WaveSpawner.CurrentWaveIndex가 bridge 직접 참조이므로 별도 주입 불필요
+        // GameDataBridge.CurrentData.offlineCurrentWave는 이미 SetData에서 갱신됨
+        Debug.Log($"[SaveLoadManager] ★ 웨이브 bridge 확인: offlineCurrentWave={GameDataBridge.CurrentData?.offlineCurrentWave ?? -1}");
 
         // ── 튜토리얼 ──
         // GameDataBridge에 tutorialPhase/Step 복원 (TutorialManager.Start()에서 읽음)

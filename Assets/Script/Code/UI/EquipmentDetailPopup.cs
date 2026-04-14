@@ -172,7 +172,7 @@ public class EquipmentDetailPopup : MonoBehaviour
         EquipmentStats curStats = currentEquip.GetLeveledStats(curLv);
 
         // ★ 현재 강화 단계 반영 (장착 전이라도 슬롯의 enhanceLevel 사용)
-        float curEnhMult = 1f + (currentSlot.enhanceLevel * 0.1f);
+        float curEnhMult = EnhancementSystem.GetEnhanceMultiplier(currentSlot.enhanceLevel);
         EquipmentStats curStatsEnh = ApplyEnhanceMult(curStats, curEnhMult);
 
         string cur = FormatStats(curStatsEnh);
