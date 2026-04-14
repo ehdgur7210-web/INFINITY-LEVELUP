@@ -201,10 +201,9 @@ public class TutorialFocusMask : MonoBehaviour, ICanvasRaycastFilter
         float cx = (min.x + max.x) * 0.5f / sw;
         float cy = (min.y + max.y) * 0.5f / sh;
 
-        // ★ DX(Windows/Editor/Metal): 셰이더 Y=0이 위, C# Y=0이 아래 → 반전
-        //   GL/Vulkan: 둘 다 Y=0이 아래 → 반전 없음
-        if (SystemInfo.graphicsUVStartsAtTop)
-            cy = 1f - cy;
+        // ★ ComputeScreenPos는 모든 플랫폼(DX/GL/Metal)에서 y=0=하단으로 일정.
+        //   graphicsUVStartsAtTop은 렌더텍스처 텍스처 UV 컨벤션 플래그이며
+        //   screen-space UV에는 적용하면 안 됨 → flip 없음.
 
         Vector2 size = new Vector2(
             Mathf.Abs(max.x - min.x) / sw,

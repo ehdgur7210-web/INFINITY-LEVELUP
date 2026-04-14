@@ -649,28 +649,42 @@ public class FarmPlantModePanel : MonoBehaviour
     }
 
     /// <summary>
-    /// 수확 버튼: 캐릭터 이동(있을 경우) 후 수확
+    /// 수확 버튼: 캐릭터 이동 → 줍기 애니메이션 → 수확 실행
     /// </summary>
     private void OnHarvestClicked()
     {
         SoundManager.Instance?.PlayButtonClick();
 
+        int idx = currentPlotIndex; // 클로저 캡처용 로컬 복사
+
         if (FarmCharacterMover.Instance != null)
         {
-            FarmCharacterMover.Instance.MoveToPlot(currentPlotIndex, () =>
-            {
-                FarmManager.Instance?.HarvestCrop(currentPlotIndex);
-                SoundManager.Instance?.PlayQuestReward();
-                TutorialManager.Instance?.OnActionCompleted("HarvestComplete");
-            });
+            // ★ 이동 없이 제자리에서 줍기 모션 재생 (패널은 열어둠 — 튜토리얼 꼬임 방지)
+            FarmCharacterMover.Instance.PlayPickup(
+                onHarvest: () =>
+                {
+                    // 줍기 모션 중간(손이 닿는 시점)에 실제 수확
+                    FarmManager.Instance?.HarvestCrop(idx);
+                    SoundManager.Instance?.PlayQuestReward();
+                    TutorialManager.Instance?.OnActionCompleted("HarvestComplete");
+                    Debug.Log($"[FarmPlantModePanel] 수확 완료 (plotIndex={idx})");
+                },
+                onComplete: null
+            );
         }
         else
         {
-            // FarmCharacterMover 없어도 즉시 수확
-            FarmManager.Instance?.HarvestCrop(currentPlotIndex);
+            // FarmCharacterMover 없어도 즉시 수확 (폴백)
+            FarmManager.Instance?.HarvestCrop(idx);
             SoundManager.Instance?.PlayQuestReward();
             TutorialManager.Instance?.OnActionCompleted("HarvestComplete");
         }
+    }
+
+    /// <summary>수확 중 캐릭터 이동을 방해하지 않도록 패널만 닫기 (수확은 진행)</summary>
+    private void ClosePanelOnly()
+    {
+        gameObject.SetActive(false);
     }
 
     /// <summary>
@@ -693,8 +707,33 @@ public class FarmPlantModePanel : MonoBehaviour
             return;
         }
 
-        FarmManager.Instance?.InstantFinish(currentPlotIndex);
         UIManager.Instance?.ShowMessage($"즉시 완료! (-{gemCost})", Color.yellow);
+
+        int idx = currentPlotIndex;
+
+        if (FarmCharacterMover.Instance != null)
+        {
+            // ★ 줍기 애니메이션 재생 → 모션 중간에 즉시완료 + 수확 실행 (패널은 열어둠 — 튜토리얼 꼬임 방지)
+            FarmCharacterMover.Instance.PlayPickup(
+                onHarvest: () =>
+                {
+                    FarmManager.Instance?.InstantFinish(idx);
+                    FarmManager.Instance?.HarvestCrop(idx);
+                    SoundManager.Instance?.PlayQuestReward();
+                    TutorialManager.Instance?.OnActionCompleted("HarvestComplete");
+                    Debug.Log($"[FarmPlantModePanel] 즉시수확 완료 (plotIndex={idx})");
+                },
+                onComplete: null
+            );
+        }
+        else
+        {
+            // FarmCharacterMover 없으면 애니메이션 없이 즉시 처리
+            FarmManager.Instance?.InstantFinish(idx);
+            FarmManager.Instance?.HarvestCrop(idx);
+            SoundManager.Instance?.PlayQuestReward();
+            TutorialManager.Instance?.OnActionCompleted("HarvestComplete");
+        }
     }
 
     /// <summary>

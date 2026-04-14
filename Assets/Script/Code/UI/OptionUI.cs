@@ -183,12 +183,11 @@ public class OptionUI : MonoBehaviour
     {
         EnsureInitialized();
 
-        // 시작 시 옵션 패널 숨김 (alpha는 1로 리셋해두고 SetActive로만 관리)
+        // ★ alpha=0 잔여값만 제거. SetActive(false)는 Awake에서 이미 처리.
+        //   Start()에서 SetActive(false)를 재호출하면
+        //   OpenOptionPanel()이 먼저 활성화한 패널을 Start 지연 실행 시 다시 닫아버리는 버그 발생.
         if (옵션패널 != null)
-        {
-            ForceAlpha(옵션패널, 1f); // ★ 씬에 저장된 alpha=0 잔여값 제거
-            옵션패널.SetActive(false);
-        }
+            ForceAlpha(옵션패널, 1f);
     }
 
     // ==========================================================

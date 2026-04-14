@@ -106,9 +106,14 @@ public class EquipmentManager : MonoBehaviour
 
     private List<EquipPanelSlot> registeredPanelSlots = new List<EquipPanelSlot>();
 
-    /// <summary>튜토리얼에서 사용 — EquipmentType으로 슬롯 반환 (GC 없음)</summary>
+    /// <summary>튜토리얼에서 사용 — EquipmentType으로 슬롯 반환 (GC 없음)
+    /// isTutorialTarget=true 슬롯 우선 반환 (인벤/스탯 화면 복사본 제외)</summary>
     public EquipPanelSlot GetEquipPanelSlot(EquipmentType type)
     {
+        // ★ 1순위: isTutorialTarget=true (실제 장비 패널 슬롯)
+        foreach (var slot in registeredPanelSlots)
+            if (slot != null && slot.slotType == type && slot.isTutorialTarget) return slot;
+        // ★ 2순위: 폴백 (복사본이라도 타입 일치하면 반환)
         foreach (var slot in registeredPanelSlots)
             if (slot != null && slot.slotType == type) return slot;
         return null;

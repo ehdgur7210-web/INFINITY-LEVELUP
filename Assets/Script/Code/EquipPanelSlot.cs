@@ -18,6 +18,9 @@ public class EquipPanelSlot : MonoBehaviour, IDropHandler, IPointerClickHandler,
     [Header("슬롯 설정")]
     public EquipmentType slotType;
 
+    [Tooltip("true = 실제 장비 패널 슬롯 (튜토리얼 타겟). false = 인벤/스탯 화면 복사본 (튜토리얼 제외)")]
+    public bool isTutorialTarget = true;
+
     [Header("UI 요소")]
     public Image itemIconImage;
     public Image backgroundImage;

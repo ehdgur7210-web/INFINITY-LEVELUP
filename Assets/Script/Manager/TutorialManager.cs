@@ -538,6 +538,11 @@ public class TutorialManager : MonoBehaviour
             // 장비 탭 강제 전환 (인벤토리가 열려있으면)
             if (InventoryManager.Instance != null && InventoryManager.Instance.isPanelOpen)
                 InventoryManager.Instance.SelectTab(InventoryManager.InvenTabType.Equip);
+            // ★ EquipPanelSlot 스텝: IsEquipmentLoaded 여부 무관하게 비활성 패널 슬롯까지 캐시
+            //   (RefreshAllPanelSlots는 IsEquipmentLoaded=false면 조기 반환하므로
+            //    CacheEquipPanelSlots를 먼저 호출해 registeredPanelSlots를 확보)
+            if (focusName.StartsWith("EquipPanelSlot:") && EquipmentManager.Instance != null)
+                EquipmentManager.Instance.CacheEquipPanelSlots();
             // ★ EquipPanelSlot/강화 스텝에서만 슬롯 갱신 (InvenSlot 초반 스텝에서는 불필요)
             if ((focusName.StartsWith("EquipPanelSlot:") || focusName == "EnhanceActionBtn")
                 && EquipmentManager.Instance != null)

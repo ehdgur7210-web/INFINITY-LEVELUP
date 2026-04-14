@@ -16,14 +16,14 @@ MonoBehaviour:
     \uC2AC\uB86F\uC744 \uD074\uB9AD\uD558\uBA74 \uAC15\uD654\uCC3D\uC774 \uC5F4\uB9BD\uB2C8\uB2E4."
   focusTargetName: EquipPanelSlot:Helmet
   focusPadding: {x: 20, y: 20}
-  advanceType: 0
+  advanceType: 3
   requiredAction: EnhancePanelOpened
   autoAdvanceDelay: 2
   tipPosition: 0
   isSceneTransitionStep: 0
   delayBeforeShow: 0
-  useAreaFocus: 1
-  areaTargetName: EquipPanelSlot:Helmet
+  useAreaFocus: 0
+  areaTargetName: 
   hideTargets:
   - EquipLevelUpPanel
   - AllContains:EquipButton

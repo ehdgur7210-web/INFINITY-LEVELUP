@@ -484,6 +484,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   slotType: 3
+  isTutorialTarget: 1
   itemIconImage: {fileID: 2134225295}
   backgroundImage: {fileID: 839186569}
   enhanceLevelText: {fileID: 680155337}
@@ -3574,6 +3575,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   slotType: 4
+  isTutorialTarget: 1
   itemIconImage: {fileID: 1505547493}
   backgroundImage: {fileID: 799168377}
   enhanceLevelText: {fileID: 229028217}
@@ -25642,6 +25644,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   slotType: 1
+  isTutorialTarget: 1
   itemIconImage: {fileID: 789734774}
   backgroundImage: {fileID: 1101787191}
   enhanceLevelText: {fileID: 2044053078}
@@ -35089,6 +35092,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   slotType: 3
+  isTutorialTarget: 0
   itemIconImage: {fileID: 1201829436}
   backgroundImage: {fileID: 506993728}
   enhanceLevelText: {fileID: 1744509898}
@@ -49407,6 +49411,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   slotType: 2
+  isTutorialTarget: 0
   itemIconImage: {fileID: 1856414813}
   backgroundImage: {fileID: 1296439652}
   enhanceLevelText: {fileID: 706387219}
@@ -69537,6 +69542,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   slotType: 1
+  isTutorialTarget: 0
   itemIconImage: {fileID: 516264071}
   backgroundImage: {fileID: 1637808158}
   enhanceLevelText: {fileID: 1242400786}
@@ -71509,7 +71515,7 @@ MonoBehaviour:
     rewards:
     - rewardType: 1
       itemData: {fileID: 0}
-      amount: 100000
+      amount: 1000000
   - mailID: 1
     title: "\"1\uACBD\uB2E4\uC6B4\uB85C\uB4DC\""
     content: "1\uACBD\uB2E4\uC6B4\uB85C\uB4DC \uAC10\uC0AC \uC120\uBB3C"
@@ -71519,7 +71525,7 @@ MonoBehaviour:
     rewards:
     - rewardType: 1
       itemData: {fileID: 0}
-      amount: 1000000
+      amount: 10000000
   - mailID: 2
     title: "\"1\uACBD\uB2E4\uC6B4\uB85C\uB4DC\""
     content: "1\uACBD\uB2E4\uC6B4\uB85C\uB4DC \uAC10\uC0AC \uC120\uBB3C"
@@ -71535,10 +71541,10 @@ MonoBehaviour:
       amount: 10000
     - rewardType: 7
       itemData: {fileID: 0}
-      amount: 1000
+      amount: 500
     - rewardType: 8
       itemData: {fileID: 0}
-      amount: 1000
+      amount: 100
     - rewardType: 10
       itemData: {fileID: 0}
       amount: 10000
@@ -71778,6 +71784,21 @@ MonoBehaviour:
       itemData: {fileID: 0}
       amount: 100
   - code: "\uD669\uCC3D\uD658"
+    description: '""'
+    rewards:
+    - rewardType: 2
+      itemData: {fileID: 0}
+      amount: 1000
+    - rewardType: 1
+      itemData: {fileID: 0}
+      amount: 10000000
+    - rewardType: 8
+      itemData: {fileID: 0}
+      amount: 20
+    - rewardType: 7
+      itemData: {fileID: 0}
+      amount: 100
+  - code: "\uC624\uD574\uC6D0\uBA58\uD1A0"
     description: '""'
     rewards:
     - rewardType: 2
@@ -79880,6 +79901,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   slotType: 5
+  isTutorialTarget: 0
   itemIconImage: {fileID: 1254633243}
   backgroundImage: {fileID: 2069562144}
   enhanceLevelText: {fileID: 791862395}
@@ -86061,6 +86083,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   slotType: 4
+  isTutorialTarget: 0
   itemIconImage: {fileID: 1769545735}
   backgroundImage: {fileID: 336181571}
   enhanceLevelText: {fileID: 849792632}
@@ -88776,6 +88799,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   slotType: 5
+  isTutorialTarget: 1
   itemIconImage: {fileID: 76180561}
   backgroundImage: {fileID: 959355464}
   enhanceLevelText: {fileID: 992914439}
@@ -90115,6 +90139,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   slotType: 0
+  isTutorialTarget: 0
   itemIconImage: {fileID: 1158939009}
   backgroundImage: {fileID: 1406947292}
   enhanceLevelText: {fileID: 2011686592}
@@ -97973,7 +97998,7 @@ MonoBehaviour:
     probability: 1.515
   currentLevel: 1
   maxLevel: 5
-  gachaCountForLevelUp: 100
+  gachaCountForLevelUp: 500
   currentGachaCount: 0
   gachaLevelUpCosts:
   - goldCost: 100
@@ -106335,6 +106360,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   slotType: 2
+  isTutorialTarget: 1
   itemIconImage: {fileID: 680916293}
   backgroundImage: {fileID: 1027661848}
   enhanceLevelText: {fileID: 2055113306}
@@ -113413,6 +113439,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   slotType: 0
+  isTutorialTarget: 1
   itemIconImage: {fileID: 1395125024294714620}
   backgroundImage: {fileID: 6159199959502746553}
   enhanceLevelText: {fileID: 1084937908644249239}
